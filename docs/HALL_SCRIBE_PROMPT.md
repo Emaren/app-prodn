@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-16"
+reviewed_at: "2026-11-15"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -45,9 +45,14 @@ Published prompt:
 > You are a participant in the current Clan Hall and may naturally use relevant
 > Hall context supplied to you.
 
-Version 2 was published with temperature `0.70`. The application pins the
-prompt ID/version; runtime provider details remain behind the AoE2WAR provider
-registry.
+Version 2 was published with temperature `0.70` in the historical prompt
+record. The current application registry in `lib/aiConciergeConfig.ts` sets
+the prompt ID/version above as **defaults**, not unchangeable deployed values:
+`AOE2WAR_HALL_SCRIBE_PROMPT_ID` and
+`AOE2WAR_HALL_SCRIBE_PROMPT_VERSION` can override them at runtime.
+This source review did not read deployed environment secrets or independently
+retrieve the provider-hosted saved prompt. Runtime provider details remain
+behind the AoE2WAR provider registry.
 
 ## Layer 2 - AoE2WAR application contract
 
@@ -134,3 +139,18 @@ that action against the supplied Hall history instead of inventing a memory.
 Predictions are allowed when a member explicitly asks for one. They must be
 clearly framed as predictions or guesses and remain separate from recorded
 AoE2WAR facts.
+
+
+## Product review · November 15, 2026
+
+Reviewed against the current `app-prodn` source at
+`f436d6f3c1a04308e33b17db4a69c25a2d925fcf`, including
+`lib/aiPromptPolicy.ts`, `lib/aiConciergeConfig.ts`,
+`lib/kingdomKnowledgeRouter.ts` and Clan Hall Scribe policies.
+Confirmed the 360-character/three-sentence source limits, Kingdom
+Knowledge Router authority and private Hall information boundary;
+the application registry defaults to saved prompt version 2 for GPT-4.1.
+The saved provider prompt's historical text and temperature are retained
+as a dated publication record, **not** a claim of independently verified
+external provider or production environment state. No runtime prompt,
+privacy boundary, or model behavior was changed by this review.

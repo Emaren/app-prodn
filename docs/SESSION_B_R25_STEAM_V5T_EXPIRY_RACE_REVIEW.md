@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-source-review-no-funded-release-or-direct-root-approval"
-reviewed_at: "2026-11-07"
+reviewed_at: "2026-11-15"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -30,3 +30,13 @@ The existing isolated R25 v5s Steam refresh on HEL1 recorded two timer failures 
 Before any switch, require exact-head GitHub CI green, a root-0400 v5t policy and per-runtime admission bound to the current protected 57-unit snapshot, the current 3032 process/start ticks, old 3030 PID, unchanged Nginx six selectors, immutable original controller and R25 public receipt. Root-controlled rollout must preserve the current v5s unit as an exact SHA-pinned rollback, use its existing sandbox/capability restrictions, and test multiple automatic timer cycles across an actual nft 300-second expiry boundary. Persist a root0600 receipt only after sustained PASS, with negative tests confirming malformed or unbounded entries still HOLD. Roll back on failure.
 
 **Until then: v5t SOURCE HOLD (not deployed), v5s remains live, C01–C09 funded HOLD.** Session A exclusively owns C03/C06/C07; no changes to live PG roles/ACL, financial systemd, SSH, native Wolo validator or recovery.
+
+## November 15, 2026 — B-owner revalidation against current V27 and host
+
+The above November 7 expiry-edge failures, proposed v5t source and historical conclusion that v5t was on SOURCE HOLD while v5s was then live remain true at their recorded date; they are not the current installed-source claim. The failing nft JSON element was not captured, and later successful V27 runs do not retroactively prove its exact expiry value.
+
+Reviewed current app main at f436d6f3c1a04308e33b17db4a69c25a2d925fcf, docs/release/artifacts/r25_steam_refresh_product_v27.py, its negative tests and [B's final Factory/reboot evidence](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435). Current V27 source retries only STEAM_SET_UNBOUNDED_OR_EXPIRED (at most three reads and two 250ms sleeps), preserves the original validator, at most 16 TLS-verified public addresses, 300-second timeout, single NFT transaction for the same UID990 Steam sets, pinned seven-rule shape and protected financial masks. All other exceptions fail closed. This is not expanded firewall authorization or a claim that the old v5t candidate was deployed.
+
+At 2026-11-15 15:44 UTC, read-only HEL1 systemd identified the installed Steam refresh ExecStart as the V27 path, last Result=success and ExecMainStatus=0, and active/enabled one-minute timer. PRODUCT NFT boot prerequisite was active/enabled and successful. Live 3032 source/build matched accepted 9c5fb786... / tODeDszM3vE1kOKcQUQjZ; 3030/3032/3033/9447 listened, 8092–8095 did not, and six financial units remained masked. The root-owned V27 code could not be independently hashed by this non-root check; accepted B root receipts remain separate evidence, not reissued here.
+
+Review verdict: the original expiry race is preserved as historical. Current V27 service is observed running successfully. Future expiry-boundary failures still must HOLD; any source, timer or nft-policy change requires fresh root acceptance. No financial admission or new website deployment follows from this review.

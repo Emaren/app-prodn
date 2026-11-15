@@ -411,7 +411,7 @@ def production_routes(root):
         raise ValueError("Unsafe public route census")
     private=tuple(row["href"] for row in inventory["pages"]
                   if row["href"].startswith("/admin") and "[" not in row["href"])
-    if len(private)!=37 or len(set(private))!=37:raise ValueError("Protected Atlas census changed")
+    if len(private)!=38 or len(set(private))!=38:raise ValueError("Protected Atlas census changed")
     graph=[row for row in inventory["pages"] if row["href"]=="/kingdom-construction"]
     if len(graph)!=1 or graph[0].get("scope")!="excluded-static":
         raise ValueError("Independent B4 route admission missing")
@@ -861,7 +861,7 @@ def candidate_auth_main():
             result={"schema":"aoe2war.g.app-production.browser.v1","source_sha":witness["source_sha"],"controller_source_sha":source,
                     "build_id":witness["build_id"],"build_version":witness["build_version"],"nonce":after["nonce"],
                     "candidate_auth_sha256":pre_sha,"g_before_sha256":before_sha,"g_after_sha256":after_sha,"real_role_probes":{role:True for role in contexts},
-                    "historical_public_routes":88,"independent_public_routes":1,"protected_routes":37,"viewports":[v[0] for v in VIEWPORTS],
+                    "historical_public_routes":88,"independent_public_routes":1,"protected_routes":38,"viewports":[v[0] for v in VIEWPORTS],
                     "expected_cases":expected,"executed_cases":len(rows),"holds":holds,"rows":rows,"financial_authorized":False,
                     "real_steam_login_asserted_by_census":True,"authentication_state_saved":False,
                     "public_static_parity":True,"modern_public_content":public_content,
@@ -946,7 +946,7 @@ def production_main():
             "application_source_unchanged":True,"build_id":BUILD_ID,
             "build_version":APP_VERSION,"nonce":after["nonce"],"g_before_sha256":before_sha,"g_after_sha256":after_sha,
             "real_role_probes":roles,"public_static_parity":identity,"historical_public_routes":88,
-            "independent_public_routes":1,"protected_routes":37,"viewports":[v[0] for v in VIEWPORTS],
+            "independent_public_routes":1,"protected_routes":38,"viewports":[v[0] for v in VIEWPORTS],
             "expected_cases":expected,"executed_cases":len(rows),"holds":holds,"rows":rows,
             "financial_authorized":False,"real_steam_login_asserted_by_census":False,
             "status":"BROWSER_CENSUS_PASS_REQUIRES_SEPARATE_REAL_STEAM_AND_F_FINAL_ACCEPT" if passed else "HOLD_BROWSER_CENSUS"}

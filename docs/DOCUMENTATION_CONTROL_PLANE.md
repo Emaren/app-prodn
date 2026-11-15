@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/kingdom-paper-fleet-preview-20261114` at `7f6cd26ab0eb8ad388ce15f20a172b4633f848e4`
+Implementation baseline: `session-c/we2/integration-product-we3-20261115` at `37076a9a27972949dedeec2c07ddd4213fb5440d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **146**
+- Authoritative repository documents: **148**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 79
-- `runbook`: 48
+- `reference`: 80
+- `runbook`: 49
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 89
-- `draft`: 41
+- `active`: 90
+- `draft`: 42
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -59,6 +59,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
 | [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
+| [The Umbrella Tree — Source and Visual Evidence Design](../design/umbrella-tree/README.md) | `reference` | `draft` | `nonfinancial-product-visual-design-not-runtime` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [AoE2WAR Betting Constitution](BETTING_CONSTITUTION.md) | `reference` | `active` | `betting-constitution-ratification-candidate` |
@@ -174,6 +175,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Deployment OS final certification source audit](release/DEPLOYMENT_OS_FINAL_CERTIFICATION_AUDIT_20261114.md) | `reference` | `active` | `product-source-audit-not-production-acceptance` |
 | [F1 PRODUCT BOOT RECOVERY — LIVE P0 HOLD](release/F1_PRODUCT_BOOT_RECOVERY_HOLD_20261114.md) | `reference` | `draft` | `product-source-review-only-not-root-install` |
 | [Bounded PRODUCT cold-storage transfer plan](release/F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md) | `reference` | `draft` | `product-transfer-proposal-not-retirement-permission` |
+| [WE3 independent PRODUCT source: two ChatGPT sessions without shared Git writes](release/PRODUCT_WE3_PARALLEL_WORK_ENVIRONMENTS_20261114.md) | `runbook` | `active` | `restricted PRODUCT source operations only; no FINANCIAL or release-root authority` |
 | [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
 | [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |

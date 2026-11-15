@@ -75,6 +75,13 @@ EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE = {
     'scripts/run_python_contract.py': '46152c770ea9fa63bd4187e12db9a7977450187e8097bbbcfa4a650732bc9657',
     'scripts/run_test_contract.py': '9ba61bcc1cc1c5edb8f2742dbad4b88aeef1e876ad2b5776abe5c5a830ef51bf',
 }
+# WE2/B exact reviewed protected-browser census admission for the canonical
+# 2026-11-15 PRODUCT base. This is only a single immutable script blob; it does
+# not authorize its execution, B signing, a new route, financial access, or
+# arbitrary scripts. Next script byte/base change requires another review.
+EXACT_REVIEWED_B_BROWSER_SCRIPT = "scripts/aoe2_r25_g_browser_acceptance.py"
+EXACT_REVIEWED_B_BROWSER_BASE = "f436d6f3c1a04308e33b17db4a69c25a2d925fcf"
+EXACT_REVIEWED_B_BROWSER_SHA256 = "0a5c7e1ae073da09e1d20c11aa3467c99dac701ebe39af43ca9673a58cd2cd11"
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -159,6 +166,29 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             os.close(descriptor)
         if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_DYNAMIC_SHA256:
             raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_EXACT_SHA_MISMATCH")
+        return raw
+    if raw == EXACT_REVIEWED_B_BROWSER_SCRIPT:
+        if base != EXACT_REVIEWED_B_BROWSER_BASE:
+            raise BoundaryHold("B_BROWSER_REVIEWED_WRONG_BASE")
+        relative = relative_path(raw)
+        path = checkout / relative
+        if (checkout / "scripts").is_symlink():
+            raise BoundaryHold("B_BROWSER_SYMLINK_ANCESTOR")
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+                or st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100000):
+            raise BoundaryHold("B_BROWSER_SINGLE_REGULAR_FILE_REQUIRED")
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            live = os.fstat(descriptor)
+            if (live.st_dev, live.st_ino, live.st_size) != (st.st_dev, st.st_ino, st.st_size):
+                raise BoundaryHold("B_BROWSER_INODE_CHANGED")
+            content = os.read(descriptor, 100001)
+        finally:
+            os.close(descriptor)
+        if (len(content) != st.st_size or
+                hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_B_BROWSER_SHA256):
+            raise BoundaryHold("B_BROWSER_EXACT_SHA_MISMATCH")
         return raw
     if (raw in EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE or
             raw in EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE):

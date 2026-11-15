@@ -170,6 +170,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-product-visual-design-not-runtime",
+      "id": "aoe2war.app-prodn.design-umbrella-tree",
+      "owner": "aoe2war-web",
+      "path": "design/umbrella-tree/README.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-15",
+      "sensitivity": "internal",
+      "sha256": "90c7cea60c82801ab1b36ea2a4a40fdd067e8233dde52808dc4130646ad6acc3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "The Umbrella Tree \u2014 Source and Visual Evidence Design",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "implementation-contract",
       "id": "aoe2war.app-prodn.docs-admin-metrics",
       "owner": "aoe2war-web",
@@ -663,7 +685,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5c570d4eaa52949637a90ffc26455f0da34337c612d67f3e83f015af8dcd6775",
+      "sha256": "5cc1a46ea120aeb0f23866eb55494c3990664ec8c04da67c7ff66ac717e08d0e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -802,9 +824,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HALL_SCRIBE_PROMPT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-16",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "internal",
-      "sha256": "06c498955d25aba77cc89d573e63f69ffabbe93960aa7284057f312695124543",
+      "sha256": "81bc3f6294469c75634799dc71ea20e313d90df08c6d21f803a26ee1aea2c1f8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1420,9 +1442,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PHOENIX_RECOVERY_DASHBOARD.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-15",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "internal",
-      "sha256": "f8e39a31c42ebc3388cf05d6c85d792fc58ca40e7307317ea82ce3736af2b3e7",
+      "sha256": "7133dcbfc77d5c4bbb063587bf55b3d11c6401024e34e4a0d67f25908b441b38",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1924,9 +1946,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "restricted",
-      "sha256": "05d70c24f0a14b5274780f90be4943dde11ef70168bb1fd0df2afae0a2512281",
+      "sha256": "f0a9f63db4b20c07c00d1099d8105f9057d67ca8d40e5bb446e329b1ea276554",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1946,9 +1968,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "restricted",
-      "sha256": "ee4cdd37398102b0f43a32df0527fca13cc6679af7579f26a93dadcd215d37e8",
+      "sha256": "12001ab4cdfad9a35dbd769aed756a4432884c1ad6544c44aa692dae97dcb8ff",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1968,9 +1990,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "restricted",
-      "sha256": "69b858f334b8bb6d53a6714c1579a71bb428697213b40289cc5e429fef31b6c3",
+      "sha256": "2fdf22c95b8c05b36172edc16ce43666860370eab3165020fb29ccad90b84e0a",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2145,9 +2167,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "restricted",
-      "sha256": "12d833f324a070da77910cd948d0544dc967ca962f9005071101bffa644abea7",
+      "sha256": "50f7d79deeaea743383a89e0dfd57aecf6bbbfb451ac9d8635679f3ab90c7f0b",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2168,9 +2190,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-07",
+      "reviewed_at": "2026-11-15",
       "sensitivity": "restricted",
-      "sha256": "973629ca929137860a465941a6f1e3d10bbac4b4d5a192aeba545dd6fc5cff2c",
+      "sha256": "2f7f790ae2681a522b53d9042b5f0868b9dd5924bb07fbc2b228e3706e55217b",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2818,6 +2840,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "restricted PRODUCT source operations only; no FINANCIAL or release-root authority",
+      "id": "aoe2war.app-prodn.product-we3-parallel-work-environments-20261114",
+      "owner": "aoe2war-web",
+      "path": "docs/release/PRODUCT_WE3_PARALLEL_WORK_ENVIRONMENTS_20261114.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-14",
+      "sensitivity": "internal",
+      "sha256": "97d903d38930ca294a5b5b327ec06b72e2c6f6e217db82fea9617b9d7a743dd1",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 independent PRODUCT source: two ChatGPT sessions without shared Git writes",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority",
       "id": "aoe2war.app-prodn.session-b-3032-two-cycle-protected-release-and-rollback-20261111",
       "owner": "aoe2war-web",
@@ -3327,8 +3371,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/kingdom-paper-fleet-preview-20261114",
-    "commit": "7f6cd26ab0eb8ad388ce15f20a172b4633f848e4"
+    "branch": "session-c/we2/integration-product-we3-20261115",
+    "commit": "37076a9a27972949dedeec2c07ddd4213fb5440d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

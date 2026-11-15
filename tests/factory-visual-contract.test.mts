@@ -116,7 +116,7 @@ test("the original 88 historical pages remain distinct; Factory is independently
   const inventory = JSON.parse(read("config/kingdom-index-inventory.json"));
   const campaign = JSON.parse(read("config/renaissance-campaign.json"));
   const history = JSON.parse(read("config/kingdom-index-routes.json"));
-  assert.equal(inventory.counts.pageTemplates, 159);
+  assert.equal(inventory.counts.pageTemplates, 160);
   assert.equal(inventory.counts.excludedStaticTemplates, 13);
   assert.equal(inventory.counts.publicIndexTemplates, 88);
   assert.equal(history.length, 88);

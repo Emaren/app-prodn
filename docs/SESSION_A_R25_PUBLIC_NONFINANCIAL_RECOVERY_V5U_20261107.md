@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial-emergency-website-recovery-source-only-no-funded-release"
-reviewed_at: "2026-11-07"
+reviewed_at: "2026-11-15"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -54,3 +54,15 @@ Source/test/CI success does not equal production Steam activation. Native restri
 ## Hard HOLD
 
 Formal funded C01-C09 all remain HOLD. No C03 global writer containment, no C06 coherent backup, no C07 recovery, no C08 ratified authority or C09 transaction permit was created. This is a public nonfinancial continuity repair, not a funded release or permission to switch databases.
+
+## 2026-11-15 substantive protected-source re-review — superseding production context
+
+**Review scope and provenance (2026-11-15, 18:53–18:55 UTC).** The preceding Nginx configuration hashes, selectors, November 7 legacy PID, `/root/aoe2war-public-recovery-20261107` preimages, observed HTTP 500, and v5u cutover design are **dated November 7 historical evidence**. They were not freshly hashed or re-admitted as November 15 root preimages. This review inspected the original unchanged document blob `626b15a2e6e584f9b47fa8c9c25fbd155cc883c9`, the current integrated website source at `83d09e67ede8d502748d0a99b90a3ef8864fdfea`, and the later accepted [PR #1358 signed/root Factory and reboot receipts](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435). Owner-directed WE1 source-only review through GitHub `Emaren` admin does **not** constitute a new signer, root-file, or financial certificate.
+
+**Now accepted on public 3032, not v5u.** At **2026-11-15 18:53–18:55 UTC**, fresh read-only HEL1 `systemctl show aoe2hdbets-web-prod.service` returned `ActiveState=active`, `UnitFileState=enabled`, `MainPID=1742`, `NRestarts=0`, and `WorkingDirectory=/var/lib/aoe2war-web-prod-9c5fb786b066`. HTTP response headers from 127.0.0.1:3032 positively identify accepted release source `9c5fb786b06636a813235bc13cb2cdffaf51ffc4` and BUILD_ID `tODeDszM3vE1kOKcQUQjZ`, **not** the earlier v5u recovery/source admission. The separately held 3030 rollback, 3033 emergency, and 9447 PAPER listeners remain present; **8092–8095 are absent**. A fresh local GET of `/api/bets` was **503 guarded** (not the old 500); `/api/bets/public-history` was **200**.
+
+**Accepted Factory evidence is later and separate.** [PR #1358 comment #6886458435](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435) records the prior exact-source physical activation/T10, signed root seal `e06a62bfbcf59af21760ce4a1e7382893c98d84d1cf7347a4eaedcda7c4ef90b`, two real reboot witnesses and a subsequent successful no-op. The accepted old-source warm stopwatch is first verified HTTPS **86.996 s** and durable T10 **154.418 s**; those timings are **not** acceptance timings for held PR #1370. These prior root receipts are referenced as historical signed evidence, not freshly reverified here.
+
+**Steam is now V27, not v5u.** A fresh 18:55 UTC read-only `systemctl show aoe2war-steam-egress-refresh.service` observed `ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py --phase refresh`, `Result=success`, `ExecMainStatus=0`; the Steam refresh timer and PRODUCT nft boot unit were each `active/enabled`. The original November 7 v5s/v5u FAIL-CLOSED transition and distinct v5u design stay historical; there is no claim that v5u itself was later admitted. Root-owned V27 executable bytes and original Nginx preimages were **not** freshly hashed in this source review.
+
+**Governance-date correction.** The original final paragraph's `no C08 ratified authority` describes **November 7**. C08 governance subsequently closed, but that closure did **not** approve funding, permit transactions, unlock C01/C02/C03/C05/C06/C07/C09, establish global C03 writer containment or complete C06/C07 backup/restore. Financial service masks, private custody and the separate chain remain outside this nonfinancial public website review. No host, database, signer or production settings were changed.
