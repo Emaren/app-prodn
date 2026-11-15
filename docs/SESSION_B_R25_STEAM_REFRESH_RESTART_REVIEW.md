@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial-source-and-physical-review-not-financial-permit"
-reviewed_at: "2026-11-07"
+reviewed_at: "2026-11-15"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -72,3 +72,15 @@ Local qualification:
 `python3 -B scripts/release/r25_steam_refresh_v5s.py --phase selftest`,
 `python3 -B -m unittest discover -s tests -p test_session_b_steam_runtime_v5s.py -v`, and
 `python3 -B -m unittest discover -s tests -p test_session_b_steam_v5s_c03_observer_timer.py -v`.
+
+## November 15, 2026 — B-owner historical review and current PRODUCT reconciliation
+
+This is a new source/operational review, not a rewrite of the November 7 v5/v5r/v5s incident receipts, independent root-signing act, or a release permit. Earlier PIDs, protected-snapshot hashes, v5r unit and C03 observer attribution describe their November 7 observation windows only. They are not current release pointers.
+
+Reviewed current app main at f436d6f3c1a04308e33b17db4a69c25a2d925fcf, including docs/release/artifacts/r25_steam_refresh_product_v27.py and its source negative tests, against the [accepted PRODUCT Factory physical report](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435). V27 source preserves only UID990 Steam HTTPS egress, pinned seven-rule NFT table shape, 300-second expiry, strict 16-address ceiling, bounded retries of only the expired-element read, atomic same-set renewal, unchanged sandbox/capabilities, six protected financial masks and closed 8092–8095. Source guards are not deployed-root proof.
+
+Actual read-only HEL1 verification at 2026-11-15 15:43–15:45 UTC: public website service active/enabled, zero restarts, PID 1742; 3032 HTTP headers matched source 9c5fb786b06636a813235bc13cb2cdffaf51ffc4 and BUILD_ID tODeDszM3vE1kOKcQUQjZ. PRODUCT Steam NFT boot unit active/enabled, result success. Steam refresh timer active/enabled, with a real one-minute next firing. Steam refresh service last Result=success, ExecMainStatus=0, and actual ExecStart used /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py --phase refresh. Listeners 3030, 3032, 3033, 9447 present; 8092–8095 absent; six restricted financial units masked. Public HTTPS root, /factory and /kingdom-traders returned 200, while /api/bets deliberately returned 503. No account cookies or financial operations were inspected.
+
+Installed V27 root-owned script has mode 0700; the non-root session could not independently hash it, and no noninteractive root privilege was available. The original B-signed physical acceptance, two genuine boot witnesses and T10 remain separate provenance for installed source, NFT boot recovery and root lock. This documentation review does not re-sign, reopen or independently certify root-only bytes. See [root acceptance](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435) and [Central reconciliation](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6887906213).
+
+Current verdict: v5r/v5s incident analysis remains valid as dated evidence. Accepted production uses Factory source 9c5fb786... with separate V27 Steam maintenance and financial HOLD. Any next PRODUCT website source requires new exact-source CI, B-owned signing/permit, native preflight and rollback/T10. This review grants none of those permissions.
