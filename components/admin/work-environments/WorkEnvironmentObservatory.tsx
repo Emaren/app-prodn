@@ -82,7 +82,7 @@ export async function WorkEnvironmentObservatory() {
                     <dd className="mt-1 break-all font-mono text-slate-200">
                       {lane.remote.headSha ?? "No verified remote HEAD"}
                     </dd>
-                    <dd className="mt-1 text-slate-500">
+                    <dd className="mt-1 text-slate-300">
                       {lane.remote.observedAt
                         ? "Ref read at " + lane.remote.observedAt
                         : "No current GitHub branch observation"}

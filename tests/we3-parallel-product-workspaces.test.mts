@@ -46,6 +46,8 @@ test("admin workspaces are authenticated, read-only and in the navigation atlas"
   assert.match(page, /FINANCIAL authorization remains denied/);
   assert.match(page, /VPSSentry/);
   assert.match(page, /FactoryLiveReceipt/);
+  assert.doesNotMatch(page, /text-slate-500/, "low-contrast source observation text");
+  assert.match(page, /mt-1 text-slate-300/, "observed GitHub timestamp is high contrast");
   assert.match(lanes, /WorkEnvironmentObservatory/);
   assert.equal((nav.match(/href:"\/admin\/central-command\/lanes"/g) || []).length, 1);
   assert.match(central, /href="\/admin\/central-command\/lanes#work-environments"/);
