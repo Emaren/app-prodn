@@ -43,6 +43,11 @@ EXACT_REVIEWED_SHA256 = "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca
 # Factory V1 adds one source-reviewed inventory entry, no script wildcard.
 EXACT_REVIEWED_FACTORY_BASE = "9f7b56f536ba51b4678ac43baebfae140ada6479"
 EXACT_REVIEWED_FACTORY_SHA256 = "bb613ddbd9203f5ad5f2f19be8521db2dc64e03e36e7e4872da0f2b01c1beab8"
+# Additive, exact-source PRODUCT page-census admission proposal. Old reviewed
+# source/base pins remain immutable; an independent review is still required
+# before signed production deployment. No wildcard/script-path escalation.
+EXACT_REVIEWED_DEPLOYMENTS_BASE = "f436d6f3c1a04308e33b17db4a69c25a2d925fcf"
+EXACT_REVIEWED_DEPLOYMENTS_SHA256 = "9bc5e515ee9a2eca1758d1988c3a5c0507f7c3d5b45f52c13ef41b0850590b10"
 # Next dynamic route segments are deliberately NOT admitted by the general
 # path grammar. This is one reviewed, immutable route blob and one exact base.
 EXACT_REVIEWED_DYNAMIC_ROUTE = "app/api/media-assets/[kind]/[target]/route.ts"
@@ -203,6 +208,8 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         expected_sha = EXACT_REVIEWED_SHA256
     elif base == EXACT_REVIEWED_FACTORY_BASE:
         expected_sha = EXACT_REVIEWED_FACTORY_SHA256
+    elif base == EXACT_REVIEWED_DEPLOYMENTS_BASE:
+        expected_sha = EXACT_REVIEWED_DEPLOYMENTS_SHA256
     else:
         raise BoundaryHold("REVIEWED_EXECUTABLE_WRONG_BASE")
     path = checkout / relative

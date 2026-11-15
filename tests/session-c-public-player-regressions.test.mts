@@ -82,7 +82,7 @@ function assertFullKingdomMenu(items) {
 test("full legacy Kingdom dropdown survives on the current R25 mainline, in order", () => {
   const items = menuItems(source("components/HeaderMenu.tsx"));
   assertFullKingdomMenu(items);
-  assert.equal(items.length, 48, "original 43 routes, four R25 routes and the new Traders link");
+  assert.equal(items.length, 49, "original 43 routes, four R25 routes, Traders and Deployments");
   const all = items.map((item) => item.href);
   assert.equal(all.indexOf("/kingdom-traders"), all.indexOf("/kingdom") + 1,
     "Traders must follow Kingdom without reordering historical routes");

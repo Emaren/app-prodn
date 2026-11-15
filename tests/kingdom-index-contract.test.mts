@@ -27,6 +27,7 @@ test("every static public App Router page has exactly one nonprivate Kingdom Ind
     ["/kingdom-construction","app/kingdom-construction/page.tsx"],
     ["/kingdom-traders","app/kingdom-traders/page.tsx"],
     ["/factory","app/factory/page.tsx"],
+    ["/kingdom-deployments","app/kingdom-deployments/page.tsx"],
   ]);
   const inventory=JSON.parse(readFileSync(join(root,"config/kingdom-index-inventory.json"),"utf8"));
   for(const [href,entrypoint] of independent) {

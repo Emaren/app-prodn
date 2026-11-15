@@ -41,6 +41,7 @@
 /kingdom-construction
 /kingdom-intelligence
 /kingdom-progress
+/kingdom-deployments
 /kingdom-recovery
 /kingdom-sensors
 /kingdom-systems
