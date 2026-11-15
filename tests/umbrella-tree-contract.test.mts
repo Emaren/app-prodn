@@ -62,8 +62,15 @@ test("roles and aliases grant no OS count or physical signing privilege", () => 
 });
 
 test("invalid and malicious registry fails closed, not as partial healthy graph", () => {
-  const mutate = (edit: (x: any) => void) => {
-    const x = structuredClone(raw); edit(x); return buildUmbrellaTree(x);
+  type Fixture = {
+    subordinate_os: Array<{ canonical_id: string; immutable_id: boolean }>;
+    supervisory_roles: Array<{ not_subordinate_os: boolean }>;
+    umbrella: { id: string };
+  };
+  const mutate = (edit: (x: Fixture) => void) => {
+    const x = structuredClone(raw) as Fixture;
+    edit(x);
+    return buildUmbrellaTree(x);
   };
   for (const bad of [
     null, [], {}, { ...raw, schema: "unknown" },
