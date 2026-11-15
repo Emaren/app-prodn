@@ -59,9 +59,10 @@ async function readKnownGithubBranch(
   const unknown: RemoteBranchEvidence = {
     state: "UNKNOWN", headSha: null, observedAt: null, reason: "NOT_OBSERVED",
   };
-  // No unauthenticated private-repository guesses or invented branch timestamps.
+  // The exact app-prodn repository and this fixed branch API are publicly
+  // readable. Missing credentials must not suppress genuine public evidence.
+  // A private/revoked/rate-limited response still fails closed to UNKNOWN.
   const token = process.env.GITHUB_TOKEN?.trim();
-  if (!token) return unknown;
   try {
     const response = await fetch(
       "https://api.github.com/repos/" + repo + "/branches/" + encodeURIComponent(branch),
@@ -72,7 +73,7 @@ async function readKnownGithubBranch(
         headers: {
           Accept: "application/vnd.github+json",
           "User-Agent": "aoe2war-private-work-environments",
-          Authorization: "Bearer " + token,
+          ...(token ? { Authorization: "Bearer " + token } : {}),
         },
       },
     );

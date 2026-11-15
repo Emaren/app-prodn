@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   WORK_ENVIRONMENTS, WORK_ENVIRONMENT_SCHEMA, parseObservedBranch,
+  readWorkEnvironmentEvidence,
 } from "../lib/workEnvironmentEvidence.ts";
 
 const page = readFileSync("components/admin/work-environments/WorkEnvironmentObservatory.tsx", "utf8");
@@ -58,6 +59,8 @@ test("production and branch proofs cannot be confused with agent presence", () =
   assert.match(source, /localDirtyState: "UNKNOWN"/);
   assert.match(source, /AbortSignal\.timeout\(3000\)/);
   assert.match(source, /process\.env\.GITHUB_TOKEN/);
+  assert.doesNotMatch(source, /if \(!token\) return unknown/, "public repo cannot require a secret");
+  assert.match(source, /token \? \{ Authorization:/, "send auth only if available");
   assert.match(source, /cache: "no-store"/);
   assert.match(source, /SOURCE_OBSERVED/);
   assert.match(client, /fetch\("\/factory\/status\.json"/);
@@ -65,4 +68,52 @@ test("production and branch proofs cannot be confused with agent presence", () =
   assert.match(client, /STALE — no current production claim/);
   assert.match(client, /UNKNOWN — no verified live source/);
   assert.doesNotMatch(page + client + source, /child_process|execFile|shell_exec|unlink|rmSync/);
+});
+
+// The repo is publicly observable. A missing production token is NOT
+// absence of branch evidence, and no synthetic online agent is implied.
+test("known public GitHub branches are read without an API secret", async () => {
+  const oldFetch = globalThis.fetch;
+  const oldToken = process.env.GITHUB_TOKEN;
+  const observed: { url: string; authorization: string | null }[] = [];
+  try {
+    delete process.env.GITHUB_TOKEN;
+    globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      const headers = new Headers(init?.headers);
+      observed.push({ url: target, authorization: headers.get("authorization") });
+      const match = WORK_ENVIRONMENTS.find(lane => target.endsWith(encodeURIComponent(lane.branch)));
+      assert.ok(match, "only explicitly configured lanes may be queried");
+      return new Response(JSON.stringify({
+        name: match.branch, commit: { sha: "a".repeat(40) },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    const result = await readWorkEnvironmentEvidence();
+    assert.equal(observed.length, 2);
+    assert.ok(observed.every(row => row.authorization === null));
+    assert.ok(result.lanes.every(lane => lane.remote.state === "GITHUB_REF_OBSERVED"));
+    assert.equal(result.sessionPresence, "UNKNOWN");
+    assert.equal(result.localDirtyState, "UNKNOWN");
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldToken === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = oldToken;
+  }
+});
+
+test("public GitHub failures must show UNKNOWN, never fake branch activity", async () => {
+  const oldFetch = globalThis.fetch;
+  const oldToken = process.env.GITHUB_TOKEN;
+  try {
+    delete process.env.GITHUB_TOKEN;
+    globalThis.fetch = async () => new Response("Not found", { status: 404 });
+    const result = await readWorkEnvironmentEvidence();
+    assert.ok(result.lanes.every(lane => lane.remote.state === "UNKNOWN"));
+    assert.ok(result.lanes.every(lane => lane.remote.headSha === null));
+    assert.equal(result.sessionPresence, "UNKNOWN");
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldToken === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = oldToken;
+  }
 });
