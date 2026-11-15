@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# The Umbrella Tree — visual and evidence design contract
+# The Umbrella Tree — Source and Visual Evidence Design
 
 Source-only WE3 feature for [Umbrella Tree #1372](https://github.com/Emaren/app-prodn/issues/1372). Navigation: **private** \`/admin/aoe2war-os/umbrella-tree\` after this feature is separately reviewed, merged and deployed through WE2's existing PRODUCT Integration Gate. Do not fold it into held #1370.
 
