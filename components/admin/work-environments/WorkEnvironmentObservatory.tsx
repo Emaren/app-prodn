@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { readWorkEnvironmentEvidence } from "@/lib/workEnvironmentEvidence";
 import { FactoryLiveReceipt } from "@/components/admin/work-environments/FactoryLiveReceipt";
+import { KingdomAtlasDatedEvidence } from "@/components/admin/work-environments/KingdomAtlasDatedEvidence";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +37,8 @@ export async function WorkEnvironmentObservatory() {
         </header>
 
         <FactoryLiveReceipt />
+
+        <KingdomAtlasDatedEvidence />
 
         <section aria-label="Independent source work environments">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
