@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { parseProductDeploymentClocks } from "@/lib/productReleaseEvidence";
 
 type FactoryProof = {
   state: "VERIFIED_PUBLIC_SOURCE" | "STALE" | "UNKNOWN";
@@ -9,10 +10,13 @@ type FactoryProof = {
   buildId: string | null;
   observedAt: string | null;
   acceptedMs: number | null;
+  firstLiveMs: number | null;
+  invocationKind: "warm" | "cold" | null;
 };
 
 const UNKNOWN: FactoryProof = {
-  state: "UNKNOWN", source: null, buildId: null, observedAt: null, acceptedMs: null,
+  state: "UNKNOWN", source: null, buildId: null, observedAt: null,
+  acceptedMs: null, firstLiveMs: null, invocationKind: null,
 };
 
 export function FactoryLiveReceipt() {
@@ -30,13 +34,14 @@ export function FactoryLiveReceipt() {
       const body = value as {
         schema?: unknown;
         generatedAt?: unknown;
-        liveRelease?: { id?: unknown; buildId?: unknown };
-        deploymentInvocation?: { durableAcceptanceMs?: unknown };
+        liveRelease?: { id?: unknown; buildId?: unknown; status?: unknown };
+        deploymentInvocation?: unknown;
       };
       if (body.schema !== "aoe2war.factory.public.v1"
         || typeof body.liveRelease?.id !== "string"
         || !/^[0-9a-f]{40}$/.test(body.liveRelease.id)
         || typeof body.liveRelease.buildId !== "string"
+        || body.liveRelease.status !== "pass"
         || !/^[A-Za-z0-9_-]{8,64}$/.test(body.liveRelease.buildId)
         || typeof body.generatedAt !== "string")
         throw new Error("Unverified Factory identity");
@@ -44,16 +49,20 @@ export function FactoryLiveReceipt() {
       if (!Number.isFinite(time) || Date.now() - time > 15 * 60_000
         || time > Date.now() + 60_000) {
         setProof({ state: "STALE", source: null, buildId: null,
-          observedAt: body.generatedAt, acceptedMs: null });
+          observedAt: body.generatedAt, acceptedMs: null,
+          firstLiveMs: null, invocationKind: null });
         return;
       }
+      const clocks = parseProductDeploymentClocks(
+        body.deploymentInvocation, body.liveRelease.id, body.liveRelease.buildId,
+      );
       setProof({
         state: "VERIFIED_PUBLIC_SOURCE",
         source: body.liveRelease.id, buildId: body.liveRelease.buildId,
         observedAt: body.generatedAt,
-        acceptedMs: typeof body.deploymentInvocation?.durableAcceptanceMs === "number"
-          && Number.isFinite(body.deploymentInvocation.durableAcceptanceMs)
-          ? body.deploymentInvocation.durableAcceptanceMs : null,
+        acceptedMs: clocks.durableAcceptanceMs,
+        firstLiveMs: clocks.firstVerifiedLiveMs,
+        invocationKind: clocks.deploymentKind,
       });
     } catch {
       if (!signal.aborted) setProof(UNKNOWN);
@@ -97,10 +106,26 @@ export function FactoryLiveReceipt() {
           <p className="mt-1 break-all font-mono text-cyan-100">{proof.buildId || "UNKNOWN"}</p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-slate-400">
-        Factory generated: {proof.observedAt || "UNKNOWN"} · Last accepted T10:
-        {" "}{proof.acceptedMs !== null ? (proof.acceptedMs / 1000).toFixed(1) + "s" : "UNKNOWN"}.
-        A GitHub branch cannot prove this service is live.
+      <div className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Source-matched deployment stopwatch">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs text-slate-300">Command start → first verified live</p>
+          <p className="mt-1 font-mono text-xl font-bold text-white">
+            {proof.firstLiveMs !== null ? (proof.firstLiveMs / 1000).toFixed(1) + "s" : "UNKNOWN"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs text-slate-300">Command start → durable acceptance</p>
+          <p className="mt-1 font-mono text-xl font-bold text-white">
+            {proof.acceptedMs !== null ? (proof.acceptedMs / 1000).toFixed(1) + "s" : "UNKNOWN"}
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-300">
+        Factory generated: {proof.observedAt || "UNKNOWN"} · Invocation type:
+        {" "}{proof.invocationKind ?? "UNKNOWN"}.
+        Stopwatch values require matching SOURCE SHA, BUILD_ID, full-coverage public
+        invocation schema and bounded durations. This is not a signed root permit or
+        a claim that a GitHub branch is deployed.
       </p>
       <Link href="/factory" className="mt-4 inline-block text-sm font-semibold text-emerald-200 underline">
         Open public Factory console
