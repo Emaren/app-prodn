@@ -193,6 +193,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/kingdom-intelligence", title: "Kingdom Intelligence" },
   { prefix: "/kingdom-brain", title: "Kingdom Brain" },
   { prefix: "/kingdom-progress", title: "Kingdom Progress" },
+  { prefix: "/kingdom-deployments", title: "Kingdom Deployments" },
   { prefix: "/kingdom-sensors", title: "Kingdom Sensors" },
   { prefix: "/kingdom-tests", title: "Kingdom Tests" },
   { prefix: "/kingdom-recovery", title: "Kingdom Recovery" },
@@ -1979,6 +1980,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     ? downloadShellMaxWidth
                     : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                     ? immersiveShellMaxWidth
+                    : pathname === "/factory" || pathname === "/kingdom-deployments"
+                      ? "max-w-[96rem]"
                     : isWarGraphSurface
                       ? "max-w-[118rem]"
                     : isFullWidthPrestigeSurface || isClanSurface

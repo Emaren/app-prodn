@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5c570d4eaa52949637a90ffc26455f0da34337c612d67f3e83f015af8dcd6775",
+      "sha256": "4a96a6e0f410f1f389aa4f4c9d29b267d3f3ece3a6119ca3aeae65680d9bd814",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -976,6 +976,28 @@
       ],
       "title": "Kingdom Civic Surfaces",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial PRODUCT implementation pending CI and release",
+      "id": "aoe2war.app-prodn.kingdom-deployments-wolo-blocks-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_DEPLOYMENTS_WOLO_BLOCKS_PRODUCT_V1.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-14",
+      "sensitivity": "internal",
+      "sha256": "a80ed7fa9862ba3ee69efbb754e90886dab43b67a9e225d233c79f6ea0288e3f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Kingdom Deployments and WoloChain Public Blocks V1",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3327,8 +3349,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/kingdom-paper-fleet-preview-20261114",
-    "commit": "7f6cd26ab0eb8ad388ce15f20a172b4633f848e4"
+    "branch": "session-c/kingdom-deployments-factory-wolo-20261114",
+    "commit": "656f6f0b7c907105bad11ce55eb81a66e3599790"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

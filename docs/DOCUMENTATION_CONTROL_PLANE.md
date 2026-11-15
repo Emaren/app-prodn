@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/kingdom-paper-fleet-preview-20261114` at `7f6cd26ab0eb8ad388ce15f20a172b4633f848e4`
+Implementation baseline: `session-c/kingdom-deployments-factory-wolo-20261114` at `656f6f0b7c907105bad11ce55eb81a66e3599790`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **146**
+- Authoritative repository documents: **147**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 79
-- `runbook`: 48
+- `runbook`: 49
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 89
-- `draft`: 41
+- `draft`: 42
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -93,6 +93,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Jim Fast-Ending Team Session Diagnosis](JIM_FAST_GAME_DIAGNOSIS.md) | `historical` | `historical` | `incident-evidence` |
 | [Kingdom Brain, Progress and Patrol Contract](KINGDOM_BRAIN_PROGRESS.md) | `reference` | `active` | `cross-surface-integration-contract` |
 | [Kingdom Civic Surfaces](KINGDOM_CIVIC_SURFACES.md) | `reference` | `active` | `product-and-implementation-contract` |
+| [Kingdom Deployments and WoloChain Public Blocks V1](KINGDOM_DEPLOYMENTS_WOLO_BLOCKS_PRODUCT_V1.md) | `runbook` | `draft` | `nonfinancial PRODUCT implementation pending CI and release` |
 | [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md) | `reference` | `active` | `self-knowledge-contract` |
 | [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [Transparent Kingdom Machine Instruments](KINGDOM_TRANSPARENT_MACHINERY.md) | `reference` | `active` | `visual-only-read-side-projection-contract` |

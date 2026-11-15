@@ -116,11 +116,12 @@ test("the original 88 historical pages remain distinct; Factory is independently
   const inventory = JSON.parse(read("config/kingdom-index-inventory.json"));
   const campaign = JSON.parse(read("config/renaissance-campaign.json"));
   const history = JSON.parse(read("config/kingdom-index-routes.json"));
-  assert.equal(inventory.counts.pageTemplates, 159);
-  assert.equal(inventory.counts.excludedStaticTemplates, 13);
+  assert.equal(inventory.counts.pageTemplates, 160);
+  assert.equal(inventory.counts.excludedStaticTemplates, 14);
   assert.equal(inventory.counts.publicIndexTemplates, 88);
   assert.equal(history.length, 88);
   assert.equal(history.some((x: {href: string}) => x.href === "/factory"), false);
+  assert.equal(history.some((x: {href: string}) => x.href === "/kingdom-deployments"), false);
   const found = inventory.pages.filter((p: {href: string}) => p.href === "/factory");
   assert.deepEqual(found, [{ href: "/factory", entrypoint: "app/factory/page.tsx",
     scope: "excluded-static", assurance: "unverified" }]);
