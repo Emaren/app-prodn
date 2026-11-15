@@ -80,7 +80,8 @@ export default function MobileFloatingNav() {
   // source-scoped routes; keep all original controls everywhere else.
   if (pathname === "/admin/central-command/job-board" ||
       pathname === "/admin/central-command/work-board" ||
-      pathname === "/admin/central-command/lanes") return null;
+      pathname === "/admin/central-command/lanes" ||
+      pathname === "/admin/central-command/workspaces") return null;
 
   if (effectiveMode === "hidden") {
     return (

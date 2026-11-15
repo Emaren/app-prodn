@@ -24,9 +24,10 @@ const dynamicAdminPaths = allAdminPages.filter(p=>p.includes("[")).sort();
 const JOB_EXCHANGE = "/admin/central-command/job-board";
 const WORK_BOARD = "/admin/central-command/work-board";
 const LANES = "/admin/central-command/lanes";
-const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES] as const;
+const WORKSPACES = "/admin/central-command/workspaces";
+const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES, WORKSPACES] as const;
 
-test("all 37 approved static admin pages have an exact authenticated navigation edge", () => {
+test("all 38 approved static admin pages have an exact authenticated navigation edge", () => {
   assert.equal(topLevel.length, 33, "Unexpected top-level admin source changes must be reviewed");
   assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
@@ -38,7 +39,7 @@ test("all 37 approved static admin pages have an exact authenticated navigation 
       "Every new private source page requires its own admin gate: " + href);
   }
   const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES].sort();
-  assert.equal(approvedStaticRoutes.length, 37);
+  assert.equal(approvedStaticRoutes.length, 38);
   for(const href of ["/admin/backup-os","/admin/code-health","/admin/documents-os",
                       "/admin/storage-transfer","/admin/system-composer"]) {
     assert.ok(staticAdminPaths.includes(href), "real B3/B4 source page missing: "+href);
@@ -85,7 +86,7 @@ test("all original Command Tower controls survive and missing links come from ca
   for (const href of AUTHORIZED_NESTED_ROUTES) {
     assert.ok(src("app/admin/page.tsx").includes('href="' + href + '"'), "missing Admin Home link: " + href);
   }
-  for (const [href, label] of [[JOB_EXCHANGE, "Job Exchange"], [WORK_BOARD, "Work Board"], [LANES, "Six-Lane Ledger"]]) {
+  for (const [href, label] of [[JOB_EXCHANGE, "Job Exchange"], [WORK_BOARD, "Work Board"], [LANES, "Six-Lane Ledger"], [WORKSPACES, "Work Environments"]]) {
     assert.ok(src("components/HeaderMenu.tsx").includes('href: "' + href + '", label: "' + label + '", icon: Network, adminOnly: true'),
       "Private castle menu missing guard for " + href);
   }
@@ -123,7 +124,8 @@ test("private admin mobile dock is collapsible without changing global user pref
   assert.match(dock,/aria-label="Hide app navigation"/);
   assert.match(dock,/pathname === "\/admin\/central-command\/job-board"/);
   assert.match(dock,/pathname === "\/admin\/central-command\/work-board"/);
-  assert.match(dock,/pathname === "\/admin\/central-command\/lanes"\) return null/);
+  assert.match(dock,/pathname === "\/admin\/central-command\/lanes"/);
+  assert.match(dock,/pathname === "\/admin\/central-command\/workspaces"\) return null/);
   assert.match(src("app/admin/central-command/job-board/page.tsx"),/await requireServerAdmin\(\)/);
 });
 
@@ -131,7 +133,7 @@ test("G A2 Job Exchange and G A3 Work Board/Lanes are source-backed private admi
   assert.ok(!topLevel.includes("/admin/job-board"));
   assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>route.href===JOB_EXCHANGE).length,1);
   assert.match(src("components/navigation-atlas/AdminNavigationAtlas.tsx"),/data-atlas-href=\{route.href\}/);
-  assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>AUTHORIZED_NESTED_ROUTES.includes(route.href as (typeof AUTHORIZED_NESTED_ROUTES)[number])).length,3);
+  assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>AUTHORIZED_NESTED_ROUTES.includes(route.href as (typeof AUTHORIZED_NESTED_ROUTES)[number])).length,4);
   assert.match(src("components/central-command/WorkObservatoryClient.tsx"),/aria-label="Six original source evidence cores"/);
   assert.ok(AUTHORIZED_NESTED_ROUTES.every(href=>!src("app/AppShell.tsx").includes('href: "' + href + '"')),
     "Global public Kingdom shell must not import private nested routes");

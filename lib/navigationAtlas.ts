@@ -24,6 +24,7 @@ export const ADMIN_ATLAS_ROUTES: readonly AtlasRoute[] = [
   { href:"/admin/user-list", label:"Command Tower", cluster:"command", detail:"User list, honours and operator command links", visibility:"admin" },
   { href:"/admin/aoe2war-os", label:"AoE2WAR OS · Navigation Atlas", cluster:"command", detail:"Private navigation constellation, audits and releases", visibility:"admin" },
   { href:"/admin/central-command", label:"Central Command", cluster:"command", detail:"Six engineering lanes, work, priorities and release gates", visibility:"admin" },
+  { href:"/admin/central-command/workspaces", label:"Work Environment Observatory", cluster:"command", detail:"Authenticated WE2 / WE3 source ownership and public Factory proof; missing heartbeats UNKNOWN", visibility:"admin" },
   { href:"/admin/backup-os", label:"Backup OS Evidence", cluster:"infrastructure", detail:"Read-only backup and recovery status; no backup execution authority", visibility:"admin" },
   { href:"/admin/code-health", label:"Code Health Evidence", cluster:"infrastructure", detail:"Source-bound code health and verification reports; no CI waiver", visibility:"admin" },
   { href:"/admin/documents-os", label:"Documents OS Evidence", cluster:"infrastructure", detail:"Current DocsV2 registry and evidence provenance; missing proof remains UNKNOWN", visibility:"admin" },
