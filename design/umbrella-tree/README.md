@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.design-umbrella-tree"
+title: "The Umbrella Tree — Source and Visual Evidence Design"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "nonfinancial-product-visual-design-not-runtime"
+reviewed_at: "2026-11-15"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # The Umbrella Tree — visual and evidence design contract
 
 Source-only WE3 feature for [Umbrella Tree #1372](https://github.com/Emaren/app-prodn/issues/1372). Navigation: **private** \`/admin/aoe2war-os/umbrella-tree\` after this feature is separately reviewed, merged and deployed through WE2's existing PRODUCT Integration Gate. Do not fold it into held #1370.
