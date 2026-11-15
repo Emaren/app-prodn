@@ -685,7 +685,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5cc1a46ea120aeb0f23866eb55494c3990664ec8c04da67c7ff66ac717e08d0e",
+      "sha256": "a581b814e3c74588bb6d80701737b2a66390b13abfe5e1acd5168537aea6167e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2589,6 +2589,31 @@
       ],
       "title": "Watcher Telemetry",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-b-security-design-no-firewall-permit-no-runtime-install-no-financial-access",
+      "id": "aoe2war.app-prodn.we2-q09-github-source-reader-egress-review-20261115",
+      "owner": "aoe2war-web",
+      "path": "docs/WE2_Q09_GITHUB_SOURCE_READER_EGRESS_REVIEW_20261115.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-15",
+      "sensitivity": "restricted",
+      "sha256": "a791698aa69bbd9e9e12932200f4760c6c9041faa4b21bc6a4d19adeeb182d4e",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "HEL1",
+        "Q09",
+        "Steam"
+      ],
+      "title": "WE2 Q09 GitHub Source Reader \u2014 Narrow Egress Design and Protected Review",
+      "type": "adr"
     },
     {
       "audience": [
