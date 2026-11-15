@@ -104,9 +104,11 @@ test("board is read-only, source-scoped, admin-routed and not a release permit",
   const route = readFileSync("app/admin/central-command/lanes/page.tsx", "utf8");
   assert.match(observer, /<WebsiteReviewBoard \/>/);
   assert.match(route, /await requireServerAdmin\(\)/);
-  assert.match(board, /Current public GitHub pull-request metadata/);
+  assert.match(board, /Browser-fetched public GitHub pull-request metadata/);
   assert.match(board, /a merged PR is source history|A merged PR is source history/);
   assert.match(board, /UNKNOWN/);
   assert.match(board, /current check-run details/);
+  assert.match(board, /"use client"/);
+  assert.match(board, /useEffect/);
   assert.doesNotMatch(board, /\bfetch\s*\(|\bWebSocket\s*\(|\bprocess\.env\b|child_process|\bexecSync\s*\(/);
 });

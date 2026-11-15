@@ -1,8 +1,9 @@
 /**
- * Bounded, allowlisted, passive GitHub reads for private PRODUCT observability.
+ * Bounded, allowlisted, browser-origin public GitHub reads for the
+ * authenticated PRODUCT command room. Does not use server/network privileges.
  * No scheduler, GitHub write scope, arbitrary URL, or financial authority.
  *
- * Positive public evidence is cached per Node process for five minutes and
+ * Positive public evidence is cached per browser tab for five minutes and
  * errors only for ten seconds. Callers retain the actual observedAt timestamp,
  * never pretend that retrieving a cached value constitutes a fresh request.
  *
@@ -22,7 +23,6 @@ const ALLOWED_PATHS = new Set([
 
 type CacheEntry = {
   fetcher: typeof fetch;
-  authenticated: boolean;
   expiresAt: number;
   result: Promise<GithubReadReceipt | null>;
 };
@@ -68,16 +68,13 @@ async function decodeJsonWithCeiling(response: Response, maximumBytes: number): 
 export async function readBoundedGithubPublic(
   path: string,
   maximumBytes: 40_000 | 250_000,
-  userAgent: "aoe2war-private-work-environments" | "aoe2war-private-website-review-observer",
 ): Promise<GithubReadReceipt | null> {
   if (!ALLOWED_PATHS.has(path)) return null;
 
   const fetcher = globalThis.fetch;
-  const token = process.env.GITHUB_TOKEN?.trim();
-  const key = path + "|" + maximumBytes + "|" + userAgent;
+  const key = path + "|" + maximumBytes;
   const current = evidenceCache.get(key);
   if (current && current.fetcher === fetcher
-    && current.authenticated === Boolean(token)
     && Date.now() < current.expiresAt)
     return current.result;
 
@@ -88,9 +85,9 @@ export async function readBoundedGithubPublic(
         cache: "no-store",
         signal: AbortSignal.timeout(3000),
         headers: {
+          // GitHub has Access-Control-Allow-Origin: * for its public API.
+          // No tokens, cookies, or forbidden browser User-Agent header.
           Accept: "application/vnd.github+json",
-          "User-Agent": userAgent,
-          ...(token ? { Authorization: "Bearer " + token } : {}),
         },
       });
       if (!response.ok) return null;
@@ -102,8 +99,7 @@ export async function readBoundedGithubPublic(
   })();
 
   const entry: CacheEntry = {
-    fetcher, authenticated: Boolean(token),
-    expiresAt: Date.now() + GITHUB_POSITIVE_CACHE_MS, result,
+    fetcher, expiresAt: Date.now() + GITHUB_POSITIVE_CACHE_MS, result,
   };
   // Exactly five fixed endpoints; never accumulate user-provided URLs.
   evidenceCache.set(key, entry);

@@ -63,7 +63,6 @@ async function readKnownGithubBranch(
   };
   const result = await readBoundedGithubPublic(
     "branches/" + encodeURIComponent(branch), 40_000,
-    "aoe2war-private-work-environments",
   );
   return result ? parseObservedBranch(result.data, branch, result.observedAt) : unknown;
 }

@@ -1,4 +1,10 @@
-import { readWebsiteReviews, type WebsiteReviewState } from "@/lib/websiteReviewEvidence";
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  readWebsiteReviews, WEBSITE_REVIEW_TARGETS,
+  type WebsiteReviewProof, type WebsiteReviewState,
+} from "@/lib/websiteReviewEvidence";
 
 const STATUS: Record<WebsiteReviewState, string> = {
   OPEN_DRAFT: "OPEN · DRAFT",
@@ -8,8 +14,22 @@ const STATUS: Record<WebsiteReviewState, string> = {
   UNKNOWN: "UNKNOWN · GitHub unavailable",
 };
 
-export async function WebsiteReviewBoard() {
-  const reviews = await readWebsiteReviews();
+const initialReviews: WebsiteReviewProof[] = WEBSITE_REVIEW_TARGETS.map(target => ({
+  ...target,
+  url: "https://github.com/Emaren/app-prodn/pull/" + target.number,
+  state: "UNKNOWN",
+  headSha: null, updatedAt: null, observedAt: null,
+}));
+
+export function WebsiteReviewBoard() {
+  const [reviews, setReviews] = useState<WebsiteReviewProof[]>(initialReviews);
+  useEffect(() => {
+    let active = true;
+    void readWebsiteReviews().then(result => {
+      if (active) setReviews(result);
+    });
+    return () => { active = false; };
+  }, []);
   return (
     <section aria-labelledby="website-review-board-heading"
       className="rounded-3xl border border-cyan-300/20 bg-slate-950/80 p-6">
@@ -17,10 +37,10 @@ export async function WebsiteReviewBoard() {
         Website source review queue
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-        Current public GitHub pull-request metadata for three fixed PRODUCT changes.
+        Browser-fetched public GitHub pull-request metadata for three fixed PRODUCT changes.
         A merged PR is source history, never proof of production, complete CI,
         an authorized release, or a running ChatGPT session.
-        Verified responses are cached up to five minutes to limit GitHub API
+        Verified browser responses are cached up to five minutes to limit GitHub API
         traffic. Each card shows its original observation timestamp;
         missing or invalid GitHub evidence is UNKNOWN.
       </p>

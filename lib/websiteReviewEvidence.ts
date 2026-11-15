@@ -69,7 +69,7 @@ export function parseWebsiteReview(
 async function readKnownReview(target: typeof WEBSITE_REVIEW_TARGETS[number]): Promise<WebsiteReviewProof> {
   const fallback = unknown(target.number, target.label, target.purpose);
   const result = await readBoundedGithubPublic(
-    "pulls/" + target.number, 250_000, "aoe2war-private-website-review-observer",
+    "pulls/" + target.number, 250_000,
   );
   return result
     ? parseWebsiteReview(result.data, target.number, target.label, target.purpose,

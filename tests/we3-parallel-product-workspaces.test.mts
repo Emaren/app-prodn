@@ -59,9 +59,11 @@ test("production and branch proofs cannot be confused with agent presence", () =
   assert.match(source, /sessionPresence: "UNKNOWN"/);
   assert.match(source, /localDirtyState: "UNKNOWN"/);
   assert.match(boundedRead, /AbortSignal\.timeout\(3000\)/);
-  assert.match(boundedRead, /process\.env\.GITHUB_TOKEN/);
+  assert.doesNotMatch(boundedRead, /process\.env/);
+  assert.match(page, /"use client"/);
+  assert.match(page, /useEffect/);
   assert.doesNotMatch(source, /if \(!token\) return unknown/, "public repo cannot require a secret");
-  assert.match(boundedRead, /token \? \{ Authorization:/, "send auth only if available");
+  assert.doesNotMatch(boundedRead, /Authorization:|Bearer/);
   assert.match(boundedRead, /cache: "no-store"/);
   assert.match(source, /SOURCE_OBSERVED/);
   assert.match(client, /fetch\("\/factory\/status\.json"/);

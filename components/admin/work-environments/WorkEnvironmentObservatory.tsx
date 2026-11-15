@@ -1,18 +1,46 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { readWorkEnvironmentEvidence } from "@/lib/workEnvironmentEvidence";
+import {
+  WORK_ENVIRONMENT_SCHEMA,
+  WORK_ENVIRONMENTS,
+  readWorkEnvironmentEvidence,
+} from "@/lib/workEnvironmentEvidence";
 import { FactoryLiveReceipt } from "@/components/admin/work-environments/FactoryLiveReceipt";
 import { KingdomAtlasDatedEvidence } from "@/components/admin/work-environments/KingdomAtlasDatedEvidence";
 import { WebsiteReviewBoard } from "@/components/admin/work-environments/WebsiteReviewBoard";
-
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 function color(remote: "GITHUB_REF_OBSERVED" | "UNKNOWN") {
   return remote === "GITHUB_REF_OBSERVED" ? "text-cyan-200" : "text-amber-200";
 }
 
-export async function WorkEnvironmentObservatory() {
-  const evidence = await readWorkEnvironmentEvidence();
+type WorkEvidence = Awaited<ReturnType<typeof readWorkEnvironmentEvidence>>;
+
+const initialEvidence: WorkEvidence = {
+  schema: WORK_ENVIRONMENT_SCHEMA,
+  queriedAt: "UNKNOWN",
+  lanes: WORK_ENVIRONMENTS.map(lane => ({
+    ...lane,
+    remote: {
+      state: "UNKNOWN" as const, headSha: null, observedAt: null,
+      reason: "NOT_OBSERVED" as const,
+    },
+  })),
+  sessionPresence: "UNKNOWN",
+  localDirtyState: "UNKNOWN",
+  releaseAuthority: "EXACT_SOURCE_B_PRODUCTION_CONTROLLER_ONLY",
+};
+
+export function WorkEnvironmentObservatory() {
+  const [evidence, setEvidence] = useState<WorkEvidence>(initialEvidence);
+  useEffect(() => {
+    let active = true;
+    void readWorkEnvironmentEvidence().then(result => {
+      if (active) setEvidence(result);
+    });
+    return () => { active = false; };
+  }, []);
   return (
     <section id="work-environments" className="bg-[#050b17] px-4 py-8 text-slate-50 sm:px-7 xl:px-10">
       <div className="mx-auto max-w-[1480px] space-y-7">
@@ -45,7 +73,7 @@ export async function WorkEnvironmentObservatory() {
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-2xl font-extrabold">Source benches</h2>
             <span className="text-xs text-slate-400">
-              Dashboard requested {evidence.queriedAt} · Branch reads cached up to 5 min · Local processes: UNKNOWN
+              Browser GitHub requested {evidence.queriedAt} · Branch observations cached up to 5 min · Local processes: UNKNOWN
             </span>
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
