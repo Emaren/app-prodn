@@ -8,6 +8,9 @@ import {
   FlaskConical,
   LockKeyhole,
   ShieldCheck,
+  BookOpen,
+  Activity,
+  Bell,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -41,6 +44,30 @@ const workbenches = [
     description:
       "Position and execution receipts belong in a verifiable ledger. This gateway never invents PnL, balances, or executions.",
     icon: BarChart3,
+  },
+  {
+    id: "research",
+    title: "Research",
+    eyebrow: "Analysis",
+    description:
+      "A future bench for testing strategy assumptions, liquidity, slippage, and drawdowns. No market signals are currently connected.",
+    icon: BookOpen,
+  },
+  {
+    id: "activity",
+    title: "News & Activity",
+    eyebrow: "Observation",
+    description:
+      "Designed for timestamped announcements and authenticated PAPER events. This overview does not fabricate an activity stream.",
+    icon: Activity,
+  },
+  {
+    id: "alerts",
+    title: "Alerts",
+    eyebrow: "Safeguards",
+    description:
+      "A future home for risk thresholds and delivery receipts. No rules, notifications, or automatic actions are active here.",
+    icon: Bell,
   },
 ] as const;
 
@@ -107,7 +134,7 @@ export default function KingdomTradersPage() {
             The workbenches
           </p>
           <h2 className="mt-2 text-3xl font-black tracking-tight">
-            Bots, strategy, evidence.
+            Six desks. One PAPER-first workshop.
           </h2>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
