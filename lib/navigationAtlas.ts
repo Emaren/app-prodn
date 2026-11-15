@@ -23,6 +23,7 @@ export const ADMIN_ATLAS_ROUTES: readonly AtlasRoute[] = [
   { href:"/admin", label:"Admin Home", cluster:"command", detail:"Original tournament and operator console", visibility:"admin" },
   { href:"/admin/user-list", label:"Command Tower", cluster:"command", detail:"User list, honours and operator command links", visibility:"admin" },
   { href:"/admin/aoe2war-os", label:"AoE2WAR OS · Navigation Atlas", cluster:"command", detail:"Private navigation constellation, audits and releases", visibility:"admin" },
+  { href:"/admin/aoe2war-os/umbrella-tree", label:"The Umbrella Tree · OS Hierarchy", cluster:"command", detail:"Private canonical OS tree with nested WE/session model and honest evidence lights", visibility:"admin" },
   { href:"/admin/central-command", label:"Central Command", cluster:"command", detail:"Six engineering lanes, work, priorities and release gates", visibility:"admin" },
   { href:"/admin/backup-os", label:"Backup OS Evidence", cluster:"infrastructure", detail:"Read-only backup and recovery status; no backup execution authority", visibility:"admin" },
   { href:"/admin/code-health", label:"Code Health Evidence", cluster:"infrastructure", detail:"Source-bound code health and verification reports; no CI waiver", visibility:"admin" },

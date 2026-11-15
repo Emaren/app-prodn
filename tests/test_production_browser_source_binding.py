@@ -217,7 +217,9 @@ class ProductionBrowserSource(unittest.TestCase):
         public,protected=browser.production_routes(ROOT)
         self.assertEqual(len(public),89)
         self.assertEqual(public[-1],"/kingdom-construction")
-        self.assertEqual(len(protected),37)
+        self.assertEqual(len(protected),38)
+        self.assertIn("/admin/aoe2war-os/umbrella-tree",protected)
+        self.assertNotIn("/admin/aoe2war-os/umbrella-tree",public)
         self.assertEqual(len(set(public)),89)
 
 

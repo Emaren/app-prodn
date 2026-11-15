@@ -135,6 +135,57 @@ class BoundaryTests(unittest.TestCase):
                     policy.EXACT_REVIEWED_DYNAMIC_ROUTE
                 )
 
+    def test_b_browser_umbrella_exact_script_base_sha_and_no_wildcard(self):
+        name = "scripts/aoe2_r25_g_browser_acceptance.py"
+        actual = GUARD.parent / "aoe2_r25_g_browser_acceptance.py"
+        import hashlib
+        self.assertEqual(
+            policy.EXACT_REVIEWED_B_BROWSER_BASE,
+            "f436d6f3c1a04308e33b17db4a69c25a2d925fcf")
+        self.assertEqual(policy.EXACT_REVIEWED_B_BROWSER_SCRIPT, name)
+        self.assertEqual(
+            hashlib.sha256(actual.read_bytes()).hexdigest(),
+            policy.EXACT_REVIEWED_B_BROWSER_SHA256)
+        self.denied_source(name)  # Cannot introduce any generic scripts/ allowance.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            p = root / name
+            original = actual.read_bytes()
+            p.write_bytes(original)
+            self.assertEqual(
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE, name), name)
+            with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
+                policy.authorize_changed_source(root, "a"*40, name)
+            p.write_bytes(original + b" ")
+            with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE, name)
+            p.write_bytes(original)
+            extra = root / "same-inode"
+            os.link(p, extra)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR_FILE"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE, name)
+            extra.unlink()
+            p.unlink()
+            p.symlink_to(actual)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR_FILE"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE, name)
+            p.unlink()
+            scripts.rmdir()
+            scripts.symlink_to(actual.parent, target_is_directory=True)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK_ANCESTOR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE, name)
+            with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_BROWSER_BASE,
+                    "scripts/aoe2_r25_g_browser_future_unreviewed.py")
+
     def test_four_deployment_os_scripts_exact_base_hash_and_no_wildcard(self):
         # New F1 bytes are approved only for the F1 parent source base.
         # Keep the historical R1 pins unchanged for restoration/review.
