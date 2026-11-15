@@ -45,7 +45,7 @@ export async function WorkEnvironmentObservatory() {
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-2xl font-extrabold">Source benches</h2>
             <span className="text-xs text-slate-400">
-              GitHub checked {evidence.queriedAt} · Local processes: UNKNOWN
+              Dashboard requested {evidence.queriedAt} · Branch reads cached up to 5 min · Local processes: UNKNOWN
             </span>
           </div>
           <div className="grid gap-5 lg:grid-cols-2">

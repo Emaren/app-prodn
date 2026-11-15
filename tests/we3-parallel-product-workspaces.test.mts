@@ -10,6 +10,7 @@ const page = readFileSync("components/admin/work-environments/WorkEnvironmentObs
 const lanes = readFileSync("app/admin/central-command/lanes/page.tsx", "utf8");
 const client = readFileSync("components/admin/work-environments/FactoryLiveReceipt.tsx", "utf8");
 const source = readFileSync("lib/workEnvironmentEvidence.ts", "utf8");
+const boundedRead = readFileSync("lib/githubBoundedPublicRead.ts", "utf8");
 const nav = readFileSync("lib/navigationAtlas.ts", "utf8");
 const central = readFileSync("components/central-command/CentralCommandView.tsx", "utf8");
 
@@ -57,11 +58,11 @@ test("admin workspaces are authenticated, read-only and in the navigation atlas"
 test("production and branch proofs cannot be confused with agent presence", () => {
   assert.match(source, /sessionPresence: "UNKNOWN"/);
   assert.match(source, /localDirtyState: "UNKNOWN"/);
-  assert.match(source, /AbortSignal\.timeout\(3000\)/);
-  assert.match(source, /process\.env\.GITHUB_TOKEN/);
+  assert.match(boundedRead, /AbortSignal\.timeout\(3000\)/);
+  assert.match(boundedRead, /process\.env\.GITHUB_TOKEN/);
   assert.doesNotMatch(source, /if \(!token\) return unknown/, "public repo cannot require a secret");
-  assert.match(source, /token \? \{ Authorization:/, "send auth only if available");
-  assert.match(source, /cache: "no-store"/);
+  assert.match(boundedRead, /token \? \{ Authorization:/, "send auth only if available");
+  assert.match(boundedRead, /cache: "no-store"/);
   assert.match(source, /SOURCE_OBSERVED/);
   assert.match(client, /fetch\("\/factory\/status\.json"/);
   assert.match(client, /15 \* 60_000/);

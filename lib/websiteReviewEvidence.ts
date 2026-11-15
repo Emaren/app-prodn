@@ -3,6 +3,8 @@
  * room. No GitHub action, status-check/CI inference, session presence, financial
  * permit or deployment approval is derived from a pull request.
  */
+import { readBoundedGithubPublic } from "./githubBoundedPublicRead.ts";
+
 export const WEBSITE_REVIEW_TARGETS = [
   { number: 1362, label: "WE3 Admin Observatory", purpose: "Authenticated workspace observability" },
   { number: 1363, label: "WE3 Kingdom Traders", purpose: "PAPER-only fleet and research" },
@@ -66,29 +68,13 @@ export function parseWebsiteReview(
 
 async function readKnownReview(target: typeof WEBSITE_REVIEW_TARGETS[number]): Promise<WebsiteReviewProof> {
   const fallback = unknown(target.number, target.label, target.purpose);
-  const token = process.env.GITHUB_TOKEN?.trim();
-  try {
-    const response = await fetch(
-      "https://api.github.com/repos/Emaren/app-prodn/pulls/" + target.number,
-      {
-        method: "GET",
-        cache: "no-store",
-        signal: AbortSignal.timeout(3000),
-        headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": "aoe2war-private-website-review-observer",
-          ...(token ? { Authorization: "Bearer " + token } : {}),
-        },
-      },
-    );
-    if (!response.ok || Number(response.headers.get("content-length") || 0) > 250_000)
-      return fallback;
-    const data: unknown = await response.json();
-    return parseWebsiteReview(data, target.number, target.label, target.purpose,
-      new Date().toISOString());
-  } catch {
-    return fallback;
-  }
+  const result = await readBoundedGithubPublic(
+    "pulls/" + target.number, 250_000, "aoe2war-private-website-review-observer",
+  );
+  return result
+    ? parseWebsiteReview(result.data, target.number, target.label, target.purpose,
+      result.observedAt)
+    : fallback;
 }
 
 export async function readWebsiteReviews() {

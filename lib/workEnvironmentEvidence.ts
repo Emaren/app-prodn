@@ -2,6 +2,8 @@
  * A GitHub ref never attests a Mac agent heartbeat or a live website build.
  * No arbitrary repository, branch, code execution, mutation or financial scope.
  */
+import { readBoundedGithubPublic } from "./githubBoundedPublicRead.ts";
+
 export const WORK_ENVIRONMENT_SCHEMA = "aoe2war.product.work-environments.v1" as const;
 
 export const WORK_ENVIRONMENTS = [
@@ -59,31 +61,11 @@ async function readKnownGithubBranch(
   const unknown: RemoteBranchEvidence = {
     state: "UNKNOWN", headSha: null, observedAt: null, reason: "NOT_OBSERVED",
   };
-  // The exact app-prodn repository and this fixed branch API are publicly
-  // readable. Missing credentials must not suppress genuine public evidence.
-  // A private/revoked/rate-limited response still fails closed to UNKNOWN.
-  const token = process.env.GITHUB_TOKEN?.trim();
-  try {
-    const response = await fetch(
-      "https://api.github.com/repos/" + repo + "/branches/" + encodeURIComponent(branch),
-      {
-        method: "GET",
-        cache: "no-store",
-        signal: AbortSignal.timeout(3000),
-        headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": "aoe2war-private-work-environments",
-          ...(token ? { Authorization: "Bearer " + token } : {}),
-        },
-      },
-    );
-    if (!response.ok || Number(response.headers.get("content-length") || 0) > 40_000)
-      return unknown;
-    const body: unknown = await response.json();
-    return parseObservedBranch(body, branch, new Date().toISOString());
-  } catch {
-    return unknown;
-  }
+  const result = await readBoundedGithubPublic(
+    "branches/" + encodeURIComponent(branch), 40_000,
+    "aoe2war-private-work-environments",
+  );
+  return result ? parseObservedBranch(result.data, branch, result.observedAt) : unknown;
 }
 
 export async function readWorkEnvironmentEvidence() {

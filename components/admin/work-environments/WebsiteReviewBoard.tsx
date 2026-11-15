@@ -20,7 +20,9 @@ export async function WebsiteReviewBoard() {
         Current public GitHub pull-request metadata for three fixed PRODUCT changes.
         A merged PR is source history, never proof of production, complete CI,
         an authorized release, or a running ChatGPT session.
-        Missing or invalid GitHub evidence is UNKNOWN.
+        Verified responses are cached up to five minutes to limit GitHub API
+        traffic. Each card shows its original observation timestamp;
+        missing or invalid GitHub evidence is UNKNOWN.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {reviews.map(review => (
