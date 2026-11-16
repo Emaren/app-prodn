@@ -73,7 +73,14 @@ CATALOG_SQL=[
     FROM pg_default_acl ORDER BY defaclrole"""
 ]
 def fingerprint():
-    return hashlib.sha256("\n".join(query(x) for x in CATALOG_SQL).encode()).hexdigest()
+    # Preserve the exact original psql stdout trailing-newline bytes. The
+    # previous physical receipt hashed raw output, not stripped results.
+    raw=[]
+    for statement in CATALOG_SQL:
+        p=cmd(["/opt/homebrew/bin/psql","-X","-A","-t",
+            "-v","ON_ERROR_STOP=1","-d","aoe2hd_db","-c",statement],env=pg_env())
+        raw.append(p.stdout)
+    return hashlib.sha256("\n".join(raw).encode()).hexdigest()
 def denied(role,sql):
     statement="BEGIN;SET LOCAL ROLE "+role+";"+sql+";ROLLBACK"
     p=query(statement,check=False)
