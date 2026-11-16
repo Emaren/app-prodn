@@ -86,7 +86,7 @@ EXACT_REVIEWED_B_BROWSER_SHA256 = "0a5c7e1ae073da09e1d20c11aa3467c99dac701ebe39a
 # appearance transport guard. Neither the B branch nor scripts are wildcarded.
 # A new base/guard byte requires a separately reviewed new policy change.
 EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-november-polish-20261116"
-EXACT_REVIEWED_B_EMBER_BASE = "bf7813ddf749741323162beceb352bf2a1e45058"
+EXACT_REVIEWED_B_EMBER_BASE = "d36e9f98e44b0a4de438c5cc623706873c333ca5"
 EXACT_REVIEWED_B_EMBER_GUARD = "scripts/r25_b_guard_production_v1.cjs"
 EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ecd91985355e181f6f1"
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
