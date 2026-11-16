@@ -1,0 +1,50 @@
+# SOURCE CANDIDATE ONLY — no root install, no enable, no listener.
+# B OS/Steam + WE1 C03 + owner one-use permit required.
+[Unit]
+Description=AoE2WAR appearance-only authenticated writer (NONFINANCIAL)
+After=network.target postgresql.service
+ConditionPathExists=/etc/aoe2war/appearance-writer-v1.env
+
+[Service]
+Type=simple
+User=aoe2war-appearance
+Group=aoe2war-web-prod
+Environment=NODE_ENV=production
+Environment=AOE2WAR_APPEARANCE_ADMITTED=v1
+EnvironmentFile=/etc/aoe2war/appearance-writer-v1.env
+WorkingDirectory=/opt/aoe2war-appearance-writer-v1
+ExecStart=/usr/bin/node /opt/aoe2war-appearance-writer-v1/scripts/appearance_c03_writer.mjs
+Restart=no
+RuntimeDirectory=aoe2war-appearance
+RuntimeDirectoryMode=0710
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1/32
+ReadWritePaths=/run/aoe2war-appearance
+InaccessiblePaths=-/run/postgresql
+InaccessiblePaths=-/var/run/postgresql
+InaccessiblePaths=-/mnt/HC_Volume_105319120
+LimitNOFILE=128
+MemoryMax=192M
+TasksMax=32
+TimeoutStartSec=10
+TimeoutStopSec=5
+
+[Install]
+# Deliberately no WantedBy: owner may start manually only after separate
+# exact-source ACTIVATE permit; never auto-start on boot or upgrade.
