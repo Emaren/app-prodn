@@ -72,6 +72,20 @@ BEGIN
       RAISE EXCEPTION 'APPEARANCE_V1_TABLE_PREIMAGE_DRIFT: %',r;
     END IF;
   END LOOP;
+  -- Preserve C03's existing reviewed-function allowlist. A newly
+  -- callable SECURITY DEFINER is not an appearance-read workaround.
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+    WHERE p.prosecdef
+      AND n.nspname NOT IN ('pg_catalog','information_schema','aoe2war_auth_v1')
+      AND pg_catalog.has_schema_privilege(
+        'aoe2war_web_prod',n.oid,'USAGE')
+      AND pg_catalog.has_function_privilege(
+        'aoe2war_web_prod',p.oid,'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'APPEARANCE_V1_UNREVIEWED_DEFINER_DRIFT';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_default_acl) THEN
     RAISE EXCEPTION 'APPEARANCE_V1_DEFAULT_ACL_DRIFT';
   END IF;
