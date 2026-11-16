@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-november-home-polish-20261115` at `8bc5556c5f2dfddff3a1de29a35d42273e3424fe`
+Implementation baseline: `session-b/ember-appearance-guard-20261116` at `6c385370b2ff2233f1b13450f866bd8078692419`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

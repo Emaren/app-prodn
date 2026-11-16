@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2eaf94cb7ded288e8fb786be06a5cae940013b085ceec80976ac027f9e5050a5",
+      "sha256": "528e1179d077553c8a8b938f30de296d4e5c2de3f30e7345ecb611b5c97b3162",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3393,8 +3393,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-november-home-polish-20261115",
-    "commit": "8bc5556c5f2dfddff3a1de29a35d42273e3424fe"
+    "branch": "session-b/ember-appearance-guard-20261116",
+    "commit": "6c385370b2ff2233f1b13450f866bd8078692419"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
