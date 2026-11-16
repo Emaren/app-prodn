@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 13,
-    "routeHandlerTemplates": 284,
-    "apiHandlerTemplates": 281,
+    "routeHandlerTemplates": 285,
+    "apiHandlerTemplates": 282,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1327,6 +1327,11 @@
     },
     {
       "entrypoint": "app/api/admin/trophies/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/user-directory/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
