@@ -73,7 +73,10 @@ def fingerprint():
     raw="\n".join(q(sql).stdout for sql in SNAP_SQL)
     return hashlib.sha256(raw.encode()).hexdigest(),raw
 def denied_as(role,sql):
-    r=q("BEGIN READ ONLY;SET LOCAL ROLE "+role+";"+sql+";ROLLBACK",check=False)
+    # Do not use READ ONLY here: that would raise 25006 for UPDATE and
+    # hide an actual writable role! Unprivileged DML must be rejected 42501;
+    # any unexpectedly permitted statement is rolled back in the same call.
+    r=q("BEGIN;SET LOCAL ROLE "+role+";"+sql+";ROLLBACK",check=False)
     return r.returncode!=0 and ("42501" in r.stderr or
                                  "permission denied" in r.stderr)
 def signed(uid,ttl=240,iat_offset=0):
