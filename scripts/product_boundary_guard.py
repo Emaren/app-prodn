@@ -85,7 +85,7 @@ EXACT_REVIEWED_B_BROWSER_SHA256 = "0a5c7e1ae073da09e1d20c11aa3467c99dac701ebe39a
 # One owner-attended B/OS admission for the *exact reviewed* 2026-11-16
 # appearance transport guard. Neither the B branch nor scripts are wildcarded.
 # A new base/guard byte requires a separately reviewed new policy change.
-EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-guard-node22-permanent-20261116"
+EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-november-polish-20261116"
 EXACT_REVIEWED_B_EMBER_BASE = "bf7813ddf749741323162beceb352bf2a1e45058"
 EXACT_REVIEWED_B_EMBER_GUARD = "scripts/r25_b_guard_production_v1.cjs"
 EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ecd91985355e181f6f1"
@@ -106,7 +106,7 @@ ALLOWED_TASK_ARGV = (
      "-p", "test_product_boundary_guard.py", "-v"),
 )
 SHA = re.compile(r"^[a-f0-9]{40}$")
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-guard-node22-permanent-20261116|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
