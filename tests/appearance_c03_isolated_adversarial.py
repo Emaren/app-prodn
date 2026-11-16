@@ -132,6 +132,23 @@ def test():
     if count("SELECT count(*) FROM pg_roles WHERE rolname='aoe2war_appearance_writer'")!=0:
         q("ALTER ROLE aoe2war_appearance_writer NOLOGIN")
         sql_file("config/appearance-c03-v1-inverse.sql")
+    # Intentional isolated TEST FIXTURE RESET. The inverse must preserve
+    # campaign/override history; only the synthetic test dataset is reset
+    # between runs to make replay deterministic. Never run on HEL1.
+    q("BEGIN;DELETE FROM public.user_activity_events;"
+      "DELETE FROM public.user_theme_campaign_overrides "
+      "WHERE campaign_key='november-crimson-2026';"
+      "UPDATE public.site_theme_campaign SET "
+      "campaign_key='october-black-2026',label='October 2026',"
+      "enabled=true,theme_key='black',"
+      "starts_at=TIMESTAMP '2026-10-01 06:00:00',"
+      "ends_at=TIMESTAMP '2026-11-01 06:00:00',"
+      "updated_by_user_id=1 WHERE slot=1;COMMIT")
+    require(q("SELECT campaign_key FROM public.site_theme_campaign WHERE slot=1"
+      ).stdout.strip()=="october-black-2026","synthetic_october_reseeded")
+    require(count("SELECT count(*) FROM public.user_theme_campaign_overrides "
+      "WHERE campaign_key='october-black-2026'")==1,
+      "synthetic_october_history_preserved")
     base,rawbase=fingerprint()
     apply_hash=sql_file("config/appearance-c03-v1-apply.sql")
     stage,rawstage=fingerprint()
