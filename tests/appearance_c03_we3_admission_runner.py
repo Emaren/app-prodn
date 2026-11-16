@@ -195,6 +195,15 @@ def run():
     # completely separate owner and B approval; no HBA or HEL1 changes.
     query("ALTER ROLE aoe2war_appearance_writer LOGIN PASSWORD '"+
       SYNTHETIC_PASSWORD+"'")
+    # A live writer must authenticate separately under actual SCRAM; a
+    # missing/wrong DB password cannot rely on the synthetic other-role trust.
+    denied_env=dict(pg_env(),PGUSER="aoe2war_appearance_writer",
+       PGPASSWORD="purposefully-wrong-test-only-password")
+    bad=cmd(["/opt/homebrew/bin/psql","-w","-X","-A","-t",
+       "-d","aoe2hd_db","-c","SELECT current_user"],
+       check=False,env=denied_env,timeout=8)
+    yes(bad.returncode!=0 and "password authentication failed" in bad.stderr,
+        "dedicated_writer_wrong_SCRAM_password_denied")
     test_env=dict(os.environ,
       NODE_ENV="test",WE3_EMBER_SOURCE_DIR=str(WE3),
       WE1_SYNTHETIC_WRITER_DB_URL=
