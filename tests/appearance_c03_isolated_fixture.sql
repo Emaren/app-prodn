@@ -5,6 +5,11 @@ CREATE ROLE aoe2hd_user LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
 CREATE ROLE aoe2war_web_prod LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
 CREATE ROLE aoe2war_r25_web_ro LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE;
 CREATE DATABASE aoe2hd_db OWNER aoe2hd_user;
+-- PG14 default public schema permits CREATE to PUBLIC; real HEL1 catalog
+-- explicitly denies web CREATE. Reproduce that physical preimage here.
+\connect aoe2hd_db
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+\connect postgres
 \connect aoe2hd_db
 SET ROLE aoe2hd_user;
 CREATE TABLE public.users (
