@@ -61,6 +61,55 @@ assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/bets'},re
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'DELETE',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/user/ping'},response),'passed');
+
+// Ember cosmetic writer is the ONLY new HTTP POST authority.
+for (const url of ['/api/admin/site-theme-campaign','/api/user/theme-campaign-override']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+   headers:{'content-type':'application/json'}},response),'passed');
+ for (const bad of [
+  {method:'POST',url,headers:{'content-type':'text/plain'}},
+  {method:'PUT',url,headers:{'content-type':'application/json'}},
+  {method:'DELETE',url,headers:{'content-type':'application/json'}}
+ ]) {
+  assert.equal(new http.Server().emit('request',bad,response),true);
+  assert.equal(status,405);
+ }
+}
+for (const url of ['/api/admin/site-theme-campaign/extra','/api/bets','/api/wolo/transfer',
+ '/api/admin/ai-agents','/api/user/theme-campaign-override/extra']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+  headers:{'content-type':'application/json'}},response),true);
+ assert.equal(status,405);
+}
+const socket='/run/aoe2war-appearance-writer/appearance.sock';
+const valid={
+ socketPath:socket,path:'/v1/admin',method:'POST',timeout:2300,
+ headers:{'Content-Type':'application/json','Content-Length':23,
+  'x-appearance-signed-session':'S'.repeat(64),'Connection':'close'}
+};
+assert.equal(typeof http.request(valid).end,'function');
+assert.equal(typeof http.request({...valid,path:'/v1/personal'}).end,'function');
+assert.equal(new net.Socket().connect({path:socket}),'connected');
+for (const changes of [
+ {path:'/api/bets'}, {path:'/v1/admin?xx=1'}, {socketPath:'/tmp/appearance.sock'},
+ {method:'GET'}, {timeout:90000}, {host:'127.0.0.1'}, {port:5432},
+ {agent:{}}, {auth:'user:pass'},
+ {headers:{...valid.headers,'x-extra':'anything'}},
+ {headers:{...valid.headers,'Content-Length':8192}},
+ {headers:{...valid.headers,'x-appearance-signed-session':''}},
+ {headers:{...valid.headers,'Content-Type':'text/plain'}}
+]) {
+ assert.throws(()=>http.request({...valid,...changes}),/AOE2WAR_PRODUCTION_HOLD/);
+}
+for (const candidate of [
+ {path:'/run/postgresql/.s.PGSQL.5432'}, {path:'/tmp/other'},
+ {path:socket,port:5432},{path:socket,host:'localhost'},
+ {host:'127.0.0.1',port:8092}
+]) assert.throws(()=>new net.Socket().connect(candidate),/NODE_EGRESS_DENIED/);
+assert.throws(()=>https.request(valid),/CUSTOM_NETWORK_AGENT_DENIED/);
+assert.throws(()=>http.request({hostname:'127.0.0.1',port:8092,
+ path:'/api/bets',method:'POST'}),/ONLY_READONLY_BACKEND_HTTP/);
+
 assert.throws(()=>setup({AOE2WAR_R25_ISOLATED_WEB:undefined}),/ENV_AOE2WAR_R25_ISOLATED_WEB/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:undefined}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:'/mnt/private'}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);

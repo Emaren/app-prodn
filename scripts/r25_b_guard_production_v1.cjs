@@ -10,6 +10,28 @@ const GUARD = "/usr/local/lib/aoe2war-web-prod/r25_b_guard_production_v1.cjs";
 const PROFILE = "nonfinancial-production-v1";
 const UID = 990;
 const STEAM = "steamcommunity.com";
+// The approved appearance writer is a separate nonfinancial SCRAM-only
+// daemon on one group-gated Unix socket. Never accept an arbitrary socket path.
+const APPEARANCE_SOCKET = "/run/aoe2war-appearance-writer/appearance.sock";
+const APPEARANCE_ROUTES = new Set([
+  "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
+]);
+const APPEARANCE_SERVICE_PATHS = new Set(["/v1/admin", "/v1/personal"]);
+function approvedAppearanceRequest(opts) {
+  if (!opts || typeof opts !== "object") return false;
+  const h = opts.headers;
+  return opts.socketPath === APPEARANCE_SOCKET &&
+    APPEARANCE_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
+    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
+    !opts.protocol && !opts.auth && h && typeof h === "object" &&
+    Object.keys(h).length === 4 &&
+    h["Content-Type"] === "application/json" && h.Connection === "close" &&
+    Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
+    h["Content-Length"] <= 4096 &&
+    typeof h["x-appearance-signed-session"] === "string" &&
+    h["x-appearance-signed-session"].length >= 32 &&
+    h["x-appearance-signed-session"].length <= 4096;
+}
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
 const required = Object.freeze({
@@ -117,8 +139,12 @@ net.Socket.prototype.connect = function (...args) {
     { port: first, host: typeof normalized[1] === "string" ? normalized[1] : "localhost" };
   const host = opts.host || opts.hostname || "localhost";
   const port = Number(opts.port);
-  need(!opts.path && ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
-    (host === STEAM && port === 443 && this instanceof tls.TLSSocket)), "NODE_EGRESS_DENIED");
+  const exactWriterSocket = opts.path === APPEARANCE_SOCKET &&
+    !opts.host && !opts.hostname && !opts.port;
+  need(exactWriterSocket || (!opts.path &&
+    ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
+     (host === STEAM && port === 443 && this instanceof tls.TLSSocket))),
+    "NODE_EGRESS_DENIED");
   return connectOriginal.apply(this, args);
 };
 for (const api of [dns, dns.promises]) {
@@ -140,8 +166,11 @@ for (const api of [http, https]) {
       { ...(typeof args[1] === "object" ? args[1] : {}),
         hostname: new URL(first).hostname, port: new URL(first).port,
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
-    need(opts && !opts.socketPath && !opts.auth && !opts.createConnection &&
+    const exactAppearance = api === http && approvedAppearanceRequest(opts);
+    need(opts && (!opts.socketPath || exactAppearance) &&
+      !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
+    if (exactAppearance) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -176,9 +205,14 @@ http.Server.prototype.emit = function (event, ...args) {
     response.setHeader("X-AoE2WAR-Build-ID", BUILD);
     response.setHeader("X-AoE2WAR-Process", String(process.pid));
     const path = String(request.url || "").split("?", 1)[0];
+    const appearanceWrite = request.method === "POST" &&
+      APPEARANCE_ROUTES.has(path) &&
+      typeof request.headers?.["content-type"] === "string" &&
+      request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
-      (path === "/api/user/ping" && request.method === "POST");
+      (path === "/api/user/ping" && request.method === "POST") ||
+      appearanceWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;
