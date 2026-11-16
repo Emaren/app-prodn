@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **149**
+- Authoritative repository documents: **150**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 81
+- `reference`: 82
 - `runbook`: 49
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 90
+- `active`: 91
 - `draft`: 43
 - `generated`: 1
 - `historical`: 12
@@ -59,6 +59,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
 | [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
+| [Ember Owner-Attended Release Lessons](../design/ember-appearance-writer/OWNER_ATTENDED_RELEASE_LESSONS_20261116.md) | `reference` | `active` | `release-postmortem` |
 | [Ember Reign — Isolated Appearance Writer Source Review](../design/ember-appearance-writer/README.md) | `reference` | `draft` | `nonfinancial-product-source-only-not-a-live-permit` |
 | [The Umbrella Tree — Source and Visual Evidence Design](../design/umbrella-tree/README.md) | `reference` | `draft` | `nonfinancial-product-visual-design-not-runtime` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |

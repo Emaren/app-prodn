@@ -170,6 +170,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "release-postmortem",
+      "id": "aoe2war.ember-owner-attended-release-lessons-20261116",
+      "owner": "aoe2war-web",
+      "path": "design/ember-appearance-writer/OWNER_ATTENDED_RELEASE_LESSONS_20261116.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-11-16",
+      "sensitivity": "internal",
+      "sha256": "b8153e2c1d3cd94c938c11abd3e4a50748379e13cf18062cebc3c846381ddefa",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Ember Owner-Attended Release Lessons",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-product-source-only-not-a-live-permit",
       "id": "aoe2war.app-prodn.ember-appearance-writer-design",
       "owner": "aoe2war-web",
@@ -707,7 +729,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2eaf94cb7ded288e8fb786be06a5cae940013b085ceec80976ac027f9e5050a5",
+      "sha256": "c7c3a84e7d64fa802448dc5efae178eeef3841ce895ba367a449885ae9387718",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
