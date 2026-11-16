@@ -25,6 +25,7 @@ type ThemeCampaignPayload = {
     savedNonCampaignThemeCount: number;
     effectiveBreakdown: Array<{ themeKey: string; count: number }>;
   } | null;
+  statsAvailability?: "restricted";
   overrides: Array<{
     userId: number;
     uid: string;
@@ -233,23 +234,23 @@ export default function SiteThemeCampaignPanel() {
       ) : null}
 
       <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
-        <Metric label="Registered" value={stats?.totalUsers ?? 0} />
+        <Metric label="Registered" value={stats?.totalUsers ?? null} />
         <Metric
           label={isNovember ? "Effective Crimson" : "Effective Black"}
-          value={stats?.effectiveCampaignThemeCount ?? 0}
+          value={stats?.effectiveCampaignThemeCount ?? null}
           accent
         />
         <Metric
           label="Campaign Default"
-          value={stats?.campaignDefaultCount ?? 0}
+          value={stats?.campaignDefaultCount ?? null}
         />
         <Metric
           label="Blue Overrides"
-          value={stats?.explicitMidnightOverrideCount ?? 0}
+          value={stats?.explicitMidnightOverrideCount ?? null}
         />
         <Metric
           label="All Explicit Overrides"
-          value={stats?.explicitOverrideCount ?? 0}
+          value={stats?.explicitOverrideCount ?? null}
         />
       </div>
 
@@ -274,6 +275,11 @@ export default function SiteThemeCampaignPanel() {
               </div>
             ))}
           </div>
+          {stats === null && data ? (
+            <div className="mt-3 text-xs text-slate-500">
+              Detailed player theme counts require a separately reviewed reporting reader.
+            </div>
+          ) : null}
           {campaign?.excludedPaths?.length ? (
             <div className="mt-4 text-xs leading-5 text-slate-500">
               Excluded self-themed routes: {campaign.excludedPaths.join(", ")}
@@ -286,7 +292,11 @@ export default function SiteThemeCampaignPanel() {
             Campaign Opt-outs
           </div>
           <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
-            {data?.overrides?.length ? (
+            {stats === null ? (
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-4 text-sm text-slate-500">
+                Player opt-out details are unavailable to the restricted production reader.
+              </div>
+            ) : data?.overrides?.length ? (
               data.overrides.map((row) => (
                 <div
                   key={row.userId}
@@ -328,7 +338,7 @@ function Metric({
   accent = false,
 }: {
   label: string;
-  value: number;
+  value: number | null;
   accent?: boolean;
 }) {
   return (
@@ -344,7 +354,7 @@ function Metric({
         {label}
       </div>
       <div className={`mt-2 text-3xl font-semibold ${accent ? "text-emerald-100" : "text-white"}`}>
-        {value}
+        {value ?? "—"}
       </div>
     </div>
   );

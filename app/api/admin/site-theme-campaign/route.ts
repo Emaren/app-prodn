@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
 import { getPrisma } from "@/lib/prisma";
 import { NOVEMBER_2026_CAMPAIGN } from "@/lib/novemberThemeCampaign";
-import { loadSiteThemeCampaignAdminState } from "@/lib/siteThemeCampaign";
+import { loadSiteThemeCampaign, loadSiteThemeCampaignAdminState } from "@/lib/siteThemeCampaign";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
   callAppearanceWriter,
   readBoundedAppearanceJson,
@@ -19,10 +20,17 @@ export async function GET(request: NextRequest) {
   const gate = await requireAdmin(request);
   if ("error" in gate) return gate.error;
   try {
-    // Source-only, least-privilege web SELECT read model. C03 will grant only
-    // approved presentation columns; requireAdmin's C03 legacy-data proxy is
-    // intentionally not a Prisma data handle.
-    const data = await loadSiteThemeCampaignAdminState(getPrisma());
+    const prisma = getPrisma();
+    if (usesNonfinancialProductionAuth()) {
+      // Production C03 admits the six public campaign presentation columns,
+      // NOT a bulk users/overrides census. Do not turn denied user reads into
+      // fake zero-player statistics or broaden the website's SQL grants.
+      const campaign = await loadSiteThemeCampaign(prisma);
+      return NextResponse.json({
+        campaign, stats: null, overrides: [], statsAvailability: "restricted",
+      }, { headers: NO_STORE_HEADERS });
+    }
+    const data = await loadSiteThemeCampaignAdminState(prisma);
     return NextResponse.json(data, { headers: NO_STORE_HEADERS });
   } catch {
     return NextResponse.json(

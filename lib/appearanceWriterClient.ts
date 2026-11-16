@@ -1,6 +1,7 @@
 import http from "node:http";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
+import { PRODUCTION_WEB_ORIGIN } from "@/lib/productionAuth";
 
 // This is an unprivileged *client* for a distinct, owner-admitted UNIX
 // service. No PG writer URL or SQL privileges may be introduced into Next.js.
@@ -21,9 +22,16 @@ export function validateAppearanceWriteOrigin(request: NextRequest): boolean {
   if (!origin) return false;
   try {
     const parsed = new URL(origin);
+    // The R25 website binds to loopback; NextRequest.nextUrl.origin is
+    // http://localhost:3032 even for an authenticated HTTPS proxy request.
+    // Check the canonical public origin, never that internal transport URL.
+    const host = request.headers.get("host");
+    const forwardedProto = request.headers.get("x-forwarded-proto");
     return parsed.protocol === "https:" &&
-      parsed.origin === request.nextUrl.origin &&
-      parsed.username === "" && parsed.password === "";
+      parsed.origin === PRODUCTION_WEB_ORIGIN &&
+      parsed.username === "" && parsed.password === "" &&
+      (!host || host === new URL(PRODUCTION_WEB_ORIGIN).host) &&
+      (!forwardedProto || forwardedProto === "https");
   } catch { return false; }
 }
 

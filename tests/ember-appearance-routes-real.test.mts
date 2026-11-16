@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url";
 register("./tests/ember-route-loader.mjs", pathToFileURL("./"));
 const { NextRequest } = await import("next/server");
 const [{ signSession, SESSION_COOKIE_NAME },
-  { APPEARANCE_WRITER_SOCKET },
+  { APPEARANCE_WRITER_SOCKET, validateAppearanceWriteOrigin },
   { POST: playerPost },
   { POST: adminPost, GET: adminGet }] = await Promise.all([
     import("../lib/session.ts"),
@@ -36,6 +36,51 @@ function req(
   return new NextRequest(url, { method: "POST", headers, body: JSON.stringify(body) });
 }
 const body = {campaignKey:"november-crimson-2026",themeKey:"midnight"};
+test("R25 public HTTPS origin remains valid when NextURL is internal loopback",()=>{
+  const headers = new Headers({
+    Host: "aoe2war.com",
+    Origin: "https://aoe2war.com",
+    "X-Forwarded-Proto": "https",
+    "Sec-Fetch-Site": "same-origin",
+    "Content-Type": "application/json",
+  });
+  const make = (headers: Headers) => new NextRequest(
+    "http://127.0.0.1:3032/api/user/theme-campaign-override",
+    {method:"POST",headers,body:"{}"},
+  );
+  const admitted = make(headers);
+  assert.notEqual(admitted.nextUrl.origin,"https://aoe2war.com");
+  assert.equal(validateAppearanceWriteOrigin(admitted),true);
+  const invalid = [
+    ["Origin","http://aoe2war.com"],
+    ["Origin","https://evil.example"],
+    ["Origin","https://aoe2war.com:444"],
+    ["Origin","https://someone@aoe2war.com"],
+    ["Host","evil.example"],
+    ["X-Forwarded-Proto","http"],
+    ["Sec-Fetch-Site","cross-site"],
+  ] as const;
+  for (const [key,value] of invalid) {
+    const mutated = new Headers(headers);
+    mutated.set(key,value);
+    assert.equal(validateAppearanceWriteOrigin(make(mutated)),false,key+"="+value);
+  }
+  const noOrigin = new Headers(headers);
+  noOrigin.delete("Origin");
+  assert.equal(validateAppearanceWriteOrigin(make(noOrigin)),false);
+});
+test("real signed appearance route accepts canonical browser origin through loopback proxy",async()=>{
+  assert.equal(existsSync(APPEARANCE_WRITER_SOCKET),false,
+    "Synthetic test must never contact production writer");
+  const token=await signSession("source_only_scribe_123");
+  const request=req("http://127.0.0.1:3032/api/user/theme-campaign-override",
+    body,token);
+  request.headers.set("Host","aoe2war.com");
+  request.headers.set("X-Forwarded-Proto","https");
+  const response=await playerPost(request);
+  assert.equal(response.status,503,"valid proxy origin reaches absent writer, not 403");
+  assert.equal((await response.json()).detail,"APPEARANCE_WRITER_UNAVAILABLE");
+});
 test("actual personal POST denies unsigned or forged session without querying DB", async()=>{
   const unsigned=await playerPost(req(path,body,null));
   assert.equal(unsigned.status,401);
