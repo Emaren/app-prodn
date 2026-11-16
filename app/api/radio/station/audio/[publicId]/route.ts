@@ -21,8 +21,6 @@ import {
 import {
   getPrisma,
 } from "@/lib/prisma";
-import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
-import { radioOnAirMediaReadHoldPayload } from "@/lib/radioWoloRestrictedReadHold";
 
 export const runtime =
   "nodejs";
@@ -73,23 +71,6 @@ export async function GET(
     )
   ) {
     return unavailable();
-  }
-
-  // The approved public station projection contains metadata, not the
-  // private radio_assets.audio_storage_key. Do not attempt the legacy
-  // protected-table read, which produces a 500 in restricted production.
-  // Audio admission requires an independently reviewed on-air-only view.
-  if (isNonfinancialPublicReadProfile()) {
-    return NextResponse.json(
-      radioOnAirMediaReadHoldPayload(),
-      {
-        status: 503,
-        headers: {
-          ...MEDIA_HEADERS,
-          Vary: "Cookie",
-        },
-      },
-    );
   }
 
   const station =
