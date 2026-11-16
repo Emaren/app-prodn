@@ -3,13 +3,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { NextRequest } from "next/server";
-import { signSession, SESSION_COOKIE_NAME } from "../lib/session.ts";
-import { APPEARANCE_WRITER_SOCKET } from "../lib/appearanceWriterClient.ts";
-import { POST as playerPost } from "../app/api/user/theme-campaign-override/route.ts";
-import {
-  POST as adminPost, GET as adminGet,
-} from "../app/api/admin/site-theme-campaign/route.ts";
+// CI invokes all tests with the general AoE2WAR alias loader. Register the
+// additional Next.js/extension bridge BEFORE dynamically importing the real
+// route modules; this changes only this test process, not app/CI global policy.
+import { register } from "node:module";
+import { pathToFileURL } from "node:url";
+register("./tests/ember-route-loader.mjs", pathToFileURL("./"));
+const { NextRequest } = await import("next/server");
+const [{ signSession, SESSION_COOKIE_NAME },
+  { APPEARANCE_WRITER_SOCKET },
+  { POST: playerPost },
+  { POST: adminPost, GET: adminGet }] = await Promise.all([
+    import("../lib/session.ts"),
+    import("../lib/appearanceWriterClient.ts"),
+    import("../app/api/user/theme-campaign-override/route.ts"),
+    import("../app/api/admin/site-theme-campaign/route.ts"),
+  ]);
 
 const path = "https://aoe2war.com/api/user/theme-campaign-override";
 function req(
