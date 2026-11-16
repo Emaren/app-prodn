@@ -1,0 +1,49 @@
+# Ember Reign — owner-attended release lessons (2026-11-16)
+
+**Nonfinancial PRODUCT only.** This is source-controlled engineering evidence, not a signed permit, a declaration of production activation, or permission to open any FINANCIAL gate. Keep the October campaign's history immutable.
+
+## What went wrong
+
+The November source, CI, Linux runtime and independently reviewed SQL/OS components were qualified, yet production stalled. The M1 signer was intentionally **V22 source-install-only**. No new C03 appearance-SQL issuer/executor had been enrolled. Source review, machine access, a one-use permit, a real database mutation and T10 were conflated. Opening more ChatGPT sessions cannot supply authentication authority.
+
+On November 16, the owner opened an attended HEL1 `sudo -i` root terminal and explicitly authorized a **one-time, manual exception** for this nonfinancial release. This is not an Ed25519 permit and must never be represented as one. The missing cryptographic permit remains a real architectural gap to fix.
+
+## Pinned evidence and bounded source
+
+| Item | SHA / identity |
+| --- | --- |
+| PRODUCT PR #1377 | `f50ead889c6101115aaf678ebdfa70650b691552` |
+| C03 SQL PR #1380 | `e69529c5b6e90e5b9e545c90b3f075ec49961b14` |
+| B/OS PR #1381 | `c2ff9aa70618afef4128e778a5d77a79c66e61c5` |
+| SQL apply SHA256 | `3adf4296436fcb4d20a2261c7a12f0894b4df8aceadcb6e0e5d6f3a967c151e3` |
+| SQL inverse SHA256 | `65270456e8fd957019a84b617e5a86de901b1e69e61369272e260151358068ed` |
+| Reviewed service unit SHA256 | `d231c8d0e3401717ea37991e93a63ec8394bfb6c4c8e56cd807c20fc1ed5e7b9` |
+| GitHub Linux ZIP SHA256 | `d52c1dd1f966799e6073c06d7d409108483dec0e008fac5ae72588b96211272e` |
+| Extracted runtime SHA256 | `3701674709ed759113445eb574882c00d41eeba79f5892f9f3bb0842feab53af` |
+| Independent proof SHA256 | `0811a74e190d1d9dfc0df848eb1e167bf8d33f3622d10d6847c634bb0678b8f3` |
+| BUILD_ID | `eyhY43hMRs2EZknN3Cht3` |
+
+**Timestamped physical state:** At 2026-11-16 14:21 UTC, accepted old 3032 was HTTP200 (runtime `e31e1c053a3b`), betting was 503, 3030/3032/3033/PAPER9447 were listening, and 8092–8095 were closed. No new SQL grant, writer LOGIN, service activation or website cutover occurred at that point. This is historical evidence, not a statement about future state.
+
+## Ten practical lessons
+
+1. Do not re-review unchanged source. Bind source HEAD, SQL bytes, Linux ZIP, extracted archive and independent proof separately.
+2. One coordinator may operate multiple trust domains; naming an AI session `WE1` is not an identity or signing key.
+3. Enroll and test a purpose-bound issuer **before** blocking a launch on it. A signer limited to V22 is never a general C03 signer.
+4. Owner root access, owner manual exception, signed permit, and T10 are **four different facts**. Never invent `approvedBy`, signatures or acceptance receipts.
+5. Preserve effective web role zero table/column DML and zero sequence use; grant only reviewed appearance-column SELECT. The dedicated writer begins NOLOGIN, has fixed nonfinancial grants and exactly two allowed sequences. Never touch betting, wallets, or user writes.
+6. Use the **existing** Factory's transport → verified `stage` (prepared/nonpublic runtime) → independent writer credential/service activation → website activate → rollback → reactivate → T10. No third Next runtime or parallel deployment engine.
+7. A manual exception is a single dated, exact-host/source/SQL/inverse/unit/build event, never a reusable bypass. Restore genuine signed permits for future releases.
+8. Garbage-reclaim profiles may prune backups. Never bulk-delete release artifacts, historical commits, protected data or encrypted retention without explicit individual safe-deletion proofs.
+9. Status must follow physical truth. HTTP200 on old 3032 is not `SHIPPED_VERIFIED`. Require source+BUILD_ID readback, real Emaren/Scribe role tests, public campaign, exact rollback and T10.
+10. Keep private SCRAM, session secrets, SSH material, sudo passwords and browser cookies out of Git, GitHub comments and ChatGPT.
+
+## Source-controlled guard
+
+`scripts/release/ember_owner_attended_evidence_v1.py` is **inert and offline**. It only diagnoses an exact-2026-11-16 evidence record; it does not authenticate a human, issue a permit, run root commands, generate signatures, or call the Factory. Its result expressly says `VALID_EVIDENCE_SHAPE_NOT_RELEASE_AUTHORITY`. Do **not** ever plug this validator into the Factory as an approval reader. Adversarial tests reject changed hashes, financial authority, forged signatures, wrong host/database and extra fields.
+
+## Follow-up engineering improvement
+
+Build a genuine, independent C03 permit issuer and root executor for `SQL_STAGE_NOLOGIN`, `SERVICE_ACTIVATE`, `FACTORY_STAGE` and `FACTORY_ACTIVATE`; bind nonce, expiration, catalog preimage, exact apply/inverse/OS/artifact hashes, independent review, dedicated signing custody and one-use consumption. Keep the FINANCIAL fence closed and the existing Factory unchanged until separately reviewed. Add physical browser acceptance and reversible inverse tests. This is a source-review task, **not** retrospective proof of a deployment.
+
+A release sheet should record each gate as PASS/HOLD/NOT_APPLICABLE with actual timestamp and evidence. Never let source qualification stand in for live admission.
