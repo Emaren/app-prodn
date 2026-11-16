@@ -9,6 +9,7 @@ CREATE DATABASE aoe2hd_db OWNER aoe2hd_user;
 -- explicitly denies web CREATE. Reproduce that physical preimage here.
 \connect aoe2hd_db
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+GRANT CREATE ON SCHEMA public TO aoe2hd_user;
 \connect postgres
 \connect aoe2hd_db
 SET ROLE aoe2hd_user;
