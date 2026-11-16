@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b8516a3aea023a8f704f6e0f51a325cad4be9a899a7e639ae464da5291c05507",
+      "sha256": "6c8cad141159bf0e1a66131be9a8d230c7eb12212b313e2d7ded71637e87b6a1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3394,7 +3394,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-recovery-integration-20261116",
-    "commit": "f5e510056726a01f9a54993561604de799f444d7"
+    "commit": "754c35314ce4c1cb42630b26ae99a968a0bc570a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
