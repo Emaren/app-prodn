@@ -74,13 +74,13 @@ REVOKE USAGE ON SEQUENCE public.user_activity_events_id_seq
   FROM aoe2war_appearance_writer;
 REVOKE USAGE ON SEQUENCE public.user_theme_campaign_overrides_id_seq
   FROM aoe2war_appearance_writer;
-REVOKE INSERT (user_id,type,path,label,metadata)
+REVOKE INSERT (user_id,type,path,label,metadata,created_at)
   ON TABLE public.user_activity_events FROM aoe2war_appearance_writer;
 REVOKE SELECT (id,user_id,type,path,label,created_at)
   ON TABLE public.user_activity_events FROM aoe2war_appearance_writer;
 REVOKE UPDATE (theme_key,updated_at)
   ON TABLE public.user_theme_campaign_overrides FROM aoe2war_appearance_writer;
-REVOKE INSERT (campaign_key,user_id,theme_key)
+REVOKE INSERT (campaign_key,user_id,theme_key,created_at,updated_at)
   ON TABLE public.user_theme_campaign_overrides FROM aoe2war_appearance_writer;
 REVOKE SELECT (
   id,campaign_key,user_id,theme_key,created_at,updated_at
