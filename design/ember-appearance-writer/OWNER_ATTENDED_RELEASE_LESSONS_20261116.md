@@ -40,7 +40,7 @@ On November 16, the owner opened an attended HEL1 `sudo -i` root terminal and ex
 
 ## Source-controlled guard
 
-`scripts/release/ember_owner_attended_evidence_v1.py` is **inert and offline**. It only diagnoses an exact-2026-11-16 evidence record; it does not authenticate a human, issue a permit, run root commands, generate signatures, or call the Factory. Its result expressly says `VALID_EVIDENCE_SHAPE_NOT_RELEASE_AUTHORITY`. Do **not** ever plug this validator into the Factory as an approval reader. Adversarial tests reject changed hashes, financial authority, forged signatures, wrong host/database and extra fields.
+`scripts/release/ember_owner_attended_evidence_v1.py` is **inert and offline**. It only diagnoses an exact-2026-11-16 evidence record; it does not authenticate a human, issue a permit, run root commands, generate signatures, or call the Factory. Its diagnostic classification is `VALID_EVIDENCE_SHAPE_NOT_RELEASE_AUTHORITY`. Do **not** ever plug this validator into the Factory as an approval reader. Adversarial tests reject changed hashes, financial authority, forged signatures, wrong host/database and extra fields.
 
 ## Follow-up engineering improvement
 
