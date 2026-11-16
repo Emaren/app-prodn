@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -59,3 +59,11 @@ Canonical references: https://github.com/Emaren/app-prodn/issues/1108 and https:
 At 15:03–15:04 UTC the first actual cutover started the new 0a745 candidate on PID 2989688. Candidate enrollment succeeded, but the hardened Steam oneshot could not read its newly accepted physical receipt under /root because the service correctly uses ProtectHome=yes. It returned the opaque PermissionError and the controller automatically restored the old e058 website on fresh PID 2990256, re-enrolled Steam and verified the original public HTTPS build. Root0600 rollback receipt SHA256 ebe01312dde661d6d11edbf6da47c7eda8805bab7d91b8e7be771bc39ff4ea5a proves real automatic rollback, not just a test. Old 3030 and validator were untouched, funded ports closed. The first attempt receipt and source backup must be retained unmodified.
 
 Attempt 2 binds precisely the resulting rollback PID 2990256 and stores a *distinct* promotion/rollback receipt and unit backup with suffix -attempt2. No historical proof is overwritten. The separate corrected v7 Steam adapter sources the candidate stage proof from the root0600 exact SHA copy under /etc/aoe2war/web-prod-v7, which the sandbox can read without loosening home directory restrictions. The current working rollback Steam profile is re-enrolled with this new source SHA before attempting cutover.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `scripts/release/r25_steam_refresh_traffic_v7.py` Git blob `6acd0fb6b9d6b970a14982e3459880c20c5c7f35`; `scripts/release/r25_traffic_single_runtime_release_v7.py` Git blob `772a134e986d89289d35cbe3fbafb48f5ec29be4`.
+
+V7 exact-runtime/Steam code is preserved as historical rollback and incident evidence. Actual installed Steam is V27, not V7, and the later website source e31e is accepted. The old protected-unit-fingerprint negative precedent remains important; this review approves no new Traffic-ingest drop-in.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

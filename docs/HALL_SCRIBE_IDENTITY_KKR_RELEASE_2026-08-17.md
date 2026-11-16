@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-evidence"
-reviewed_at: "2026-08-17"
+reviewed_at: "2026-11-16"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -92,3 +92,11 @@ GitHub synchronization, central documentation synchronization, production
 deployment, certification and the final estate receipt.
 
 WoloChain services remain observe-only throughout this release.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/adminSession.ts` Git blob `c83947f5870d8842b410a508972e6604936a8106`; `lib/steamAuth.ts` Git blob `1910f3a5fb08118d6b8fc2f1c39fff37f3e4ccdd`.
+
+August Hall/Scribe evidence is historical. The retained current identity/session and Steam OpenID authentication modules protect real sessions, but their November code cannot be attributed to August. No new account creation, identity migration or FINANCIAL auth is accepted here.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

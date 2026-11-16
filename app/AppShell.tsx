@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
 import AoE2WarIntlProvider from "@/components/i18n/AoE2WarIntlProvider";
@@ -23,6 +23,7 @@ import {
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
+import { nextHomeThemeKey } from "@/lib/homeThemeCycle";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { warmLeaderboardClient } from "@/lib/leaderboardNavigationWarmup";
 import { warmBetsBoard } from "@/lib/betsNavigationWarmup";
@@ -1126,8 +1127,31 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";
-  const { themeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
+  const { themeKey, setThemeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
     useLobbyAppearance();
+  // The home logo is a quiet appearance shortcut; on every other route it
+  // retains its existing home-navigation contract (including modified clicks).
+  const handleHomeBrandClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname !== "/" || event.button !== 0 || isModifiedHeaderNavClick(event)) return;
+    event.preventDefault();
+    const nextTheme = nextHomeThemeKey(themeKey);
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion || typeof document.startViewTransition !== "function") {
+      setThemeKey(nextTheme);
+      return;
+    }
+    const root = document.documentElement;
+    root.classList.add("aoe2war-home-theme-morph");
+    try {
+      const transition = document.startViewTransition(() => {
+        flushSync(() => setThemeKey(nextTheme));
+      });
+      void transition.finished.finally(() => root.classList.remove("aoe2war-home-theme-morph"));
+    } catch {
+      root.classList.remove("aoe2war-home-theme-morph");
+      setThemeKey(nextTheme);
+    }
+  };
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const [workshopLive, setWorkshopLive] = React.useState(false);
@@ -1713,11 +1737,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/"
                 data-presence-door="home"
+                onClick={handleHomeBrandClick}
                 prefetch={false}
                 onMouseEnter={() => router.prefetch("/")}
                 onFocus={() => router.prefetch("/")}
                 className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
-                aria-label="AOE2WAR home"
+                aria-label={pathname === "/" ? "Cycle homepage background" : "AOE2WAR home"}
               >
                 <Image
                   src="/brand/aoe2war-logo.webp"
@@ -1827,11 +1852,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/"
                 data-presence-door="home"
+                onClick={handleHomeBrandClick}
                 prefetch={false}
                 onMouseEnter={() => router.prefetch("/")}
                 onFocus={() => router.prefetch("/")}
                 className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
-                aria-label="AOE2WAR home"
+                aria-label={pathname === "/" ? "Cycle homepage background" : "AOE2WAR home"}
               >
                 <Image
                   src="/brand/aoe2war-logo.webp"

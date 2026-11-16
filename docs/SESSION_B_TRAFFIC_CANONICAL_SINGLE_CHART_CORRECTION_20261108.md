@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "traffic-canonical-website-only-exact-daily-finality-required"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -44,3 +44,11 @@ No changes to Wolo financial roles, Chain C01-C09, 3030 rollback, validator, liv
 35/35 targeted Traffic source tests passed on the corrected UI. Source-only until new exact-head CI-qualified candidate is physically promoted with Steam V7+ admission for its new build and rollback. Current public website source 0a7450f9 remains accepted until replaced. Do not claim the October 19 data gap is repaired by hiding an observational chart.
 
 Gate tracking: App #1108, Traffic #31.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `app/traffic/page.tsx` Git blob `f24bb376573b3f98de031d85ae1cbb025e51ce90`; `lib/publicTraffic.ts` Git blob `1b8be987b16abdbc39f8357b9a761d1f2e664dea`.
+
+The retained chart source renders PremiumTimeSeriesChart and publicTraffic.ts filters complete published UTC days. Provisional per-request or project-rollup visitor counts are not canonical Total/Potential/Confirmed Humans. The public archive physically ends October 19; no missing October/November day is certified by this documentation.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

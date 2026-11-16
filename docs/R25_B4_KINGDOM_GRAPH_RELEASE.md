@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "post-r25-source-only-visual-no-runtime"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "internal"
 ---
@@ -35,3 +35,11 @@ The subsequently refreshed November 7 R25 v5z/R3 website source `1a380cdf76ff773
 - F alone authorizes distinct new release AFTER #1061 public LIVE_VERIFIED, B isolation, G BEFORE/AFTER and preserved original 3030/Wolo and Nginx-only rollback.
 
 No post/financial APIs, no host mutation, no Wolo settlement, no autonomous worker or root deployment authority.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `config/kingdom-index-routes.json` Git blob `8cc838780b6656cfbce2f9b3119c481929c13691`; `app/admin/layout.tsx` Git blob `06f0e673651de9e6b8adb87803d4f83ac002b5f0`.
+
+The canonical Kingdom Index routes and protected admin layout are tracked. Historical B4 construction source does not prove a November rendered route, runtime, restart, financial admission or site-theme activation. New candidate Index fingerprint needs an independent exact-head census.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

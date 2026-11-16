@@ -170,6 +170,50 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "release-postmortem",
+      "id": "aoe2war.ember-owner-attended-release-lessons-20261116",
+      "owner": "aoe2war-web",
+      "path": "design/ember-appearance-writer/OWNER_ATTENDED_RELEASE_LESSONS_20261116.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-11-16",
+      "sensitivity": "internal",
+      "sha256": "b8153e2c1d3cd94c938c11abd3e4a50748379e13cf18062cebc3c846381ddefa",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Ember Owner-Attended Release Lessons",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-product-source-only-not-a-live-permit",
+      "id": "aoe2war.app-prodn.ember-appearance-writer-design",
+      "owner": "aoe2war-web",
+      "path": "design/ember-appearance-writer/README.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-16",
+      "sensitivity": "internal",
+      "sha256": "888b9dabab4d523e5473f04fcbc6b0cd64d054aa5332bc652641a669c9e73ace",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Ember Reign \u2014 Isolated Appearance Writer Source Review",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-product-visual-design-not-runtime",
       "id": "aoe2war.app-prodn.design-umbrella-tree",
       "owner": "aoe2war-web",
@@ -338,9 +382,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-16",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "internal",
-      "sha256": "49b690bcff9933b481fad747a3ca3380f5fc2ceb3d4a2e2391a1b08d28da7cba",
+      "sha256": "a92fbb69f6305bc53e1baa42bd11c13dfd67f4d5887b7897fcd56dcb8fba7f38",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -685,7 +729,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5cc1a46ea120aeb0f23866eb55494c3990664ec8c04da67c7ff66ac717e08d0e",
+      "sha256": "c7c3a84e7d64fa802448dc5efae178eeef3841ce895ba367a449885ae9387718",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -802,9 +846,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-17",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "internal",
-      "sha256": "cf04f25cdd01c050ff97488745768ac728fa5bda29affd75b0942c58e96d15fe",
+      "sha256": "4722378b1ecc66b424002f6ee0772e9dc062d9060d001b24b6c2fc4f8d689f97",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1535,9 +1579,9 @@
       "owner": "aoe2war-web",
       "path": "docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "internal",
-      "sha256": "ec8493ce4f93e310187edaf0af9e78074d59a659976483d65bb6faecf057263f",
+      "sha256": "8ad3b585cc9f277b2bc37e7a3aa064466c0e76d14b189ebb64a240247eb130ca",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1557,9 +1601,9 @@
       "owner": "aoe2war-web",
       "path": "docs/R25_B4_KINGDOM_GRAPH_RELEASE.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "internal",
-      "sha256": "451e5295c333df8517516aee86cad381bfd0ecb21be22903c802a94c44f501e9",
+      "sha256": "78b198c93955030425c1f3c5ee0ff4a9f4001e00a93c419902c64bd1378b974c",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2012,9 +2056,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "6472cccb9f9341d6970390307c4bd8c3fed2106018d142fb3bf6a3e84e01ae25",
+      "sha256": "ffd6be71f24c46ec3159dac4c4035c665c4646156cc72d979e8e352105c8ad73",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2056,9 +2100,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "dedd7b869fa91dd08a865efcc85048f97c8577e69fd8cf6ede2c712a3c55841b",
+      "sha256": "42f98704d61055678c571d2160c9f44e36310660d34c4cf1e1dd957484008730",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2078,9 +2122,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "0280f532dd99bce12d8ee838595535cf367ba209e436c9c1403f941f7c3e6a10",
+      "sha256": "37665f425fafcd3caac65cf1dda1fbaebb8208766719f43d57fe9b33966d6860",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2100,9 +2144,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "ff00026592adea365e288825892692a98c78ec3a1bc3f6cc195ab15866e7714e",
+      "sha256": "69c697d6d88b58d4e395feb29cbaadcd0847b96e4a0cd36107df28e30ea9997d",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2122,9 +2166,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "dec5f0586b331bd66900421a6011d2ae930e8b806a9cd09eec9fd39d0f7e36a5",
+      "sha256": "b07f57a6137cb4885c3e6bf25a8b4c707a0fcb59c8ccaece5fc0d45904f87104",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2145,9 +2189,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "fb3a238e3112b877138a131eb1c408dea48b55e7543297a3b08f89b9e6f1701a",
+      "sha256": "3429e29739ff2963b4ab14c8d540ff62201ad247bfba91a1c8a3277818ff1c2e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2212,9 +2256,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "2cbc196f52d2d2a92ce80b668c99a1938ac7dd9b2bbb70cd9100c3672861b7e8",
+      "sha256": "fc79805caf0e69f56311d892ae74340d12ddc01caef1707c40dd913660a6495b",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2234,9 +2278,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "b0ac56d21f379e2164d656f14b8d4e43e8dbb08418a42b5e5ba66730eb5f3d7e",
+      "sha256": "1233160ff66d04e34778e6b8f3ea5c2873eba9abbf229a168d85f1569304223c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2256,9 +2300,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "35693446e0e0cc7d1baaa79909b0c03a29a267840323d5904312730dc4753aef",
+      "sha256": "0fd027ed480605d847c51b0385e4bdb6fcfc9da21ce19a2c2179d676458dead3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2279,9 +2323,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "988fee7ee520d1a0b90c22dfe08fd11cb5558cc39750846f1699a334794bda1e",
+      "sha256": "05ae8af73e0f2dd4c31d3027925633996d70917b11ff1489444dc7d446cddc7f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2302,9 +2346,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "restricted",
-      "sha256": "d2d4af0f6993b7f3cbe2d8e573635ef2733d40bf82459c0aa25711926db83cf7",
+      "sha256": "877787ad264283e5bdfb731f28201910a1efdc30fe126d23fada7b9b7a1279b6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2325,9 +2369,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SITE_THEME_CAMPAIGN.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-01",
+      "reviewed_at": "2026-11-16",
       "sensitivity": "internal",
-      "sha256": "cd8637d8503b5f296d7e1608656ca71abf0df2cb9458cc4ef7cfe67434d74dc7",
+      "sha256": "6236d1ec9de5f752269f43cd516ad7eac2e0f41024f052312ed4e1fb55e75fe6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3371,8 +3415,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2/integration-product-we3-20261115",
-    "commit": "37076a9a27972949dedeec2c07ddd4213fb5440d"
+    "branch": "session-c/we3-november-home-polish-20261115",
+    "commit": "8bc5556c5f2dfddff3a1de29a35d42273e3424fe"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

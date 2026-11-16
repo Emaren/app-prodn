@@ -10,6 +10,7 @@ import {
   heroScreenPreloadUrl,
 } from "@/components/hero/HeroScreenRenderer";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import { nextHeroRequestedIndex } from "@/lib/hero/manualNavigation";
 import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
 import {
   HERO_LANGUAGE_LABELS,
@@ -93,6 +94,7 @@ type PendingHeroMove = {
   index: number;
   direction: number;
   itemId: number;
+  requestId: number;
 };
 
 function decodeHeroStudioImage(src: string) {
@@ -174,6 +176,10 @@ export function HeroCarousel({
   const pointerStart = useRef<number | null>(null);
   const transitionLocked = useRef(false);
   const transitionUnlockTimer = useRef<number | null>(null);
+  // Arrow presses track the *requested* target, not the last decoded frame.
+  // The latest intent wins if several large images are still downloading.
+  const requestedIndexRef = useRef(0);
+  const requestIdRef = useRef(0);
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
@@ -224,6 +230,10 @@ export function HeroCarousel({
 
   useEffect(() => {
     if (index >= items.length) setIndex(0);
+    if (requestedIndexRef.current >= items.length) {
+      requestedIndexRef.current = 0;
+      requestIdRef.current += 1;
+    }
   }, [index, items.length]);
 
   useEffect(() => {
@@ -326,22 +336,27 @@ export function HeroCarousel({
   }, []);
 
   const move = useCallback(
-    (nextDirection: number) => {
-      if (!hasMultiple || transitionLocked.current) return;
+    (nextDirection: number, manual = false) => {
+      // Autoplay keeps the existing gated dwell/transition behavior. A user
+      // navigating deliberately can press again immediately: an old decode
+      // may never overwrite the most recently requested target.
+      if (!hasMultiple || (!manual && transitionLocked.current)) return;
 
-      const currentIndex = index >= 0 && index < items.length ? index : 0;
-      const nextIndex =
-        currentIndex + nextDirection < 0
-          ? items.length - 1
-          : currentIndex + nextDirection >= items.length
-            ? 0
-            : currentIndex + nextDirection;
+      const currentIndex = manual
+        ? requestedIndexRef.current % items.length
+        : index >= 0 && index < items.length ? index : 0;
+      const nextIndex = nextHeroRequestedIndex(currentIndex, nextDirection, items.length);
       const nextItem = items[nextIndex];
       if (!nextItem) return;
 
+      requestedIndexRef.current = nextIndex;
+      const requestId = ++requestIdRef.current;
       const targetSlot: HeroSlot = activeSlot === 0 ? 1 : 0;
       const targetUrl = heroScreenPreloadUrl(nextItem);
-
+      if (transitionUnlockTimer.current !== null) {
+        window.clearTimeout(transitionUnlockTimer.current);
+        transitionUnlockTimer.current = null;
+      }
       transitionLocked.current = true;
 
       const prepared = targetUrl
@@ -350,6 +365,7 @@ export function HeroCarousel({
 
       void prepared
         .then(() => {
+          if (requestId !== requestIdRef.current) return;
           setSlotItems((slots) => {
             const next = [...slots] as [
               HeroPlaylistItemView | null,
@@ -363,17 +379,20 @@ export function HeroCarousel({
             index: nextIndex,
             direction: nextDirection,
             itemId: nextItem.screen.id,
+            requestId,
           });
         })
         .catch(() => {
-          transitionLocked.current = false;
+          if (requestId === requestIdRef.current) {
+            transitionLocked.current = false;
+          }
         });
     },
     [activeSlot, hasMultiple, index, items]
   );
 
   useEffect(() => {
-    if (!pendingMove) return;
+    if (!pendingMove || pendingMove.requestId !== requestIdRef.current) return;
     const preparedItem = slotItems[pendingMove.slot];
     if (preparedItem?.screen.id !== pendingMove.itemId) return;
 
@@ -479,7 +498,7 @@ export function HeroCarousel({
         if (pointerStart.current === null) return;
         const distance = event.clientX - pointerStart.current;
         pointerStart.current = null;
-        if (Math.abs(distance) > 72) move(distance > 0 ? -1 : 1);
+        if (Math.abs(distance) > 72) move(distance > 0 ? -1 : 1, true);
       }}
     >
       {slotUsesContain ? (
@@ -585,7 +604,7 @@ export function HeroCarousel({
             onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
-              move(-1);
+              move(-1, true);
             }}
             className="group absolute inset-y-0 left-0 z-[120] hidden w-[12%] cursor-pointer appearance-none overflow-hidden border-0 bg-transparent p-0 text-transparent outline-none focus:outline-none sm:block"
           >
@@ -599,7 +618,7 @@ export function HeroCarousel({
             onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
-              move(1);
+              move(1, true);
             }}
             className="group absolute inset-y-0 right-0 z-[120] hidden w-[12%] cursor-pointer appearance-none overflow-hidden border-0 bg-transparent p-0 text-transparent outline-none focus:outline-none sm:block"
           >

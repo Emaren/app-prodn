@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "presentation-policy"
-reviewed_at: "2026-11-01"
+reviewed_at: "2026-11-16"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -148,3 +148,78 @@ This is a source/document review. No current production campaign configuration,
 migration application, browser behavior, financial state, or deployed release
 was certified by it. The date-window statements above describe the seeded
 October contract; the bounded admin control may change its window explicitly.
+
+## November Ember Reign — source-qualified 2026-11-15, activation separately gated
+
+November's approved presentation input is the existing \`crimson\` Lobby theme
+key, with a richer oxblood radial-gradient composition; this is NOT a new
+Prisma theme enum or a replacement for saved user appearance preferences.
+
+The existing site campaign singleton advances through the admin-only,
+explicit \`Activate November Red\` control using immutable reviewed inputs:
+
+- \`campaignKey=november-crimson-2026\`, label \`November Ember Reign 2026\`;
+- \`themeKey=crimson\`;
+- \`startsAt=2026-11-01T06:00:00.000Z\` and
+  \`endsAt=2026-12-01T07:00:00.000Z\` (Edmonton local midnight boundaries);
+- \`enabled=true\`, with the original site route exclusions unchanged.
+
+The separate new key prevents October campaign opt-outs from being silently
+inherited by November. The original October override rows remain preserved.
+Only the genuine authenticated administrator can execute the bounded month
+transition. **Deploying app source alone does not change the live singleton
+database row or certify campaign activation.** The WE2 release owner must
+perform a separate authenticated admin action after signed Factory release
+acceptance, then prove real anonymous/default and logged-in opt-out behavior.
+
+On the homepage (\`/\`) only, normal unmodified primary-click on the AOE2WAR
+logo cycles \`crimson → midnight → black → crimson\`; all off-homepage logo links
+retain \`/\` navigation, and all modified clicks retain browser behavior.
+Explicit theme changes use the existing user/profile appearance and campaign
+override rail. The theme crossfade uses View Transitions when supported and
+honors reduced-motion settings.
+
+The homepage also repairs the continuous two-copy ticker seam, keeps the
+autoplay-safe hero carousel while allowing user intent to overtake a pending
+image decode, frames the exceptionally short Zodiac source avatar with an
+individual desktop zoom-out, and gives only the historical Watcher Chronicle
+teaser a smaller action-oriented heading. Canonical forum content, other
+leaderboard avatars, financial services, Steam guards and Traffic ingestion
+are not changed.
+
+This section documents source intent and tests; actual user-facing appearance,
+animation preference, release artifact identity and November activation must
+receive independent Chrome/Factory evidence before declaring production PASS.
+
+
+## Ember Reign C03 source-only review — 2026-11-16 UTC
+
+The earlier 2026-11-01 source review above is historical; its claim that
+unreadable public GET input degrades to an absent campaign no longer describes
+the current accepted error handling. The C03 optional-read fence now returns
+HTTP 503 (HOLD) on a real PostgreSQL 42501 privilege denial; it must never
+claim that no campaign exists merely because the site cannot read it.
+
+The November Ember Reign PRODUCT source (separate source-only candidate)
+retains the crimson/blue/black home-logo cycle and uses a distinct
+november-crimson-2026 key. WE1's actual Nov16 PostgreSQL catalog confirmed
+that the live website role aoe2war_web_prod has zero DML and zero sequence
+rights and cannot SELECT the campaign or override columns. WE1 explicitly
+rejected direct Prisma admin campaign UPDATE and player override/activity
+upsert, despite prior source tests passing. No live SQL authority followed
+from the Ember artwork approval.
+
+A source-only separate UNIX-socket appearance writer is now proposed in
+design/ember-appearance-writer/README.md. The web API routes no longer call
+direct Prisma appearance writes, and the unused direct write helper was
+removed. The proposed writer must verify the signed session again, resolve
+the administrator/current player in the database, restrict the campaign
+singleton and commit each player override together with its mandatory activity
+row in one SERIALIZABLE transaction. An audit failure rolls back preference
+changes; unavailable writer/reader returns HOLD, never optimistic success.
+
+WE1/C03 must independently accept narrow read/isolated write column grants,
+actual PostgreSQL positive/negative role proofs and exact inverse. WE2/B must
+accept socket/process boundary and actual authorized Chrome before a signed
+Factory release. No database service, site theme record, signed permit,
+historic October opt-out or financial row changed during this source review.
