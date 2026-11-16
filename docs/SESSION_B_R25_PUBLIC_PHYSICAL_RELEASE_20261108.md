@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "physical-public-website-release-only-financial-gates-held"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -72,3 +72,11 @@ Trial 3: documented streamed-response budget, content-level guest security check
 - Canonical App physical gate register: `Emaren/app-prodn` issue #1108. Chain handoff: `Emaren/wolochain` issue #5. Session A owns all nine financial gates, independently of this website deployment.
 
 **Operational meaning:** The specified nonfinancial R25 website source is **genuinely live on the public origin**. Remaining website auth/endurance/Traffic and Chain financial gates are **not implicitly closed**.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `scripts/aoe2_product_release.py` Git blob `ec47c987b39699b3daa7f0e8db138c94e0aeb23a`; `scripts/aoe2_product_release_ledger.py` Git blob `da12e4280a91c592494f8f7fb869dae21a584765`.
+
+The signed Factory coordinator and durable ledger source are retained. This historical document's older e058 web runtime and November 8 PID/storage observations are NOT the current website. The accepted live source is e31e1c053a3b39904929a64a1a9af700a9ad5426, BUILD dVF3e9_shOY_BRFdn5Zyl; Ember Reign needs its own permit and physical T10.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

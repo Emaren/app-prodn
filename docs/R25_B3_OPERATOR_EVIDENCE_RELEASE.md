@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "post-r25-reviewed-read-only-product-source"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "internal"
 ---
@@ -38,3 +38,11 @@ The four protected B3 pages were **physically accepted on 2026-11-06 ~06:06 UTC*
 That receipt is for **historical public R25 build `20261106035425-2dbadd4d3d` / PID653077**. The later protected November 7 Betting Hall v5z/R3 release uses source `1a380cdf76ff773aa1d094abd161523500b32b4a` and PID2206791 at the latest read-only checkpoint, with 3030 rollback preserved. The historical B3 pass remains evidence, **not a substitute for fresh authenticated route/asset/browser acceptance after a new runtime refresh**.
 
 All these surfaces remain **nonexecuting read-only evidence panels**. No certified physical restore, scanner execution, transfer, independent human reviewer or funded WOLO permit is established by their presence. Treat unknown live measurements as UNKNOWN; never turn historical source records into current host attestations. Any future Session B navigation/image release requires exact-head CI and new protected Steam/source/rollback acceptance. The financial C01–C09 hold is independent.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `app/admin/layout.tsx` Git blob `06f0e673651de9e6b8adb87803d4f83ac002b5f0`; `lib/adminSession.ts` Git blob `c83947f5870d8842b410a508972e6604936a8106`.
+
+The current admin layout still awaits requireServerAdmin, and the original 2026-11-06 A08 browser receipts are historical. New November release administrative authentication needs its own real ordinary/owner negative and positive tests.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-uid990-outbound-recovery-no-funded-release"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -87,3 +87,11 @@ A harmless *invalid* Steam OpenID verification POST was executed with the real p
 To mitigate observed intermittent *transport* failures without changing identity/security decisions, Session B prepared a separate source fix in `lib/steamAuth.ts`: the already validated, browser-bound OpenID `check_authentication` POST may retry **once only** on enumerated network timeout/reset classes; each attempt independently has an 8-second ceiling, the body and destination remain identical, and actual `is_valid:true` is still required. No retry is allowed after Steam rejects the assertion, returns `is_valid:false`, or the production guard refuses the request. The second attempt does not update users or create sessions unless Steam actually verifies the assertion. No assertion, Steam ID or account credential is written to logs.
 
 The fixture-level regression suite now includes successful single-retry, exhausted double-timeout and negative guard/provider rejection cases. These source tests **do not certify deployment**. Until a CI-qualified new runtime is physically promoted and the owner signs in successfully, the current public build remains `e0586a7b7c355c3b29037d78c71fe26d528d2475` and Scribe end-to-end login acceptance remains **HOLD**.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/steamAuth.ts` Git blob `1910f3a5fb08118d6b8fc2f1c39fff37f3e4ccdd`; `scripts/release/r25_steam_refresh_inplace_r25_v6.py` Git blob `6be6858f4ac2df9f7d65b7c9de02d7f516d2e0f7`.
+
+The guarded Steam check_authentication retry code and retained V6 original repair source remain. V6 cutover findings are historical; HEL1 currently uses independently observed Steam V27 SHA256 2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca. This review is not a new Steam footprint enrollment.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

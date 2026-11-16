@@ -138,9 +138,14 @@ test("only admin can activate new campaign, and client profile overrides stay se
   const route = source("app/api/admin/site-theme-campaign/route.ts");
   const panel = source("components/admin/command-tower/SiteThemeCampaignPanel.tsx");
   assert.match(route, /const gate = await requireAdmin\(request\)/);
-  assert.match(route, /isApprovedNovemberCampaignTransition/);
-  assert.match(route, /campaignKey: November.campaignKey/);
-  assert.match(route, /updatedByUserId: gate.user.id/);
+  assert.match(route, /body.campaignKey === NOVEMBER_2026_CAMPAIGN.campaignKey/);
+  assert.match(route, /callAppearanceWriter\("admin", signedSession, action\)/);
+  assert.match(route, /validateAppearanceWriteOrigin\(request\)/);
+  const core = source("lib/appearanceWriterCore.mjs");
+  assert.match(core, /APPEARANCE_CAMPAIGN.previousKey/);
+  assert.match(core, /WHERE slot = 1 AND campaign_key = \$7/);
+  assert.match(core, /is_admin FROM public.users WHERE uid = \$1/);
+  assert.doesNotMatch(route, /\.siteThemeCampaign\.update\(/);
   assert.match(panel, /Activate November Red/);
   assert.match(panel, /campaignKey: NOVEMBER_2026_CAMPAIGN.campaignKey/);
   assert.doesNotMatch(route, /deleteMany\(/);

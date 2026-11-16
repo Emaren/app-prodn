@@ -147,32 +147,6 @@ export async function loadSiteThemeCampaignViewerState(
   };
 }
 
-export async function saveSiteThemeCampaignOverride(
-  prisma: PrismaClient,
-  input: {
-    userId: number;
-    campaignKey: string;
-    themeKey: LobbyThemeKey;
-  },
-) {
-  return prisma.userThemeCampaignOverride.upsert({
-    where: {
-      campaignKey_userId: {
-        campaignKey: input.campaignKey,
-        userId: input.userId,
-      },
-    },
-    create: {
-      campaignKey: input.campaignKey,
-      userId: input.userId,
-      themeKey: input.themeKey,
-    },
-    update: {
-      themeKey: input.themeKey,
-    },
-  });
-}
-
 export async function loadSiteThemeCampaignAdminState(
   prisma: PrismaClient,
   now = new Date(),

@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-media-cache-no-db-owner-or-physical-release"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -136,3 +136,11 @@ not meet the existing conservative canary headroom requirements.
 
 **Current status: source repair, no physical 3033 start, no production
 cutover, no database change, no WOLO transfer.**
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/mediaFallbackCachePolicy.ts` Git blob `b2f2d8cce558246cd4967e360490329bbd83b842`; `scripts/r25_public_avatar_cache_acceptance.py` Git blob `ede8ae9421aed8efb178aa0625db9ec45d9fc3ef`.
+
+The fallback-cache policy and separate physical avatar acceptance script remain in source. Their existence does not prove specific managed avatar bytes have been restored on HEL1; prior historical space/headroom and native-cache HOLDS must not be represented as current physical acceptance.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

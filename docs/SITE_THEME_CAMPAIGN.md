@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "presentation-policy"
-reviewed_at: "2026-11-15"
+reviewed_at: "2026-11-16"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -190,3 +190,36 @@ are not changed.
 This section documents source intent and tests; actual user-facing appearance,
 animation preference, release artifact identity and November activation must
 receive independent Chrome/Factory evidence before declaring production PASS.
+
+
+## Ember Reign C03 source-only review — 2026-11-16 UTC
+
+The earlier 2026-11-01 source review above is historical; its claim that
+unreadable public GET input degrades to an absent campaign no longer describes
+the current accepted error handling. The C03 optional-read fence now returns
+HTTP 503 (HOLD) on a real PostgreSQL 42501 privilege denial; it must never
+claim that no campaign exists merely because the site cannot read it.
+
+The November Ember Reign PRODUCT source (separate source-only candidate)
+retains the crimson/blue/black home-logo cycle and uses a distinct
+november-crimson-2026 key. WE1's actual Nov16 PostgreSQL catalog confirmed
+that the live website role aoe2war_web_prod has zero DML and zero sequence
+rights and cannot SELECT the campaign or override columns. WE1 explicitly
+rejected direct Prisma admin campaign UPDATE and player override/activity
+upsert, despite prior source tests passing. No live SQL authority followed
+from the Ember artwork approval.
+
+A source-only separate UNIX-socket appearance writer is now proposed in
+design/ember-appearance-writer/README.md. The web API routes no longer call
+direct Prisma appearance writes, and the unused direct write helper was
+removed. The proposed writer must verify the signed session again, resolve
+the administrator/current player in the database, restrict the campaign
+singleton and commit each player override together with its mandatory activity
+row in one SERIALIZABLE transaction. An audit failure rolls back preference
+changes; unavailable writer/reader returns HOLD, never optimistic success.
+
+WE1/C03 must independently accept narrow read/isolated write column grants,
+actual PostgreSQL positive/negative role proofs and exact inverse. WE2/B must
+accept socket/process boundary and actual authorized Chrome before a signed
+Factory release. No database service, site theme record, signed permit,
+historic October opt-out or financial row changed during this source review.
