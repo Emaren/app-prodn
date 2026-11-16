@@ -13,7 +13,9 @@ review_interval_days: 90
 sensitivity: "internal"
 ---
 
-# Ember Reign — owner-attended release lessons (2026-11-16)
+# Ember Owner-Attended Release Lessons
+
+Historical incident date: 2026-11-16.
 
 **Nonfinancial PRODUCT only.** This is source-controlled engineering evidence, not a signed permit, a declaration of production activation, or permission to open any FINANCIAL gate. Keep the October campaign's history immutable.
 
