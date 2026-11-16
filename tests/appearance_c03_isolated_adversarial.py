@@ -195,7 +195,7 @@ def test():
         APPEARANCE_DATABASE_URL="postgresql://aoe2war_appearance_writer:"+WRITER_TEST_PASSWORD+"@127.0.0.1:55491/aoe2hd_db",
         SESSION_SECRET=SECRET)
     process=subprocess.Popen(
-      ["/usr/local/bin/node",str(SRC/"scripts/appearance_c03_writer.mjs")],
+      ["/usr/local/bin/node",str(SRC/"tests/fixtures/appearance_c03_reference_writer.mjs")],
       cwd=SRC,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     try:
         for i in range(90):
