@@ -10,6 +10,7 @@ import base64, concurrent.futures, datetime, hashlib, hmac, json
 import os, pathlib, signal, socket, subprocess, sys, time
 
 SECRET="this-is-an-isolated-synthetic-only-test-secret-123"
+WRITER_TEST_PASSWORD="synthetic-only-UID650-SCRAM-case-20261116"
 SRC=pathlib.Path(__file__).resolve().parents[1]
 PORT=55491
 PGDIR=pathlib.Path.home()/"we1-c03-pg14-isolate-20261116"/"data"
@@ -39,6 +40,18 @@ def verify_synthetic_host():
     require("14." in q("SHOW server_version").stdout,"PostgreSQL14")
     require(SOCKET.parent.is_dir() and SOCKET.parent.stat().st_uid==650
             and SOCKET.parent.stat().st_mode & 0o077==0,"private_synthetic_socket_dir")
+    # Enforce a separately authenticated SCRAM path on THIS UID650 cluster.
+    # The other isolated test roles may retain their synthetic trust rules.
+    hba=PGDIR/"pg_hba.conf"
+    auth_line="host aoe2hd_db aoe2war_appearance_writer 127.0.0.1/32 scram-sha-256"
+    previous=hba.read_text()
+    if auth_line not in previous:
+        hba.write_text(auth_line+"\n"+previous)
+        sh("/opt/homebrew/bin/pg_ctl","-D",str(PGDIR),"reload")
+    require(hba.read_text().splitlines()[0]==auth_line,
+      "synthetic_writer_SCRAM_only")
+    require(q("SHOW password_encryption").stdout.strip()=="scram-sha-256",
+      "isolated_password_encryption_SCRAM")
 def sql_file(path):
     p=SRC/path
     data=p.read_bytes()
@@ -138,10 +151,29 @@ def test():
     require(q("BEGIN READ ONLY;SET LOCAL ROLE aoe2war_web_prod;SELECT campaign_key FROM public.site_theme_campaign WHERE slot=1;ROLLBACK").returncode==0,"web_public_campaign_read")
     require(q("BEGIN READ ONLY;SET LOCAL ROLE aoe2war_web_prod;SELECT theme_key FROM public.user_theme_campaign_overrides LIMIT 1;ROLLBACK").returncode==0,"web_override_read")
     # Synthetic-only login toggle simulates a *future separate* owner permit.
-    q("ALTER ROLE aoe2war_appearance_writer LOGIN")
+    q("ALTER ROLE aoe2war_appearance_writer LOGIN PASSWORD '"+
+      WRITER_TEST_PASSWORD+"'")
+    bad=sh("/opt/homebrew/bin/psql","-X","-A","-t","-d","aoe2hd_db",
+      "-c","SELECT current_user",user="aoe2war_appearance_writer",check=False)
+    require(bad.returncode!=0,"SCRAM_writer_missing_password_denied")
+    authenticated_env=dict(os.environ,PGHOST="127.0.0.1",PGPORT=str(PORT),
+      PGUSER="aoe2war_appearance_writer",PGDATABASE="aoe2hd_db",
+      PGPASSWORD=WRITER_TEST_PASSWORD)
+    authenticated=subprocess.run(["/opt/homebrew/bin/psql","-X","-A","-t",
+      "-c","SELECT current_user"],capture_output=True,text=True,timeout=8,
+      env=authenticated_env)
+    require(authenticated.returncode==0 and
+      authenticated.stdout.strip()=="aoe2war_appearance_writer",
+      "dedicated_actual_SCRAM_password_success")
+    authenticated_env["PGPASSWORD"]="wrong-synthetic-test-password"
+    rejected=subprocess.run(["/opt/homebrew/bin/psql","-X","-A","-t",
+      "-c","SELECT current_user"],capture_output=True,text=True,timeout=8,
+      env=authenticated_env)
+    require(rejected.returncode!=0 and "password authentication failed" in
+      rejected.stderr,"dedicated_actual_SCRAM_wrong_password_denied")
     env=dict(os.environ,NODE_ENV="test",AOE2WAR_APPEARANCE_TEST_ONLY="1",
         APPEARANCE_TEST_SOCKET=str(SOCKET),
-        APPEARANCE_DATABASE_URL="postgresql://aoe2war_appearance_writer@127.0.0.1:55491/aoe2hd_db",
+        APPEARANCE_DATABASE_URL="postgresql://aoe2war_appearance_writer:"+WRITER_TEST_PASSWORD+"@127.0.0.1:55491/aoe2hd_db",
         SESSION_SECRET=SECRET)
     process=subprocess.Popen(
       ["/usr/local/bin/node",str(SRC/"scripts/appearance_c03_writer.mjs")],
@@ -229,7 +261,7 @@ def test():
             if not SOCKET.exists():break
             time.sleep(.1)
         if SOCKET.exists():SOCKET.unlink()
-    q("ALTER ROLE aoe2war_appearance_writer NOLOGIN")
+    q("ALTER ROLE aoe2war_appearance_writer NOLOGIN PASSWORD NULL")
     # The tested inverse does not delete user records: only role/ACL state.
     inverse_hash=sql_file("config/appearance-c03-v1-inverse.sql")
     restored,rawrestored=fingerprint()
