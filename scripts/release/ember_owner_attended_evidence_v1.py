@@ -33,7 +33,7 @@ FORBIDDEN_AUTHORITY = (
 )
 STATES = {"NOT_STARTED", "STAGED_NOT_EXECUTED", "PASS", "HOLD", "FAILED"}
 STATUS_KEYS = ("sql_stage_status", "service_status", "factory_status")
-REQUIRED = frozenset(PINN) | frozenset(FORBIDDEN_AUTHORITY) | frozenset(STATUS_KEYS) | {
+REQUIRED = frozenset(PINNED) | frozenset(FORBIDDEN_AUTHORITY) | frozenset(STATUS_KEYS) | {
     "observed_utc", "evidence_sha256"
 }
 
