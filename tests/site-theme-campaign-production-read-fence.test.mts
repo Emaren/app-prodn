@@ -46,6 +46,20 @@ test("guest public endpoint distinguishes real unavailable from absent campaign"
   assert.doesNotMatch(route,/catch \(error\)[\s\S]*?\{ campaign: null, overrideThemeKey: null \}/);
 });
 
+test("production admin campaign read uses six-column C03 scope without false zero metrics",()=>{
+  const admin=readFileSync("app/api/admin/site-theme-campaign/route.ts","utf8");
+  const panel=readFileSync("components/admin/command-tower/SiteThemeCampaignPanel.tsx","utf8");
+  assert.match(admin,/await requireAdmin\(request\)/);
+  assert.match(admin,/if \(usesNonfinancialProductionAuth\(\)\)/);
+  assert.match(admin,/const campaign = await loadSiteThemeCampaign\(prisma\)/);
+  assert.match(admin,/stats: null, overrides: \[\], statsAvailability: "restricted"/);
+  assert.match(admin,/loadSiteThemeCampaignAdminState\(prisma\)/);
+  assert.doesNotMatch(admin,/\bGRANT\s+|\bREVOKE\s+|\bUPDATE\s+public\.users/i);
+  assert.match(panel,/value=\{stats\?\.totalUsers \?\? null\}/);
+  assert.match(panel,/\{value \?\? "—"\}/);
+  assert.match(panel,/Player opt-out details are unavailable/);
+});
+
 test("route retains original auth read, no-store and no broader permissions",()=>{
   assert.match(route,/export async function GET\(request: NextRequest\)/);
   assert.match(route,/await getSessionUid\(request\)/);

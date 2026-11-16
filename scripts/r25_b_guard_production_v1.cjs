@@ -10,6 +10,29 @@ const GUARD = "/usr/local/lib/aoe2war-web-prod/r25_b_guard_production_v1.cjs";
 const PROFILE = "nonfinancial-production-v1";
 const UID = 990;
 const STEAM = "steamcommunity.com";
+// The approved appearance writer is a separate nonfinancial SCRAM-only
+// daemon on one group-gated Unix socket. Never accept an arbitrary socket path.
+const APPEARANCE_SOCKET = "/run/aoe2war-appearance-writer/appearance.sock";
+const APPEARANCE_ROUTES = new Set([
+  "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
+]);
+const APPEARANCE_SERVICE_PATHS = new Set(["/v1/admin", "/v1/personal"]);
+function approvedAppearanceHeaders(h) {
+  return h && typeof h === "object" && Object.keys(h).length === 4 &&
+    h["Content-Type"] === "application/json" && h.Connection === "close" &&
+    Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
+    h["Content-Length"] <= 4096 &&
+    typeof h["x-appearance-signed-session"] === "string" &&
+    h["x-appearance-signed-session"].length >= 32 &&
+    h["x-appearance-signed-session"].length <= 4096;
+}
+function approvedAppearanceRequest(opts) {
+  if (!opts || typeof opts !== "object") return false;
+  return opts.socketPath === APPEARANCE_SOCKET &&
+    APPEARANCE_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
+    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
+    !opts.protocol && !opts.auth && approvedAppearanceHeaders(opts.headers);
+}
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
 const required = Object.freeze({
@@ -117,8 +140,24 @@ net.Socket.prototype.connect = function (...args) {
     { port: first, host: typeof normalized[1] === "string" ? normalized[1] : "localhost" };
   const host = opts.host || opts.hostname || "localhost";
   const port = Number(opts.port);
-  need(!opts.path && ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
-    (host === STEAM && port === 443 && this instanceof tls.TLSSocket)), "NODE_EGRESS_DENIED");
+  // Native Node22 http.request({socketPath}) supplies a nested connect
+  // options array with host=localhost and port=80. These are *internal*
+  // defaults, not a TCP destination. Permit only the exact signed-writer
+  // request shape already constrained by the outer HTTP transport guard.
+  // Node replaces the HTTP route path with the Unix socket path at connect.
+  // Retain the exact socket, signed-session headers and bounded POST shape;
+  // the outer HTTP request checks /v1/admin or /v1/personal separately.
+  const nodeWriterConnect = opts.path === APPEARANCE_SOCKET &&
+    opts.socketPath === APPEARANCE_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === "POST" &&
+    opts.timeout === 2300 && approvedAppearanceHeaders(opts.headers);
+  const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
+    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect;
+  need(exactWriterSocket || (!opts.path &&
+    ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
+     (host === STEAM && port === 443 && this instanceof tls.TLSSocket))),
+    "NODE_EGRESS_DENIED");
   return connectOriginal.apply(this, args);
 };
 for (const api of [dns, dns.promises]) {
@@ -140,8 +179,11 @@ for (const api of [http, https]) {
       { ...(typeof args[1] === "object" ? args[1] : {}),
         hostname: new URL(first).hostname, port: new URL(first).port,
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
-    need(opts && !opts.socketPath && !opts.auth && !opts.createConnection &&
+    const exactAppearance = api === http && approvedAppearanceRequest(opts);
+    need(opts && (!opts.socketPath || exactAppearance) &&
+      !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
+    if (exactAppearance) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -176,9 +218,14 @@ http.Server.prototype.emit = function (event, ...args) {
     response.setHeader("X-AoE2WAR-Build-ID", BUILD);
     response.setHeader("X-AoE2WAR-Process", String(process.pid));
     const path = String(request.url || "").split("?", 1)[0];
+    const appearanceWrite = request.method === "POST" &&
+      APPEARANCE_ROUTES.has(path) &&
+      typeof request.headers?.["content-type"] === "string" &&
+      request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
-      (path === "/api/user/ping" && request.method === "POST");
+      (path === "/api/user/ping" && request.method === "POST") ||
+      appearanceWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;

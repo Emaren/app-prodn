@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Moon, Palette, Power, RefreshCw } from "lucide-react";
+import { NOVEMBER_2026_CAMPAIGN } from "@/lib/novemberThemeCampaign";
 
 type ThemeCampaignPayload = {
   campaign: {
@@ -24,6 +25,7 @@ type ThemeCampaignPayload = {
     savedNonCampaignThemeCount: number;
     effectiveBreakdown: Array<{ themeKey: string; count: number }>;
   } | null;
+  statsAvailability?: "restricted";
   overrides: Array<{
     userId: number;
     uid: string;
@@ -80,6 +82,27 @@ export default function SiteThemeCampaignPanel() {
     return () => window.clearInterval(interval);
   }, [load]);
 
+  async function activateNovember() {
+    try {
+      setSaving(true);
+      setError("");
+      const response = await fetch("/api/admin/site-theme-campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignKey: NOVEMBER_2026_CAMPAIGN.campaignKey }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+        throw new Error(payload.detail || "November campaign activation failed.");
+      }
+      setData((await response.json()) as ThemeCampaignPayload);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Campaign activation failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function setEnabled(enabled: boolean) {
     try {
       setSaving(true);
@@ -109,6 +132,7 @@ export default function SiteThemeCampaignPanel() {
 
   const campaign = data?.campaign ?? null;
   const stats = data?.stats ?? null;
+  const isNovember = campaign?.campaignKey === NOVEMBER_2026_CAMPAIGN.campaignKey;
   const statusLabel = !campaign
     ? "Not configured"
     : campaign.active
@@ -127,17 +151,27 @@ export default function SiteThemeCampaignPanel() {
               Site Display Control
             </div>
             <div className="mt-2 text-2xl font-semibold text-white">
-              {campaign?.label || "October Blackout"}
+              {campaign?.label || "Site Appearance Campaign"}
             </div>
             <div className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-              Temporarily defaults the normal AoE2WAR page shell to Black
-              while preserving everyone&apos;s long-term preference underneath.
-              Personal opt-outs are preserved. Academy, Kingdom Statistics,
-              Traffic, and Speed keep their own page identities.
+              {isNovember
+                ? "November defaults the normal site shell to Ember Crimson; every player's long-term theme and explicit opt-outs remain intact."
+                : "Monthly campaigns set a temporary site appearance without overwriting players' saved themes or previously recorded opt-outs."}
+              {" "}Academy, Statistics, Traffic and Speed keep their own page identities.
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {!isNovember ? (
+              <button
+                type="button"
+                disabled={!campaign || saving}
+                onClick={() => void activateNovember()}
+                className="inline-flex h-10 items-center rounded-xl border border-rose-300/30 bg-rose-500/15 px-3 text-[11px] font-bold text-rose-100 transition hover:bg-rose-500/25 disabled:opacity-50"
+              >
+                Activate November Red
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void load()}
@@ -163,8 +197,8 @@ export default function SiteThemeCampaignPanel() {
               {saving
                 ? "Saving"
                 : campaign?.enabled
-                  ? "October Black ON"
-                  : "October Black OFF"}
+                  ? (isNovember ? "November Red ON" : "October Black ON")
+                  : (isNovember ? "November Red OFF" : "October Black OFF")}
             </button>
           </div>
         </div>
@@ -200,23 +234,23 @@ export default function SiteThemeCampaignPanel() {
       ) : null}
 
       <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
-        <Metric label="Registered" value={stats?.totalUsers ?? 0} />
+        <Metric label="Registered" value={stats?.totalUsers ?? null} />
         <Metric
-          label="Effective Black"
-          value={stats?.effectiveCampaignThemeCount ?? 0}
+          label={isNovember ? "Effective Crimson" : "Effective Black"}
+          value={stats?.effectiveCampaignThemeCount ?? null}
           accent
         />
         <Metric
           label="Campaign Default"
-          value={stats?.campaignDefaultCount ?? 0}
+          value={stats?.campaignDefaultCount ?? null}
         />
         <Metric
-          label="Blue Opt-outs"
-          value={stats?.explicitMidnightOverrideCount ?? 0}
+          label="Blue Overrides"
+          value={stats?.explicitMidnightOverrideCount ?? null}
         />
         <Metric
           label="All Explicit Overrides"
-          value={stats?.explicitOverrideCount ?? 0}
+          value={stats?.explicitOverrideCount ?? null}
         />
       </div>
 
@@ -241,6 +275,11 @@ export default function SiteThemeCampaignPanel() {
               </div>
             ))}
           </div>
+          {stats === null && data ? (
+            <div className="mt-3 text-xs text-slate-500">
+              Detailed player theme counts require a separately reviewed reporting reader.
+            </div>
+          ) : null}
           {campaign?.excludedPaths?.length ? (
             <div className="mt-4 text-xs leading-5 text-slate-500">
               Excluded self-themed routes: {campaign.excludedPaths.join(", ")}
@@ -253,7 +292,11 @@ export default function SiteThemeCampaignPanel() {
             Campaign Opt-outs
           </div>
           <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
-            {data?.overrides?.length ? (
+            {stats === null ? (
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-4 text-sm text-slate-500">
+                Player opt-out details are unavailable to the restricted production reader.
+              </div>
+            ) : data?.overrides?.length ? (
               data.overrides.map((row) => (
                 <div
                   key={row.userId}
@@ -279,7 +322,7 @@ export default function SiteThemeCampaignPanel() {
               ))
             ) : (
               <div className="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-4 text-sm text-slate-500">
-                Nobody has overridden the October theme.
+                Nobody has overridden the active campaign.
               </div>
             )}
           </div>
@@ -295,7 +338,7 @@ function Metric({
   accent = false,
 }: {
   label: string;
-  value: number;
+  value: number | null;
   accent?: boolean;
 }) {
   return (
@@ -311,7 +354,7 @@ function Metric({
         {label}
       </div>
       <div className={`mt-2 text-3xl font-semibold ${accent ? "text-emerald-100" : "text-white"}`}>
-        {value}
+        {value ?? "—"}
       </div>
     </div>
   );

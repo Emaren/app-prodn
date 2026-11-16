@@ -26,6 +26,53 @@ class BoundaryTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(policy.authorize_source(value), value)
 
+    def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
+        name = policy.EXACT_REVIEWED_B_EMBER_GUARD
+        source = GUARD.parent / "r25_b_guard_production_v1.cjs"
+        import hashlib
+        self.assertEqual(policy.EXACT_REVIEWED_B_EMBER_BRANCH,
+                         "session-b/ember-november-polish-20261116")
+        self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_REVIEWED_B_EMBER_BRANCH))
+        self.assertIsNone(policy.BRANCH.fullmatch("session-b/another-os-release"))
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
+                         policy.EXACT_REVIEWED_B_EMBER_SHA256)
+        self.denied_source(name)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            p = root / name
+            blob = source.read_bytes()
+            p.write_bytes(blob)
+            self.assertEqual(policy.authorize_changed_source(
+                root, policy.EXACT_REVIEWED_B_EMBER_BASE, name), name)
+            with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
+                policy.authorize_changed_source(root, "a"*40, name)
+            with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):
+                policy.authorize_changed_source(root,
+                    policy.EXACT_REVIEWED_B_EMBER_BASE, "scripts/other_guard.cjs")
+            p.write_bytes(blob + b"\n//malicious modification\n")
+            with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_EMBER_BASE, name)
+            p.write_bytes(blob)
+            hardlink = root / "otherlink"
+            os.link(p, hardlink)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_EMBER_BASE, name)
+            hardlink.unlink()
+            p.unlink()
+            p.symlink_to(source)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_EMBER_BASE, name)
+            p.unlink()
+            (root / "scripts").rmdir()
+            (root / "scripts").symlink_to(source.parent, target_is_directory=True)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK_ANCESTOR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_B_EMBER_BASE, name)
+
     def test_exact_reviewed_audit_script_is_sha_and_base_pinned(self):
         source = GUARD.parent / "kingdom_index_source_audit.mjs"
         self.assertEqual(

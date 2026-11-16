@@ -129,48 +129,24 @@ export async function loadSiteThemeCampaignViewerState(
     return { campaign, overrideThemeKey: null };
   }
 
-  const override = await prisma.userThemeCampaignOverride.findUnique({
-    where: {
-      campaignKey_userId: {
-        campaignKey: campaign.campaignKey,
-        userId,
-      },
-    },
-    select: { themeKey: true },
-  });
-
+  // Production C03 grants SELECT on the approved presentation columns,
+  // not blanket SELECT on the table. Prisma's compound findUnique plan
+  // requests more columns than this account can see and fails 42501.
+  // This exact parameterized projection is least privilege: no joins,
+  // no hidden columns, no SQL writes, and no cross-user overrides.
+  const overrides = await prisma.$queryRaw<Array<{ theme_key: string }>>`
+    SELECT theme_key
+    FROM public.user_theme_campaign_overrides
+    WHERE campaign_key = ${campaign.campaignKey} AND user_id = ${userId}
+    LIMIT 1
+  `;
+  const override = overrides[0] ?? null;
   return {
     campaign,
     overrideThemeKey: override
-      ? normalizeCampaignThemeKey(override.themeKey)
+      ? normalizeCampaignThemeKey(override.theme_key)
       : null,
   };
-}
-
-export async function saveSiteThemeCampaignOverride(
-  prisma: PrismaClient,
-  input: {
-    userId: number;
-    campaignKey: string;
-    themeKey: LobbyThemeKey;
-  },
-) {
-  return prisma.userThemeCampaignOverride.upsert({
-    where: {
-      campaignKey_userId: {
-        campaignKey: input.campaignKey,
-        userId: input.userId,
-      },
-    },
-    create: {
-      campaignKey: input.campaignKey,
-      userId: input.userId,
-      themeKey: input.themeKey,
-    },
-    update: {
-      themeKey: input.themeKey,
-    },
-  });
 }
 
 export async function loadSiteThemeCampaignAdminState(

@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "observed-project-activity-website-only-no-canonical-certification"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -49,3 +49,11 @@ Five targeted Traffic-related Node contract files passed 35/35 cases, including 
 The current deployed website e0586a7b... must be preserved with Steam safe re-admission and rollback if a new runtime replaces its PID. A confirmed Scribe and admin login is an acceptance requirement, not permission to reassign accounts. Chain C01–C09 remain solely under Session A.
 
 Canonical tracking: https://github.com/Emaren/traffic-api/issues/31 and https://github.com/Emaren/app-prodn/issues/1108.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `app/traffic/page.tsx` Git blob `f24bb376573b3f98de031d85ae1cbb025e51ce90`; `lib/publicTraffic.ts` Git blob `1b8be987b16abdbc39f8357b9a761d1f2e664dea`.
+
+The current Traffic page/chart and completed-day source do not authorize restoring an obsolete experimental observation chart. Provisional observations and project daily rollups cannot replace the 131 canonical certified days; newer incomplete days remain explicitly unverified.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

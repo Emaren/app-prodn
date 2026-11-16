@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["operators", "developers", "ai-agents"]
 source_of_truth: "git"
 authority: "source-review-only"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -43,3 +43,11 @@ This is SOURCE ONLY until exact-head CI, independent review, physical stage mani
 ## Auditable source
 
 The three new scripts are scripts/release/r25_verified_ci_artifact_stage_v8.py, scripts/release/r25_steam_refresh_traffic_v8.py and scripts/release/r25_traffic_single_runtime_release_v8.py. The adversarial tests are tests/test_r25_verified_ci_artifact_stage_v8.py and tests/test_r25_steam_traffic_v8.py.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `scripts/release/r25_verified_ci_artifact_stage_v8.py` Git blob `0d45989e56f3c42e44974e63f95891dee87896f0`; `scripts/release/r25_steam_refresh_traffic_v8.py` Git blob `6c253198abb6cb6039f76140c5257a5b3edd83e9`.
+
+Historic V8 source-pinned staging and Steam/Traffic scripts remain. Their runtime hashes and tests must not be substituted for the current V27 protected site or a new exact-source Factory permit. Original V8 rollback and inverse evidence remain historic.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

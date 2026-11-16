@@ -49,6 +49,7 @@ import {
   admitFeaturedMediaByHead,
 } from "@/lib/featuredWarriorDecodeFallback";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import { featuredWarriorVisibleHonors, verifiedFeaturedHonorsFallback } from "@/lib/featuredWarriorPresentation";
 
 const LobbyChat = dynamic(
   () => import("@/components/lobby/LobbyChat").then((module) => module.LobbyChat),
@@ -549,11 +550,10 @@ function buildFeaturedWarriorPool(
       ),
     };
 
-    nextWarrior.honors =
-      featuredWarriorHonorTitles(
-        nextWarrior,
-        honors
-      );
+    const authoritativeHonors = featuredWarriorHonorTitles(nextWarrior, honors);
+    nextWarrior.honors = authoritativeHonors.length
+      ? authoritativeHonors
+      : verifiedFeaturedHonorsFallback(nextWarrior.uid, nextWarrior.name);
 
     warriors.push(nextWarrior);
   };
@@ -1431,8 +1431,8 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
     warrior.honors ?? [];
 
   if (honorTitles.length > 0) {
-    const visibleHonors =
-      honorTitles.slice(0, 4);
+    const { visible: visibleHonors, remaining: remainingHonors } =
+      featuredWarriorVisibleHonors(honorTitles);
 
     return (
       <div className="mt-0.5 space-y-0.5 text-[9px] font-bold uppercase leading-[1.08] tracking-[0.15em] text-amber-100 [text-shadow:0_0_16px_rgba(251,191,36,0.30)]">
@@ -1441,9 +1441,9 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
             {h(title)}
           </div>
         ))}
-        {honorTitles.length > visibleHonors.length ? (
+        {remainingHonors > 0 ? (
           <div>
-            +{honorTitles.length - visibleHonors.length} titles
+            +{remainingHonors} titles
           </div>
         ) : null}
       </div>

@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-ui-truth-no-custody-or-payment-finality"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -72,3 +72,11 @@ liability/payment finality. Financial C01–C09 stay HARD HOLD.
 
 **Current state:** source-only nonfinancial repair, no public deployment
 and no WOLO transfer authority.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/playerProfile.ts` Git blob `b41ed6b30b274ffcd5deca02ce04226fd13e6aef`; `lib/publicPlayerDirectory.ts` Git blob `725896cc7b1b1264a9a7ee762049a007fdd14e31`.
+
+The profile/directory retained source distinguishes displayed pending gift aggregates from actual paid WOLO. B validates nonfinancial display semantics only. C01 custody, C03 writer privilege, C05 reserves, payout hashes and all funded settlement claims remain the separate WE1-authority review.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

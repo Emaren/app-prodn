@@ -82,6 +82,13 @@ EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE = {
 EXACT_REVIEWED_B_BROWSER_SCRIPT = "scripts/aoe2_r25_g_browser_acceptance.py"
 EXACT_REVIEWED_B_BROWSER_BASE = "f436d6f3c1a04308e33b17db4a69c25a2d925fcf"
 EXACT_REVIEWED_B_BROWSER_SHA256 = "0a5c7e1ae073da09e1d20c11aa3467c99dac701ebe39af43ca9673a58cd2cd11"
+# One owner-attended B/OS admission for the *exact reviewed* 2026-11-16
+# appearance transport guard. Neither the B branch nor scripts are wildcarded.
+# A new base/guard byte requires a separately reviewed new policy change.
+EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-november-polish-20261116"
+EXACT_REVIEWED_B_EMBER_BASE = "d36e9f98e44b0a4de438c5cc623706873c333ca5"
+EXACT_REVIEWED_B_EMBER_GUARD = "scripts/r25_b_guard_production_v1.cjs"
+EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ecd91985355e181f6f1"
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -99,7 +106,7 @@ ALLOWED_TASK_ARGV = (
      "-p", "test_product_boundary_guard.py", "-v"),
 )
 SHA = re.compile(r"^[a-f0-9]{40}$")
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -141,6 +148,28 @@ def authorize_source(raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == EXACT_REVIEWED_B_EMBER_GUARD:
+        if base != EXACT_REVIEWED_B_EMBER_BASE:
+            raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
+        path = checkout / "scripts" / "r25_b_guard_production_v1.cjs"
+        if (checkout / "scripts").is_symlink():
+            raise BoundaryHold("B_EMBER_GUARD_SYMLINK_ANCESTOR")
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+                or st.st_uid != os.geteuid() or
+                not 1 <= st.st_size <= 25000 or stat.S_IMODE(st.st_mode) & 0o022):
+            raise BoundaryHold("B_EMBER_GUARD_SINGLE_REGULAR_FILE")
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            live = os.fstat(fd)
+            if (live.st_dev, live.st_ino, live.st_size) != (st.st_dev, st.st_ino, st.st_size):
+                raise BoundaryHold("B_EMBER_GUARD_INODE_CHANGED")
+            blob = os.read(fd, 25001)
+        finally:
+            os.close(fd)
+        if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_B_EMBER_SHA256:
+            raise BoundaryHold("B_EMBER_GUARD_EXACT_SHA_MISMATCH")
+        return raw
     if raw == EXACT_REVIEWED_DYNAMIC_ROUTE:
         if base != EXACT_REVIEWED_DYNAMIC_BASE:
             raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_WRONG_BASE")

@@ -119,11 +119,13 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
   {
     key: "crimson",
     label: "Crimson",
-    swatch: "linear-gradient(135deg,#a10f2b,#2b0a12)",
+    // November's Ember Reign: dark oxblood framing, restrained crimson and
+    // candlelit highlights. The existing campaign/appearance key stays stable.
+    swatch: "linear-gradient(135deg,#ad2445,#220612 65%,#070409)",
     pageBackground:
-      "linear-gradient(180deg, rgba(90,21,39,0.95), rgba(60,14,31,0.95) 36%, rgba(19,7,13,0.99) 100%)",
+      "radial-gradient(ellipse 74% 55% at 16% 4%,rgba(185,28,52,0.36),transparent 67%),radial-gradient(ellipse 62% 46% at 94% 28%,rgba(136,19,55,0.28),transparent 66%),radial-gradient(ellipse 75% 45% at 48% 100%,rgba(95,16,31,0.25),transparent 76%),linear-gradient(180deg,#380a18 0%,#210914 34%,#0f0610 74%,#06050a 100%)",
     heroBackground:
-      "radial-gradient(circle at top left, rgba(239, 68, 68, 0.18), transparent 30%), linear-gradient(135deg, #1a0810, #3f1020 52%, #12060c)",
+      "radial-gradient(ellipse 72% 58% at 7% 0%,rgba(231,58,71,0.21),transparent 70%),radial-gradient(ellipse 54% 70% at 96% 100%,rgba(131,19,39,0.19),transparent 75%),linear-gradient(145deg,#260816,#160710 48%,#09060f)",
   },
   {
     key: "midnight",

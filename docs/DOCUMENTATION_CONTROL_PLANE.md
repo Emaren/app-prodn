@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2/integration-product-we3-20261115` at `37076a9a27972949dedeec2c07ddd4213fb5440d`
+Implementation baseline: `session-b/ember-november-polish-20261116` at `0e9fa1acd86194683b840672753ac35f3e723fad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **148**
+- Authoritative repository documents: **149**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 80
+- `reference`: 81
 - `runbook`: 49
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 90
-- `draft`: 42
+- `draft`: 43
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -59,6 +59,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
 | [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
+| [Ember Reign — Isolated Appearance Writer Source Review](../design/ember-appearance-writer/README.md) | `reference` | `draft` | `nonfinancial-product-source-only-not-a-live-permit` |
 | [The Umbrella Tree — Source and Visual Evidence Design](../design/umbrella-tree/README.md) | `reference` | `draft` | `nonfinancial-product-visual-design-not-runtime` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |

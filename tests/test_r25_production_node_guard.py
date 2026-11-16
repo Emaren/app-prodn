@@ -20,7 +20,7 @@ function setup(changes={}) {
  class Server {emit(){return 'passed';} listen(){return 'listening';}}
  class Socket {connect(){return 'connected';}}
  class TLSSocket extends Socket {}
- const http={Server,request(){return{end(){}}},globalAgent:{}};
+ const http={Server,request(){return{end(){},once(){return this;}}},globalAgent:{}};
  const https={request(){return{end(){}}},globalAgent:{},createServer(){}};
  const tls={TLSSocket,connect(){return 'tls';},checkServerIdentity(){}};
  const net={Socket};const dns={promises:{}};
@@ -61,6 +61,69 @@ assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/bets'},re
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'DELETE',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/user/ping'},response),'passed');
+
+// Ember cosmetic writer is the ONLY new HTTP POST authority.
+for (const url of ['/api/admin/site-theme-campaign','/api/user/theme-campaign-override']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+   headers:{'content-type':'application/json'}},response),'passed');
+ for (const bad of [
+  {method:'POST',url,headers:{'content-type':'text/plain'}},
+  {method:'PUT',url,headers:{'content-type':'application/json'}},
+  {method:'DELETE',url,headers:{'content-type':'application/json'}}
+ ]) {
+  assert.equal(new http.Server().emit('request',bad,response),true);
+  assert.equal(status,405);
+ }
+}
+for (const url of ['/api/admin/site-theme-campaign/extra','/api/bets','/api/wolo/transfer',
+ '/api/admin/ai-agents','/api/user/theme-campaign-override/extra']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+  headers:{'content-type':'application/json'}},response),true);
+ assert.equal(status,405);
+}
+const socket='/run/aoe2war-appearance-writer/appearance.sock';
+const valid={
+ socketPath:socket,path:'/v1/admin',method:'POST',timeout:2300,
+ headers:{'Content-Type':'application/json','Content-Length':23,
+  'x-appearance-signed-session':'S'.repeat(64),'Connection':'close'}
+};
+assert.equal(typeof http.request(valid).end,'function');
+assert.equal(typeof http.request({...valid,path:'/v1/personal'}).end,'function');
+assert.equal(new net.Socket().connect({path:socket}),'connected');
+// Regression: genuine Node v22 http.request(socketPath) invokes net.connect
+// with an Array-wrapped object containing localhost:80 internal defaults.
+const node22Internal={
+ ...valid, path:socket, host:'localhost', port:80,
+ keepAlive:true, scheduling:'lifo', noDelay:true,
+};
+assert.equal(scope.approvedAppearanceHeaders(node22Internal.headers),true);
+assert.equal(new net.Socket().connect([node22Internal,()=>{}]),'connected');
+for (const changes of [
+ {path:'/tmp/evil'}, {socketPath:'/tmp/evil'}, {method:'GET'},
+ {host:'evil.example'}, {port:8092}, {timeout:0},
+ {headers:{...valid.headers,'x-extra':'forbidden'}},
+ {headers:{...valid.headers,'x-appearance-signed-session':''}},
+]) assert.throws(()=>new net.Socket().connect([{...node22Internal,...changes},()=>{}]),/NODE_EGRESS_DENIED/);
+for (const changes of [
+ {path:'/api/bets'}, {path:'/v1/admin?xx=1'}, {socketPath:'/tmp/appearance.sock'},
+ {method:'GET'}, {timeout:90000}, {host:'127.0.0.1'}, {port:5432},
+ {agent:{}}, {auth:'user:pass'},
+ {headers:{...valid.headers,'x-extra':'anything'}},
+ {headers:{...valid.headers,'Content-Length':8192}},
+ {headers:{...valid.headers,'x-appearance-signed-session':''}},
+ {headers:{...valid.headers,'Content-Type':'text/plain'}}
+]) {
+ assert.throws(()=>http.request({...valid,...changes}),/AOE2WAR_PRODUCTION_HOLD/);
+}
+for (const candidate of [
+ {path:'/run/postgresql/.s.PGSQL.5432'}, {path:'/tmp/other'},
+ {path:socket,port:5432},{path:socket,host:'localhost'},
+ {host:'127.0.0.1',port:8092}
+]) assert.throws(()=>new net.Socket().connect(candidate),/NODE_EGRESS_DENIED/);
+assert.throws(()=>https.request(valid),/CUSTOM_NETWORK_AGENT_DENIED/);
+assert.throws(()=>http.request({hostname:'127.0.0.1',port:8092,
+ path:'/api/bets',method:'POST'}),/ONLY_READONLY_BACKEND_HTTP/);
+
 assert.throws(()=>setup({AOE2WAR_R25_ISOLATED_WEB:undefined}),/ENV_AOE2WAR_R25_ISOLATED_WEB/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:undefined}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:'/mnt/private'}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
