@@ -20,7 +20,7 @@ function setup(changes={}) {
  class Server {emit(){return 'passed';} listen(){return 'listening';}}
  class Socket {connect(){return 'connected';}}
  class TLSSocket extends Socket {}
- const http={Server,request(){return{end(){}}},globalAgent:{}};
+ const http={Server,request(){return{end(){},once(){return this;}}},globalAgent:{}};
  const https={request(){return{end(){}}},globalAgent:{},createServer(){}};
  const tls={TLSSocket,connect(){return 'tls';},checkServerIdentity(){}};
  const net={Socket};const dns={promises:{}};
@@ -90,6 +90,20 @@ const valid={
 assert.equal(typeof http.request(valid).end,'function');
 assert.equal(typeof http.request({...valid,path:'/v1/personal'}).end,'function');
 assert.equal(new net.Socket().connect({path:socket}),'connected');
+// Regression: genuine Node v22 http.request(socketPath) invokes net.connect
+// with an Array-wrapped object containing localhost:80 internal defaults.
+const node22Internal={
+ ...valid, path:socket, host:'localhost', port:80,
+ keepAlive:true, scheduling:'lifo', noDelay:true,
+};
+assert.equal(scope.approvedAppearanceHeaders(node22Internal.headers),true);
+assert.equal(new net.Socket().connect([node22Internal,()=>{}]),'connected');
+for (const changes of [
+ {path:'/tmp/evil'}, {socketPath:'/tmp/evil'}, {method:'GET'},
+ {host:'evil.example'}, {port:8092}, {timeout:0},
+ {headers:{...valid.headers,'x-extra':'forbidden'}},
+ {headers:{...valid.headers,'x-appearance-signed-session':''}},
+]) assert.throws(()=>new net.Socket().connect([{...node22Internal,...changes},()=>{}]),/NODE_EGRESS_DENIED/);
 for (const changes of [
  {path:'/api/bets'}, {path:'/v1/admin?xx=1'}, {socketPath:'/tmp/appearance.sock'},
  {method:'GET'}, {timeout:90000}, {host:'127.0.0.1'}, {port:5432},
