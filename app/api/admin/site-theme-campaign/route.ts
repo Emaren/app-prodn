@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isLobbyThemeKey } from "@/components/lobby/lobbyPresentation";
 import { requireAdmin } from "@/lib/adminSession";
+import { NOVEMBER_2026_CAMPAIGN, isApprovedNovemberCampaignTransition } from "@/lib/novemberThemeCampaign";
 import {
   loadSiteThemeCampaignAdminState,
   SITE_THEME_CAMPAIGN_SLOT,
@@ -44,11 +45,43 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as {
     enabled?: boolean;
+    campaignKey?: string;
     label?: string;
     themeKey?: string;
     startsAt?: string;
     endsAt?: string;
   };
+
+  const isCampaignSwitch = body.campaignKey !== undefined;
+  if (
+    isCampaignSwitch &&
+    !isApprovedNovemberCampaignTransition(current.campaignKey, body.campaignKey)
+  ) {
+    return NextResponse.json(
+      { detail: "Unsupported campaign transition." },
+      { status: 400, headers: NO_STORE_HEADERS },
+    );
+  }
+
+  // A new month's campaign must use its own key: October opt-outs are not
+  // silently inherited. The reviewed activation has a fixed start/end/theme.
+  const November = NOVEMBER_2026_CAMPAIGN;
+  if (isCampaignSwitch) {
+    await gate.prisma.siteThemeCampaign.update({
+      where: { slot: SITE_THEME_CAMPAIGN_SLOT },
+      data: {
+        campaignKey: November.campaignKey,
+        label: November.label,
+        themeKey: November.themeKey,
+        enabled: November.enabled,
+        startsAt: new Date(November.startsAt),
+        endsAt: new Date(November.endsAt),
+        updatedByUserId: gate.user.id,
+      },
+    });
+    const state = await loadSiteThemeCampaignAdminState(gate.prisma);
+    return NextResponse.json(state, { headers: NO_STORE_HEADERS });
+  }
 
   const themeKey =
     typeof body.themeKey === "string" && isLobbyThemeKey(body.themeKey)

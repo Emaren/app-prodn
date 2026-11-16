@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "presentation-policy"
-reviewed_at: "2026-11-01"
+reviewed_at: "2026-11-15"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -148,3 +148,45 @@ This is a source/document review. No current production campaign configuration,
 migration application, browser behavior, financial state, or deployed release
 was certified by it. The date-window statements above describe the seeded
 October contract; the bounded admin control may change its window explicitly.
+
+## November Ember Reign — source-qualified 2026-11-15, activation separately gated
+
+November's approved presentation input is the existing \`crimson\` Lobby theme
+key, with a richer oxblood radial-gradient composition; this is NOT a new
+Prisma theme enum or a replacement for saved user appearance preferences.
+
+The existing site campaign singleton advances through the admin-only,
+explicit \`Activate November Red\` control using immutable reviewed inputs:
+
+- \`campaignKey=november-crimson-2026\`, label \`November Ember Reign 2026\`;
+- \`themeKey=crimson\`;
+- \`startsAt=2026-11-01T06:00:00.000Z\` and
+  \`endsAt=2026-12-01T07:00:00.000Z\` (Edmonton local midnight boundaries);
+- \`enabled=true\`, with the original site route exclusions unchanged.
+
+The separate new key prevents October campaign opt-outs from being silently
+inherited by November. The original October override rows remain preserved.
+Only the genuine authenticated administrator can execute the bounded month
+transition. **Deploying app source alone does not change the live singleton
+database row or certify campaign activation.** The WE2 release owner must
+perform a separate authenticated admin action after signed Factory release
+acceptance, then prove real anonymous/default and logged-in opt-out behavior.
+
+On the homepage (\`/\`) only, normal unmodified primary-click on the AOE2WAR
+logo cycles \`crimson → midnight → black → crimson\`; all off-homepage logo links
+retain \`/\` navigation, and all modified clicks retain browser behavior.
+Explicit theme changes use the existing user/profile appearance and campaign
+override rail. The theme crossfade uses View Transitions when supported and
+honors reduced-motion settings.
+
+The homepage also repairs the continuous two-copy ticker seam, keeps the
+autoplay-safe hero carousel while allowing user intent to overtake a pending
+image decode, frames the exceptionally short Zodiac source avatar with an
+individual desktop zoom-out, and gives only the historical Watcher Chronicle
+teaser a smaller action-oriented heading. Canonical forum content, other
+leaderboard avatars, financial services, Steam guards and Traffic ingestion
+are not changed.
+
+This section documents source intent and tests; actual user-facing appearance,
+animation preference, release artifact identity and November activation must
+receive independent Chrome/Factory evidence before declaring production PASS.

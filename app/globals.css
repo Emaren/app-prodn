@@ -3030,3 +3030,24 @@ body:has(.leaderboard-modern-shell[data-leaderboard-view="extreme"] [data-leader
 }
 
 /* AOE2WAR ORACLE PREMIUM CONTROLS END */
+
+
+/* Home-logo campaign cycling: a single premium crossfade, never a hard flash. */
+@keyframes aoe2war-home-old-frame {
+  to { opacity: 0; }
+}
+@keyframes aoe2war-home-new-frame {
+  from { opacity: 0; }
+}
+html.aoe2war-home-theme-morph::view-transition-old(root) {
+  animation: 360ms cubic-bezier(0.45, 0, 0.8, 0.35) both aoe2war-home-old-frame;
+}
+html.aoe2war-home-theme-morph::view-transition-new(root) {
+  animation: 420ms cubic-bezier(0.2, 0.7, 0.15, 1) both aoe2war-home-new-frame;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.aoe2war-home-theme-morph::view-transition-old(root),
+  html.aoe2war-home-theme-morph::view-transition-new(root) {
+    animation: none;
+  }
+}

@@ -10,6 +10,7 @@ import {
   type HeroPlaylistItemView,
 } from "@/lib/hero/types";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import { homeChronicleHeadline, isWatcherExplainerStory } from "@/lib/hero/watcherStory";
 
 function mediaUrl(item: HeroPlaylistItemView, mobile = false) {
   const config = item.screen.config;
@@ -110,6 +111,10 @@ function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
   const thread = item.screen.forumThread;
   if (!thread) return null;
   const config = item.screen.config;
+  // The watcher explainer deserves a utility CTA, not a gigantic front-page
+  // headline. Its underlying forum article and canonical title remain intact.
+  const isWatcherExplainer = isWatcherExplainerStory(thread.title);
+  const displayTitle = homeChronicleHeadline(thread.title);
   return (
     <ScreenLink
       item={item}
@@ -158,8 +163,13 @@ function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
               />
             </span>
           </div>
-          <h2 className="mt-6 max-w-[72rem] font-serif text-[clamp(3.25rem,7.8vw,8.5rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-amber-50 drop-shadow-[0_18px_60px_rgba(0,0,0,0.48)] transition duration-700 group-hover:translate-x-1">
-            {thread.title}
+          <h2
+            className={isWatcherExplainer
+              ? "mt-6 max-w-[72rem] font-serif text-[clamp(1.9rem,3.1vw,3.3rem)] font-semibold leading-[1.07] tracking-[-0.02em] text-amber-50 drop-shadow-[0_18px_60px_rgba(0,0,0,0.48)] transition duration-700 group-hover:translate-x-1"
+              : "mt-6 max-w-[72rem] font-serif text-[clamp(3.25rem,7.8vw,8.5rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-amber-50 drop-shadow-[0_18px_60px_rgba(0,0,0,0.48)] transition duration-700 group-hover:translate-x-1"
+            }
+          >
+            {displayTitle}
           </h2>
           <div className="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
             <p className="max-w-4xl text-base leading-7 text-slate-200 sm:text-xl sm:leading-9">

@@ -614,7 +614,12 @@ export function LobbyHero({
                 loading="lazy"
                 fetchPriority="low"
                 sizes="(min-width: 1536px) 360px, (min-width: 1280px) 300px, 90vw"
-                className="object-contain object-top opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
+                // Zodiac's short source image needs an individual contain crop.
+                // Other featured leaderboard warriors retain their exact styling.
+                className={featuredName.trim().toLowerCase() === "zodiac"
+                  ? "object-contain object-center opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:scale-[0.87]"
+                  : "object-contain object-top opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
+                }
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_18%,rgba(2,6,23,0.22)_56%,rgba(2,6,23,0.96)_100%)]" />
               <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/12 bg-black/42 p-4 backdrop-blur xl:inset-x-5">
