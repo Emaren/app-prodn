@@ -17,6 +17,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { isAdminRadioListenerReadHold } from "@/lib/radioWoloRestrictedReadHold";
 
 type Payload = {
   generatedAt: string;
@@ -176,6 +177,10 @@ export function RadioWoloListenerSignals() {
   ] =
     useState(false);
 
+  // A missing approved production reader is a durable HOLD, not a 15-second
+  // network fault. Manual Refresh remains available to recheck admission.
+  const [readerHold, setReaderHold] = useState(false);
+
   const [
     expandedListener,
     setExpandedListener,
@@ -203,6 +208,18 @@ export function RadioWoloListenerSignals() {
               },
             );
 
+          if (response.status === 503) {
+            const hold = await response.json().catch(() => null);
+            if (isAdminRadioListenerReadHold(hold)) {
+              setData(null);
+              setReaderHold(true);
+              setError(
+                "Radio listener statistics await the reviewed nonfinancial reader; live totals are unavailable.",
+              );
+              return;
+            }
+          }
+
           if (!response.ok) {
             throw new Error(
               `Radio listener analytics returned ${response.status}.`,
@@ -214,6 +231,7 @@ export function RadioWoloListenerSignals() {
               Payload,
           );
 
+          setReaderHold(false);
           setError(null);
         } catch (
           caught
@@ -233,22 +251,14 @@ export function RadioWoloListenerSignals() {
     );
 
   useEffect(() => {
+    // Stop automatic retries on a proven, nontransient authority HOLD.
+    // The owner can still use the explicit Refresh button.
+    if (readerHold) return;
+
     void refresh();
-
-    const timer =
-      window.setInterval(
-        () => {
-          void refresh();
-        },
-        15_000,
-      );
-
-    return () => {
-      window.clearInterval(
-        timer,
-      );
-    };
-  }, [refresh]);
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    return () => window.clearInterval(timer);
+  }, [readerHold, refresh]);
 
   return (
     <section className="rounded-[1.5rem] border border-amber-200/12 bg-[radial-gradient(circle_at_10%_0%,rgba(245,158,11,0.10),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.92),rgba(7,20,40,0.76))] p-5">

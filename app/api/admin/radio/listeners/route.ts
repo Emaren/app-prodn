@@ -13,6 +13,8 @@ import {
 import {
   isLiveProductionReadOnlyPreview,
 } from "@/lib/previewDataSource";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { adminRadioListenerReadHoldPayload } from "@/lib/radioWoloRestrictedReadHold";
 
 export const runtime =
   "nodejs";
@@ -30,6 +32,23 @@ export async function GET(
 
   if ("error" in gate) {
     return gate.error;
+  }
+
+  // Preserve signed admin eligibility, but never use the legacy Prisma
+  // listener/Traffic reader under the restricted C03 production account.
+  // Empty analytics would falsely report zero listeners. The independent
+  // admin-only nonfinancial projection is not admitted yet.
+  if (isNonfinancialPublicReadProfile()) {
+    return NextResponse.json(
+      adminRadioListenerReadHoldPayload(),
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          Vary: "Cookie",
+        },
+      },
+    );
   }
 
   if (
