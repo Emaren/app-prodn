@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "69e1134370703a2aedfae355781c06cb16d2b80608799f43d9859b431c40c8f4",
+      "sha256": "fd5329c20bbab52bc47249cbbae7df78a32fe2ef8ff6da275109df1f135fa9d3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3393,8 +3393,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/ember-appearance-guard-20261116",
-    "commit": "2f8c4432d386ad69f03340e9187faf5537710796"
+    "branch": "session-b/ember-guard-node22-permanent-20261116",
+    "commit": "baeb602e5fd253420631e301ecdf4ecd88b004e8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
