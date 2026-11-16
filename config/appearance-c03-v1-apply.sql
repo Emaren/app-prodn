@@ -96,10 +96,10 @@ CREATE ROLE aoe2war_appearance_writer
 -- activity SELECT expansion to the website runtime.
 GRANT SELECT (
   slot,campaign_key,label,enabled,theme_key,starts_at,ends_at,
-  updated_by_user_id,created_at,updated_at
+  updated_by_user_id,updated_at
 ) ON TABLE public.site_theme_campaign TO aoe2war_web_prod;
 GRANT SELECT (
-  id,campaign_key,user_id,theme_key,created_at,updated_at
+  campaign_key,user_id,theme_key,updated_at
 ) ON TABLE public.user_theme_campaign_overrides TO aoe2war_web_prod;
 GRANT SELECT (user_id,theme_key)
   ON TABLE public.user_appearance_preferences TO aoe2war_web_prod;
@@ -112,21 +112,21 @@ GRANT SELECT (id,uid,is_admin)
   ON TABLE public.users TO aoe2war_appearance_writer;
 GRANT SELECT (
   slot,campaign_key,label,enabled,theme_key,starts_at,ends_at,
-  updated_by_user_id,created_at,updated_at
+  updated_by_user_id,updated_at
 ) ON TABLE public.site_theme_campaign TO aoe2war_appearance_writer;
 GRANT UPDATE (
   campaign_key,label,enabled,theme_key,starts_at,ends_at,
   updated_by_user_id,updated_at
 ) ON TABLE public.site_theme_campaign TO aoe2war_appearance_writer;
 GRANT SELECT (
-  id,campaign_key,user_id,theme_key,created_at,updated_at
+  campaign_key,user_id,theme_key,updated_at
 ) ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
 GRANT INSERT (campaign_key,user_id,theme_key,created_at,updated_at)
   ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
 GRANT UPDATE (theme_key,updated_at)
   ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
-GRANT SELECT (id,user_id,type,path,label,created_at)
-  ON TABLE public.user_activity_events TO aoe2war_appearance_writer;
+-- The WE3 transaction inserts mandatory audit rows but never reads the
+-- activity ledger. No writer activity SELECT grant is required.
 GRANT INSERT (user_id,type,path,label,metadata,created_at)
   ON TABLE public.user_activity_events TO aoe2war_appearance_writer;
 GRANT USAGE ON SEQUENCE public.user_theme_campaign_overrides_id_seq
