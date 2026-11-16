@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-public-read-projection-no-financial-permit"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -33,3 +33,11 @@ The restricted page expressly marks advanced verdicts, War Engine case history, 
 
 ## Status
 **SOURCE-ONLY HOLD**. PR #1240 is not a live deployment. The existing e058 website is preserved.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/restrictedPublicReplay.ts` Git blob `57fdab96349e3b6fbcbc5855ce2f06d90a69cd9e`; `components/game-stats/RestrictedPublicReplayDetail.tsx` Git blob `087dc4bed39d4bd7c9faf9fd72351f66937ac1bf`.
+
+The restricted public replay projection and renderer are retained source. Former SOURCE-ONLY HOLD and e058 public deployment references reflect November 8, not the later accepted e31e source. This scalar read model confers no private parser evidence, betting or settlement permission.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

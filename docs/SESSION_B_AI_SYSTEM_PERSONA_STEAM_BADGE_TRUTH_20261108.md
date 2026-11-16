@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "system-persona-identity-and-authenticated-human-badges"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -24,3 +24,11 @@ The source fix uses lib/internalSystemAccounts.ts exact UID classification in bo
 The separate owner-desired human test operator pairing remains HOLD in App issue #1245. That must be server-verified from the second Steam-authenticated session and independently authorized, preserving both UIDs, permissions and explicit attribution.
 
 Source regression: 37 targeted UI/Traffic tests PASS. Source change requires fresh exact-head CI and a new Steam-safe website admission before public acceptance.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/internalSystemAccounts.ts` Git blob `19a25ce90640ccc51fc0b7f0dda2479c7e2d2019`; `lib/publicPlayerDirectory.ts` Git blob `725896cc7b1b1264a9a7ee762049a007fdd14e31`.
+
+The reserved-system UID classification helper and public directory read model are present. A claimed automated account must not inherit an authenticated human Steam badge by presentation alone. This is not a new Steam authentication, replay verification or FINANCIAL proof.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.

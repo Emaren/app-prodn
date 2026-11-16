@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-public-consent-no-production-db-ddl-or-financial-release"
-reviewed_at: "2026-11-08"
+reviewed_at: "2026-11-16"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -138,3 +138,11 @@ HEL1 memory pressure or use source CI as transfer authorization.
 
 **Current status:** SOURCE-ONLY privacy correction; ACTUAL LIVE LEAK
 UNDETERMINED; DATABASE VIEW MIGRATION HOLD; C01–C09 HARD HOLD.
+
+## 2026-11-16 — B source-backed historical re-review
+
+Review basis: the retained original document and the current canonical App main `d36e9f98e44b0a4de438c5cc623706873c333ca5`, compared to source anchors: `lib/publicPlayerDirectory.ts` Git blob `725896cc7b1b1264a9a7ee762049a007fdd14e31`; `lib/playerProfile.ts` Git blob `b41ed6b30b274ffcd5deca02ce04226fd13e6aef`; `tests/private-pending-gift-public-consent.test.mts` Git blob `7e539472c5672f887e8ead88bf1435d18ee745b2`.
+
+Public consent/aggregate source and its negative tests remain retained. A source-only visibility correction is not proof that a protected database view, C03 financial writer, actual user gift or production leak was migrated or authorized; those claims remain excluded from B scope.
+
+Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
