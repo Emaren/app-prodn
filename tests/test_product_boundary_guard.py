@@ -31,7 +31,7 @@ class BoundaryTests(unittest.TestCase):
         source = GUARD.parent / "r25_b_guard_production_v1.cjs"
         import hashlib
         self.assertEqual(policy.EXACT_REVIEWED_B_EMBER_BRANCH,
-                         "session-b/ember-appearance-guard-20261116")
+                         "session-b/ember-guard-node22-permanent-20261116")
         self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_REVIEWED_B_EMBER_BRANCH))
         self.assertIsNone(policy.BRANCH.fullmatch("session-b/another-os-release"))
         self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
