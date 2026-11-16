@@ -1,3 +1,18 @@
+---
+id: "aoe2war.ember-owner-attended-release-lessons-20261116"
+title: "Ember Owner-Attended Release Lessons"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "release-postmortem"
+reviewed_at: "2026-11-16"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # Ember Reign — owner-attended release lessons (2026-11-16)
 
 **Nonfinancial PRODUCT only.** This is source-controlled engineering evidence, not a signed permit, a declaration of production activation, or permission to open any FINANCIAL gate. Keep the October campaign's history immutable.
@@ -38,9 +53,11 @@ On November 16, the owner opened an attended HEL1 `sudo -i` root terminal and ex
 9. Status must follow physical truth. HTTP200 on old 3032 is not `SHIPPED_VERIFIED`. Require source+BUILD_ID readback, real Emaren/Scribe role tests, public campaign, exact rollback and T10.
 10. Keep private SCRAM, session secrets, SSH material, sudo passwords and browser cookies out of Git, GitHub comments and ChatGPT.
 
-## Source-controlled guard
+## Future regression contract (not executable in this PR)
 
-`scripts/release/ember_owner_attended_evidence_v1.py` is **inert and offline**. It only diagnoses an exact-2026-11-16 evidence record; it does not authenticate a human, issue a permit, run root commands, generate signatures, or call the Factory. Its diagnostic classification is `VALID_EVIDENCE_SHAPE_NOT_RELEASE_AUTHORITY`. Do **not** ever plug this validator into the Factory as an approval reader. Adversarial tests reject changed hashes, financial authority, forged signatures, wrong host/database and extra fields.
+The incident establishes a **future schema-and-tests requirement**: a dated, exact-source/host/SQL/inverse/service/build evidence record must reject any claim of funding, financial authority, cryptographic signature or Factory admission. Its successful diagnostic classification should say `VALID_EVIDENCE_SHAPE_NOT_RELEASE_AUTHORITY`, not `APPROVED`.
+
+No new executor, signer, validator, CI waiver or executable code is introduced by this documentation-only PR. The actual schema and adversarial tests belong in a separately reviewed implementation after the November candidate's independently reviewed documents and implementation baseline are merged into canonical main. No historical reviewed-at timestamps should be forged to force DocsV2 green.
 
 ## Follow-up engineering improvement
 
