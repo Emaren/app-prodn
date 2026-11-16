@@ -17,20 +17,21 @@ const APPEARANCE_ROUTES = new Set([
   "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
 ]);
 const APPEARANCE_SERVICE_PATHS = new Set(["/v1/admin", "/v1/personal"]);
-function approvedAppearanceRequest(opts) {
-  if (!opts || typeof opts !== "object") return false;
-  const h = opts.headers;
-  return opts.socketPath === APPEARANCE_SOCKET &&
-    APPEARANCE_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
-    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
-    !opts.protocol && !opts.auth && h && typeof h === "object" &&
-    Object.keys(h).length === 4 &&
+function approvedAppearanceHeaders(h) {
+  return h && typeof h === "object" && Object.keys(h).length === 4 &&
     h["Content-Type"] === "application/json" && h.Connection === "close" &&
     Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
     h["Content-Length"] <= 4096 &&
     typeof h["x-appearance-signed-session"] === "string" &&
     h["x-appearance-signed-session"].length >= 32 &&
     h["x-appearance-signed-session"].length <= 4096;
+}
+function approvedAppearanceRequest(opts) {
+  if (!opts || typeof opts !== "object") return false;
+  return opts.socketPath === APPEARANCE_SOCKET &&
+    APPEARANCE_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
+    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
+    !opts.protocol && !opts.auth && approvedAppearanceHeaders(opts.headers);
 }
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
@@ -139,8 +140,20 @@ net.Socket.prototype.connect = function (...args) {
     { port: first, host: typeof normalized[1] === "string" ? normalized[1] : "localhost" };
   const host = opts.host || opts.hostname || "localhost";
   const port = Number(opts.port);
-  const exactWriterSocket = opts.path === APPEARANCE_SOCKET &&
-    !opts.host && !opts.hostname && !opts.port;
+  // Native Node22 http.request({socketPath}) supplies a nested connect
+  // options array with host=localhost and port=80. These are *internal*
+  // defaults, not a TCP destination. Permit only the exact signed-writer
+  // request shape already constrained by the outer HTTP transport guard.
+  // Node replaces the HTTP route path with the Unix socket path at connect.
+  // Retain the exact socket, signed-session headers and bounded POST shape;
+  // the outer HTTP request checks /v1/admin or /v1/personal separately.
+  const nodeWriterConnect = opts.path === APPEARANCE_SOCKET &&
+    opts.socketPath === APPEARANCE_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === "POST" &&
+    opts.timeout === 2300 && approvedAppearanceHeaders(opts.headers);
+  const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
+    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect;
   need(exactWriterSocket || (!opts.path &&
     ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
      (host === STEAM && port === 443 && this instanceof tls.TLSSocket))),
