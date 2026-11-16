@@ -244,7 +244,7 @@ test("ELO crowns use exact managed-media targets and lane-specific Trophy custod
 
 test("France is an authoritative national title with live Trophy custody", () => {
   assert.match(titles, /id: "national-france"/);
-  assert.match(titles, /displayName: "France Champion"/);
+  assert.match(titles, /displayName: "French Champion"/);
   assert.match(titles, /country: "France"/);
   assert.match(trophyService, /trophyId: "france_champion_belt"/);
   assert.match(trophyService, /title\.country === "France"/);
