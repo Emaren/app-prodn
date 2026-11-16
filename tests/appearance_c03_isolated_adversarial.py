@@ -21,7 +21,8 @@ def require(ok,reason):
     PASS.append(reason)
 def sh(*args, check=True, input=None, database="aoe2hd_db", user="postgres"):
     env=dict(os.environ,PGHOST="127.0.0.1",PGPORT=str(PORT),PGUSER=user,
-             PGDATABASE=database,PGPASSWORD="",PGPASSFILE="/dev/null")
+             PGDATABASE=database,PGPASSWORD="invalid-synthetic-only-password",
+             PGPASSFILE="/dev/null",PGCONNECT_TIMEOUT="3")
     p=subprocess.run(args,input=input,text=True,capture_output=True,
                      timeout=15,env=env)
     if check and p.returncode:
@@ -153,11 +154,12 @@ def test():
     # Synthetic-only login toggle simulates a *future separate* owner permit.
     q("ALTER ROLE aoe2war_appearance_writer LOGIN PASSWORD '"+
       WRITER_TEST_PASSWORD+"'")
-    bad=sh("/opt/homebrew/bin/psql","-X","-A","-t","-d","aoe2hd_db",
+    bad=sh("/opt/homebrew/bin/psql","-w","-X","-A","-t","-d","aoe2hd_db",
       "-c","SELECT current_user",user="aoe2war_appearance_writer",check=False)
     require(bad.returncode!=0,"SCRAM_writer_missing_password_denied")
     authenticated_env=dict(os.environ,PGHOST="127.0.0.1",PGPORT=str(PORT),
       PGUSER="aoe2war_appearance_writer",PGDATABASE="aoe2hd_db",
+      PGCONNECT_TIMEOUT="3",
       PGPASSWORD=WRITER_TEST_PASSWORD)
     authenticated=subprocess.run(["/opt/homebrew/bin/psql","-X","-A","-t",
       "-c","SELECT current_user"],capture_output=True,text=True,timeout=8,
