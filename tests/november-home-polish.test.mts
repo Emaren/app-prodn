@@ -4,10 +4,11 @@ import test from "node:test";
 
 import { nextHomeThemeKey } from "../lib/homeThemeCycle.ts";
 import { NOVEMBER_2026_CAMPAIGN, isApprovedNovemberCampaignTransition } from "../lib/novemberThemeCampaign.ts";
-import { tickerTravelSeconds } from "../lib/lobbyTickerMotion.ts";
+import { featuredWarriorHonorLabel, verifiedFeaturedHonorsFallback } from "../lib/featuredWarriorPresentation.ts";
 import { nextHeroRequestedIndex } from "../lib/hero/manualNavigation.ts";
 import { homeChronicleHeadline, isWatcherExplainerStory } from "../lib/hero/watcherStory.ts";
-import { resolveEffectiveSiteThemeKey, type SiteThemeCampaignControl } from "../lib/siteThemeCampaign.ts";
+import { resolveEffectiveSiteThemeKey, loadSiteThemeCampaignViewerState, type SiteThemeCampaignControl } from "../lib/siteThemeCampaign.ts";
+import { featuredWarriorVisibleHonors } from "../lib/featuredWarriorPresentation.ts";
 
 const source = (path: string) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 
@@ -64,20 +65,76 @@ test("November crimson gradient is richer without replacing other saved theme ke
   assert.match(theme, /key: "black"/);
 });
 
-test("ticker maintains constant physical pace with reasonable caps", () => {
-  assert.equal(tickerTravelSeconds(0), 26);
-  assert.equal(tickerTravelSeconds(500), 14);
-  assert.equal(tickerTravelSeconds(2580), 30);
-  assert.equal(tickerTravelSeconds(99999), 72);
+test("main ticker restores the exact pre-November 34-second linear loop, without speed remeasurement", () => {
+  const ticker = source("components/lobby/LiveTickerStrip.tsx");
+  assert.match(ticker, /animation: lobbyTickerScroll 34s linear infinite;/);
+  assert.match(ticker, /const loopItems = \[\.\.\.items, \.\.\.items\];/);
+  assert.match(ticker, /translateX\(-50%\)/);
+  assert.match(ticker, /lobby-ticker-track flex w-max items-center gap-8 pr-8/);
+  assert.doesNotMatch(ticker, /ResizeObserver|tickerTravelSeconds|animationDuration/);
+  assert.match(ticker, /animation-play-state: paused/);
+  assert.match(ticker, /prefers-reduced-motion: reduce/);
 });
 
-test("ticker has two equal content copies and no outer unequal padding seam", () => {
-  const ticker = source("components/lobby/LiveTickerStrip.tsx");
-  assert.match(ticker, /\[0, 1\]\.map\(\(copy\)/);
-  assert.match(ticker, /className="flex shrink-0 items-center gap-8 pr-8"/);
-  assert.match(ticker, /translateX\(-50%\)/);
-  assert.doesNotMatch(ticker, /lobby-ticker-track flex w-max items-center gap-8 pr-8/);
-  assert.match(ticker, /ResizeObserver/);
+test("authenticated campaign reader uses only reviewed C03 override columns", async () => {
+  const sqlCalls: Array<{ sql: string; values: unknown[] }> = [];
+  const fakeDb = {
+    siteThemeCampaign: {
+      findUnique: async () => ({
+        campaignKey: "november-crimson-2026", label: "November Ember Reign 2026",
+        enabled: true, themeKey: "crimson",
+        startsAt: new Date("2026-11-01T06:00:00Z"),
+        endsAt: new Date("2026-12-01T07:00:00Z"),
+      }),
+    },
+    userThemeCampaignOverride: {
+      findUnique: () => { throw new Error("DENIED_UNSCOPED_PRISMA_FIND_UNIQUE"); },
+    },
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      sqlCalls.push({ sql: strings.join("?"), values });
+      return [] as Array<{ theme_key: string }>;
+    },
+  };
+  const db = fakeDb as unknown as Parameters<typeof loadSiteThemeCampaignViewerState>[0];
+  const now = new Date("2026-11-16T19:00:00Z");
+  const result = await loadSiteThemeCampaignViewerState(db, 23, now);
+  assert.equal(result.campaign?.active, true);
+  assert.equal(result.campaign?.themeKey, "crimson");
+  assert.equal(result.overrideThemeKey, null);
+  assert.equal(sqlCalls.length, 1);
+  assert.match(sqlCalls[0]!.sql, /SELECT theme_key\s+FROM public\.user_theme_campaign_overrides/);
+  assert.match(sqlCalls[0]!.sql, /WHERE campaign_key = \? AND user_id = \?/);
+  assert.doesNotMatch(sqlCalls[0]!.sql, /SELECT \*|JOIN|UPDATE|DELETE|INSERT/i);
+  assert.deepEqual(sqlCalls[0]!.values, ["november-crimson-2026", 23]);
+  fakeDb.$queryRaw = async () => [{ theme_key: "midnight" }];
+  const optedOut = await loadSiteThemeCampaignViewerState(db, 23, now);
+  assert.equal(optedOut.overrideThemeKey, "midnight");
+});
+
+test("French/American champions are correctly labeled and verified fallbacks expire", () => {
+  assert.equal(featuredWarriorHonorLabel("france_champion_belt", "France Champion"), "French Champion");
+  assert.equal(featuredWarriorHonorLabel("usa_champion_belt", "USA Champion"), "American Champion");
+  const jim = verifiedFeaturedHonorsFallback(
+    "u_0df73bdbb64646c19e4a9bfd225b3285", "Jim",
+    new Date("2026-11-16T19:00:00Z"));
+  const tekki = verifiedFeaturedHonorsFallback(
+    "u_3379d1d2360d4c05ac88796ba7eda15c", "Tekki",
+    new Date("2026-11-16T19:00:00Z"));
+  assert.deepEqual(jim, [
+    "American Champion", "Chaos Champion", "DM Veteran Championship", "RM Rising Championship",
+  ]);
+  assert.deepEqual(tekki, ["French Champion", "RM Challenger Championship"]);
+  assert.deepEqual(verifiedFeaturedHonorsFallback("bad", "Jim", new Date("2026-11-16T19:00:00Z")), []);
+  assert.deepEqual(verifiedFeaturedHonorsFallback("u_3379d1d2360d4c05ac88796ba7eda15c", "Jim", new Date("2026-11-16T19:00:00Z")), []);
+  assert.deepEqual(verifiedFeaturedHonorsFallback("u_3379d1d2360d4c05ac88796ba7eda15c", "Tekki", new Date("2026-11-24T00:00:00Z")), []);
+  assert.deepEqual(featuredWarriorVisibleHonors(["a", "b", "c", "d", "e"]), {
+    visible: ["a", "b", "c", "d", "e"], remaining: 0,
+  });
+  assert.deepEqual(featuredWarriorVisibleHonors(["a", "b", "c", "d", "e", "f"]), {
+    visible: ["a", "b", "c", "d"], remaining: 2,
+  });
+  const main = source("app/HomePageClient.tsx");
+  assert.match(main, /featuredWarriorVisibleHonors\(honorTitles\)/);
 });
 
 test("manual hero cursor can skip three images rapidly before any decode completes", () => {
@@ -105,10 +162,12 @@ test("manual hero requests supersede stale image decodes rather than locking cli
   assert.match(carousel, /move\(1, true\)/);
 });
 
-test("Zodiac gets the only special zoom-out; all other leaderboard images keep cover", () => {
+test("Zodiac is a close full-height cover portrait, only six percent smaller than RM", () => {
   const hero = source("components/lobby/LobbyHero.tsx");
   assert.match(hero, /featuredName\.trim\(\)\.toLowerCase\(\) === "zodiac"/);
-  assert.match(hero, /xl:scale-\[0\.87\]/);
+  assert.match(hero, /object-cover object-center opacity-100/);
+  assert.match(hero, /xl:scale-\[0\.94\]/);
+  assert.doesNotMatch(hero, /xl:scale-\[0\.87\]/);
   assert.match(hero, /xl:object-cover"/);
 });
 

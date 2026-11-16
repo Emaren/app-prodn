@@ -324,7 +324,7 @@ export const nationalTitles: ChampionTitleDefinition[] = [
     id: "national-france",
     slug: "france",
     type: "national",
-    displayName: "France Champion",
+    displayName: "French Champion",
     shortName: "France",
     eyebrow: "Representing Country",
     assetUrl: "/champions/belts/national-france-placeholder.svg",

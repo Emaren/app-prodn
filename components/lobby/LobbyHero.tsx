@@ -614,10 +614,11 @@ export function LobbyHero({
                 loading="lazy"
                 fetchPriority="low"
                 sizes="(min-width: 1536px) 360px, (min-width: 1280px) 300px, 90vw"
-                // Zodiac's short source image needs an individual contain crop.
-                // Other featured leaderboard warriors retain their exact styling.
+                // Zodiac's verified portrait uses the same full-height cover crop
+                // as RM, but at 94% visual scale: only slightly smaller,
+                // never the distant 87%-contain version from November 15.
                 className={featuredName.trim().toLowerCase() === "zodiac"
-                  ? "object-contain object-center opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:scale-[0.87]"
+                  ? "object-cover object-center opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:scale-[0.94]"
                   : "object-contain object-top opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
                 }
               />
