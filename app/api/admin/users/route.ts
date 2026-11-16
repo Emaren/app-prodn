@@ -6,6 +6,8 @@ import { ensureTrophySeedData } from "@/lib/trophies/service";
 import { loadInboxPayload } from "@/lib/contactInbox";
 import { requireAdmin } from "@/lib/adminSession";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { loadAdminNonfinancialDirectory } from "@/lib/adminNonfinancialDirectory";
 import { loadJourneySummaryMap } from "@/lib/adminJourneyIntelligence";
 import {
   loadAppearancePreferenceMap,
@@ -234,6 +236,18 @@ export async function GET(request: NextRequest) {
     }
 
     const { prisma, user: admin } = gate;
+
+    // Defense in depth: even if the existing Nginx /api/admin/users
+    // quarantine is removed later, restricted production never reaches
+    // Trophy seeding, bet-intent refresh or mixed-domain Prisma reads.
+    // The scoped contract is intentionally different from the legacy
+    // command-tower payload; the production UI uses the new directory.
+    if (isNonfinancialPublicReadProfile()) {
+      return NextResponse.json(
+        await loadAdminNonfinancialDirectory(prisma),
+        { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } },
+      );
+    }
 
     // User Command is a read projection over Trophy custody. Repair any
     // historical Belt mirrors before loading community honors so this admin

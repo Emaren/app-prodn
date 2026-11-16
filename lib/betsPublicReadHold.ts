@@ -16,6 +16,10 @@ const BLOCKED_BOARD_READ_TABLES = new Set([
   "bet_stake_intents",
   "bet_stake_tickets",
   "bet_auto_executions",
+  // Authenticated players may resolve saved automated wager presets before
+  // the board loads. Their protected read must also remain an explicit HOLD,
+  // not a generic 500 or an excuse to grant finance-table SELECT.
+  "bet_auto_presets",
   "wolo_indexed_transfers",
 ]);
 
