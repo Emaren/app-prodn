@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b1a09416f72baecde34845698c55624cfef93a42e14e6f8112d2cd77081d2365",
+      "sha256": "6f98c2444e4966700767f7a71d12fd43b990250e0bd5a58ec8ada7d1cf2da59d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3394,7 +3394,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/ember-november-polish-20261116",
-    "commit": "b040ed60277ff381da4928b5b1dad3e256bb48cd"
+    "commit": "dbdbba8ef83a462edf9fb169fa1925c443a6d1e6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
