@@ -121,13 +121,13 @@ GRANT UPDATE (
 GRANT SELECT (
   id,campaign_key,user_id,theme_key,created_at,updated_at
 ) ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
-GRANT INSERT (campaign_key,user_id,theme_key)
+GRANT INSERT (campaign_key,user_id,theme_key,created_at,updated_at)
   ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
 GRANT UPDATE (theme_key,updated_at)
   ON TABLE public.user_theme_campaign_overrides TO aoe2war_appearance_writer;
 GRANT SELECT (id,user_id,type,path,label,created_at)
   ON TABLE public.user_activity_events TO aoe2war_appearance_writer;
-GRANT INSERT (user_id,type,path,label,metadata)
+GRANT INSERT (user_id,type,path,label,metadata,created_at)
   ON TABLE public.user_activity_events TO aoe2war_appearance_writer;
 GRANT USAGE ON SEQUENCE public.user_theme_campaign_overrides_id_seq
   TO aoe2war_appearance_writer;
