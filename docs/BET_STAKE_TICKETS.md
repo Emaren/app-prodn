@@ -8,11 +8,57 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-16"
+reviewed_at: "2026-11-16"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 # Manual Bet Stake Tickets
+
+## November 16, 2026 — WE1 independent source and quarantine review
+
+**DOCUMENTARY REVIEW ACCEPTED. FINANCIAL FUNDING REMAINS DENIED.** This
+review keeps both historically true 2026-11-13 observations below: the
+earlier live reconciliation timer warning and the later signed **09:53:35
+UTC** [W1 mask-and-denial receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+The later action blocked both bet-stake reconciliation and staking
+rewards **timers and services**, denied four manual starts, and kept
+original source/rollback evidence. It closed two scheduled producers,
+**not** the broader C03 HTTP/SQL financial-writer fence.
+
+At **2026-11-16 06:17 UTC**, an independent read-only HEL1 check found
+those four units plus the two Wolo settlement services masked and
+inactive (services MainPID 0). The reconciler service reported
+`NeedDaemonReload=yes`; that live metadata needs separate W1 review,
+not an opportunistic reload or financial-resume action. Public
+`/api/bets` on accepted 3032 returned HTTP 503. Accordingly,
+source-compatible legacy or ticket endpoints described below are
+**not** evidence of an enabled, funded public betting operation.
+
+The present contract was independently compared with exact canonical-main
+Git source blobs: `lib/betStakeTickets.ts`
+`4235b80cc801454c02d0cefeb241e326960bcdbb` (ticket lifecycle,
+opt-in switch and locks), `lib/betStakeFunding.ts`
+`be798c44e8f77555a6a70bcd2b71d68c89918441` (shared advisory
+funding exclusion), `lib/betStakeMemo.ts`
+`5d8d05a64d4a5c717f3a066c000f14c385267553` (exact v1 memo),
+`lib/betStakeAutoRecovery.ts`
+`28d78c67fd46500d7760018bbdfc5438a9c715e7` (bounded
+signed-but-unrecorded recovery; apply is not read-only),
+`app/api/bets/tickets/route.ts`
+`286d4d2ef78a684488582bfcdd46ab635377782a`
+(public `source: "manual"`), and
+`app/api/bets/stake-reconciliation/route.ts`
+`86103959ed9a53edde960fd5653ccea337661d27`
+(separate authenticated plan/apply).
+
+**W1 gate state remains C01, C02, C03, C05, C06, C07 and C09 OPEN;
+C04/C08 CLOSED; funding DENIED.** Historical zero-candidate runs and
+source-level idempotency never certify future lack of financial writes.
+No custody/reserves approval, escrow funding, legacy 3030 HTTP/SQL
+writer closure, backup/restore, canary, grant, financial service action,
+or signed authorization is asserted by this documentation review.
+WE2/WE3 may integrate the reviewed document source without receiving
+financial authority.
 
 ## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
 
