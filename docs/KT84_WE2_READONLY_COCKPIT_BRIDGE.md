@@ -37,13 +37,16 @@ state as verified until a separate signed KT83 source input is admitted.
 
 ## WE2 frontend and API
 
-- Protected `GET /kingdom-traders/cockpit` is implemented through the
-  parameterized `app/kingdom-traders/[section]/page.tsx`. It requires
-  existing `requireServerAdmin()` before checking the allowlisted
-  `section === "cockpit"`, and rejects every other slug with `notFound()`.
-  Anonymous and Scribe are denied using the existing source-auth gate.
-  This private route MUST NOT enter the frozen 88-route public Kingdom
-  Index; the immutable source-auditor script and SHA guard are untouched. The public gateway remains publicly
+- Protected `GET /kingdom-traders/cockpit` is a standalone **GET route
+  handler**, not an extra static `page.tsx` or bracketed dynamic path.
+  It invokes `requireAdmin(request)` before an HTTP 303 redirect to the
+  canonical existing `/kingdom-traders#cockpit` page. Guests and Scribe
+  are denied. The public page mounts a collapsed source-only observatory
+  panel on explicit click or owner-authenticated redirect; the panel's
+  monetary/read-only telemetry API independently calls `requireAdmin()`.
+  This auth-only entry has no extra Next.js runtime, never enters the
+  frozen 88-route Kingdom Index, and does not edit the exact-SHA-pinned
+  public auditor or broaden the 39-route admin Atlas. The public gateway remains publicly
   reachable and never leaks this backend state.
 - Protected `GET /api/kingdom-traders/paper-readonly` uses existing
   `requireAdmin(request)`, owner-only no-cache with `Vary: Cookie`.

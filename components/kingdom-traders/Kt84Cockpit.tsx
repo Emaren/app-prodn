@@ -62,7 +62,7 @@ export default function Kt84Cockpit() {
   const visibleSlots = Array.from({length:10},(_,index)=>(page-1)*10+index+1);
 
   return (
-    <main className="space-y-6 py-3 text-white sm:space-y-9 sm:py-5">
+    <div className="space-y-6 py-3 text-white sm:space-y-9 sm:py-5">
       <section className="relative overflow-hidden rounded-[2rem] border border-cyan-200/20 bg-[radial-gradient(ellipse_at_85%_0%,rgba(34,211,238,0.2),transparent_48%),radial-gradient(ellipse_at_0%_100%,rgba(234,179,8,0.09),transparent_55%),linear-gradient(145deg,#07121d,#020611_84%)] p-6 shadow-[0_28px_85px_rgba(0,0,0,0.4)] sm:p-10">
         <div className="absolute right-5 top-5 hidden h-28 w-28 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/[0.035] lg:flex" aria-hidden="true">
           <Waves className="h-12 w-12 text-cyan-200/35" />
@@ -230,6 +230,6 @@ export default function Kt84Cockpit() {
           an unsigned source is not a verified heartbeat, and none of these cards represent a funded transaction.
         </p>
       </section>
-    </main>
+    </div>
   );
 }

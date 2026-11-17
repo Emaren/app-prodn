@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PaperFleetPreview from "./PaperFleetPreview";
+import Kt84CockpitEntry from "./Kt84CockpitEntry";
 import StrategyBlueprintWorkshop from "./StrategyBlueprintWorkshop";
 import {
   ArrowRight,
@@ -169,6 +170,8 @@ export default function KingdomTradersPage() {
           })}
         </div>
       </section>
+
+      <Kt84CockpitEntry />
 
       <PaperFleetPreview />
 
