@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import StoragePremiumInspector from "./StoragePremiumInspector";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {
   Activity,Archive,ArrowLeft,Check,Clock3,Database,HardDrive,
@@ -280,6 +281,7 @@ export default function StorageHogWorkbench(){
           })}</div>}
         </div>
       </section>
+      <StoragePremiumInspector visual={data?.visual} activeId={active}/>
       <section className={PANEL+" p-5 sm:p-7"} aria-label="Owner classification studio">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-[10px] font-black tracking-[.25em] text-amber-300">OWNER CLASSIFICATION · NEXT PHASE L2</p>
