@@ -162,6 +162,33 @@ class ExactFiveContracts(unittest.TestCase):
             self.assertTrue(target.is_dir())
             self.assertEqual((target/"unique.txt").read_text(),"original must survive")
 
+    def test_post_rename_service_pid_change_restores_original(self):
+        with tempfile.TemporaryDirectory() as td:
+            parent=Path(td)
+            target=parent/"aoe2war-web-prod-FIXTURE"
+            target.mkdir()
+            (target/"safe.txt").write_text("no deletion")
+            entry={"path":str(target),"prefix":"FIXTURE",
+                   "root_inode":target.stat().st_ino,
+                   "root_dev":target.stat().st_dev}
+            with mock.patch.object(root,"PARENT",parent), \
+                 mock.patch.object(root,"inspect_one"), \
+                 mock.patch.object(root,"live_refs"), \
+                 mock.patch.object(root,"services",
+                                   side_effect=[{"main_pid":1},{"main_pid":2}]), \
+                 mock.patch.object(root,"free_bytes",return_value=1000):
+                with self.assertRaises(root.Hold):
+                    root.guarded_destroy(entry,"N"*40)
+            self.assertEqual((target/"safe.txt").read_text(),"no deletion")
+
+    def test_signed_packet_extra_fields_denied(self):
+        p=preview()
+        x=signed_payload()
+        x["bypass_source_checks"]=True
+        with self.assertRaises(root.Hold):
+            root.validate_packet({"payload":x,"signature_base64":""},
+                                 p,now=datetime.now(timezone.utc))
+
     def test_no_legacy_owner_permit_domain(self):
         self.assertNotEqual(root.DOMAIN,b"AOE2WAR.RETIRE_STAGE_ONLY.V1\n")
         self.assertNotIn("RETIRE_STAGE_ONLY",root.SCHEMA)
