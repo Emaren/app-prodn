@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-kt84-cockpit-20261117` at `949908fd3027f3d9aa11a7048fb3f5bf823b3e17`
+Implementation baseline: `session-c/we2-kt84-cockpit-20261117` at `c39f3859bc3e0954ac27f142467779aa3d9d119d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

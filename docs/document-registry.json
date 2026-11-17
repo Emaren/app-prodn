@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "81ba24b3c3e0fe0026b51f0c7805e4626c5bf4f4331244552d175ec280b47e7d",
+      "sha256": "0166b1139baba744c47b7a36cbbf55b0b7d4601d6b5090d2a438b8e99a52e4d3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1102,7 +1102,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-17",
       "sensitivity": "internal",
-      "sha256": "d27c9692fd8d58880e26ef3c86d5a95868e993a9f9c4db8b0a8de7599191fb0e",
+      "sha256": "88c91a2cff5c3f667affc22cee456f5e93f7fda40694f4730a23ad97b09b5995",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3440,7 +3440,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-kt84-cockpit-20261117",
-    "commit": "949908fd3027f3d9aa11a7048fb3f5bf823b3e17"
+    "commit": "c39f3859bc3e0954ac27f142467779aa3d9d119d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
