@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "611897bba39bdd7f7a71003b700df395fc5d905f417d0d390d855a69b0047900",
+      "sha256": "4e617663840b47215a076915d02e23e500ab924b36872f48da777fabdfc7e339",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3416,8 +3416,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-premium-uid650-20261117",
-    "commit": "699495f5f12dae4a956ae3aa745a0580086ced1c"
+    "branch": "session-c/we2-intel-cold-storage-os-20261117",
+    "commit": "beac660b46ae4430c5207d72d2264da246d06401"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
