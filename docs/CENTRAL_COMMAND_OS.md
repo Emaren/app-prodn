@@ -48,6 +48,26 @@ shortcut around Wolo/finance, Doctor, independent restore, stage and owner permi
 
 Release authority remains with Central and F; source merge is not deployment.
 
+## Single human owner versus independent technical evidence (2026-11-17)
+
+**Emaren is AoE2WAR's sole human owner and approving reviewer.** Central
+coordinates only the existing WE1 FINANCIAL, WE2 website/Factory/Storage OS,
+and WE3 Kingdom Traders PRODUCT environments; there is no fourth human
+reviewer or operator environment. Independent engineering work, code
+analysis, immutable CI, Linux member verification and live host readbacks
+are **technical checks**, not additional human identities. Never require
+the sole owner to recruit a GitHub collaborator, self-approve a PR, or
+manufacture another human to deploy a nonfinancial website release.
+
+The real Factory release authority is an explicit source-bound, expiring,
+private **Emaren owner-approval.v1**. A green source, a public PR, AI
+approval and a chat directive are not, by themselves, that permit.
+See docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md
+for the owner-local interactive issuer and full physical rollback sequence.
+None of this changes WE1 financial gates, protected SQL/signers, WE3
+PAPER journals or root release trust checks.
+
+
 ## Durable six-lane W1 source registry (owner policy 2026-10-29)
 
 The source-owned `config/central-command-lanes.json` retains the six

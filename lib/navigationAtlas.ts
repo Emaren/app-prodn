@@ -51,6 +51,7 @@ export const ADMIN_ATLAS_ROUTES: readonly AtlasRoute[] = [
   { href:"/admin/radio", label:"Radio WOLO Desk", cluster:"creative", detail:"Radio and show operations", visibility:"admin" },
   { href:"/admin/replay-review", label:"Replay Review", cluster:"intelligence", detail:"Authenticated replay review", visibility:"admin" },
   { href:"/admin/storage-os", label:"Storage & Backup Evidence", cluster:"infrastructure", detail:"Read-only capacity and recovery proof; no automatic cleanup", visibility:"admin" },
+  { href:"/admin/storage-os/explorer", label:"Storage Explorer · L2–L5 Owner Teaching", cluster:"infrastructure", detail:"Three authenticated storage volumes and source-bound owner classification; no deletion authority", visibility:"admin" },
   { href:"/admin/traffic", label:"Traffic Command", cluster:"intelligence", detail:"Traffic observatory", visibility:"admin" },
   { href:"/admin/translations", label:"Translation Tower", cluster:"infrastructure", detail:"Language administration", visibility:"admin" },
   { href:"/admin/trophies", label:"Trophy Command", cluster:"people", detail:"Tournament honors", visibility:"admin" },

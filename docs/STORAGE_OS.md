@@ -1281,3 +1281,83 @@ C publisher are independent. Do not duplicate scanners, watchers, timers,
 release controllers or financial authority. Current W1 release is still
 independently capacity/backup/Doctor/financial-noninterference/owner-permit
 gated.
+
+## November 17, 2026 — Storage Explorer and owner-trained L2–L5 classifications (source candidate)
+
+The new protected `/admin/storage-os/explorer` is a separate, focused
+**DaisyDisk-inspired (original design)** storage decision surface under the
+existing Storage OS. It has three independent planes: the M1 development Mac,
+HEL1 root, and HEL1 attached data volume. It consumes the same authenticated
+`GET /api/admin/storage-os` receipts as the existing command center; its
+radial wedges and ranked rows use **only signed gross categories**. Unknown,
+stale, overlapping, excluded, clone-backed or unreadable data must never be
+presented as complete, current, independent or uniquely reclaimable.
+
+**Owner-selected labels are NOT executable cleanup instructions:**
+
+| Owner selection | Effective behavior |
+| --- | --- |
+| L1 (historical) | Existing limited, source-guarded maintenance lane. Owner has declared the first phase finished; signed eligible-denominator closure is still not established by this page. |
+| L2 | Request to investigate an exact item for future individually authorized retirement. Current category teaching **cannot** select or delete any file; source pin, valid isolated restore, fresh process/FD check, rollback owner and one-time exact-path permit are separate. |
+| L3 | Defer. No cleanup or migration. |
+| L4 | Human-only protection. No programmatic deletion. |
+| L5 | Permanent never-delete protection, including future scans; no downgrade or revoke through web controls. |
+
+The source-admitted category learning endpoint
+`GET/POST /api/admin/storage-os/teaching` requires an existing signed,
+fresh gross-category receipt and an authenticated, same-origin admin, with
+a separate independently provisioned
+`AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY` (**never auto-created or
+shared with the visual source key**). Existing private state must already
+exist. It writes owner teaching events with exclusive locks, append-only
+0600 files, HMAC + SHA chain, identity/size/plane/source-timestamp binding,
+and reason notes limited to 160 characters. It does **not** grant storage
+controller, database, financial, archive or deletion privileges. A signed
+source policy protection floor always wins over an owner's lower suggested
+level, and an earlier L5 classification forever prevents demotion.
+Provisions of owner-private writer capacity or services are **not**
+implicitly authorized by the presence of this source implementation;
+unprovisioned storage or key returns HOLD.
+
+**Missing per-item admission remains an explicit blocking prerequisite.**
+The current `aoe2war.storage-visual.private.v1` collector admits
+signed gross buckets only, and `INDIVIDUAL_TRANSPORT_ADOPTED=false`.
+The Explorer therefore cannot yet show exact individually authenticated
+file paths or perform deletion. The future independently reviewed
+`storage-item-census.v2` transport must bind each candidate to the
+host authority, plane and exact same-device mount; canonical source path
+or private path alias, file type, device/inode, nlink, allocated versus
+logical bytes, bounded content fingerprint, owner, open FD/process pins,
+release/rollback retention, root symlink and mount escape proof, source
+time, coverage and collector schema/policy digest. Large directory
+censuses require bounded pagination and explicit incomplete coverage.
+Keep raw personal paths owner-private; never publish credentials or
+private filesystem maps to public clients.
+
+**Approval/deletion progression:** owner marks a signed, exact individual
+candidate L2; the backend records a time-bounded nonfinancial *intent*.
+An independent host-native controller, under its own reviewed authority,
+revalidates the identical inode/device/path and mount scope, nlink,
+source digest, no active FD/use, protected-asset class, retention/rollback
+references, offhost ciphertext SHA and *independent isolated restore*.
+Only a separate exact-item, single-use owner disposition authorizes
+a controlled delete. The operator must measure source-filesystem free
+bytes before and after, explicitly distinguishing APFS clone/snapshot
+accounting from `du` allocation. Failures are HOLD; no batch-wide
+permissions or level-based file sweeping. Never permit any L3–L5 delete.
+
+**No new automatic deletion timer.** The accepted existing Storage OS and
+VPSSentry host source-camera owners retain one bounded read-only sampler
+per authority domain, with M1 launchd and HEL1 systemd where source-authorized.
+Audit and reconcile existing timers/cron schedules rather than installing
+duplicated background collectors; the HEL1 root and data-volume samplings
+may share one read-only host job but must report separate mounts and disk
+metrics. GUI polling reads already-written receipts and is not a scanner,
+scheduler, heartbeat or physical installer. No timer is granted archival,
+wallet, database, refund, reclaim or git cleanup rights by this feature.
+
+This source work does not change any active website runtime, signed Factory
+permit, Intel receiver, protected prior rollback, WE1 FINANCIAL gate,
+private WE3 PAPER journals or actual recovered disk bytes. It requires
+ordinary independent source review, exact-head CI, artifact validation,
+owner-approved normal release and real authenticated Chrome acceptance.

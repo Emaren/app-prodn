@@ -406,7 +406,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "20cb304f018fbc6a466090a517200611827334639001d86c999ba949df8fd9f2",
+      "sha256": "d99710715b0191100ebdef94cab0d08bdc7dec1783452e73790bec37dde76362",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "026019c50d66d2fbbfbf3b6fefe40d5d5dd101dba35135a817617d60fde1410b",
+      "sha256": "8130d3034591263396cd9a18ef6e62ef045a8a306063a1d6519f1405375be2e1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "d3ef68d9277afa21479a5bac9602df7aa713fe8fec66a02765a2e43d3f291231",
+      "sha256": "6e5966da625fa987f00a9c4863291134f391cb19e3c3e60d4909bc5f3ce9e2d2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2855,6 +2855,29 @@
       ],
       "title": "Bounded PRODUCT cold-storage transfer plan",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-owner-release-governance",
+      "id": "aoe2war.app-prodn.product-single-owner-release-authority",
+      "owner": "aoe2war-web",
+      "path": "docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-17",
+      "sensitivity": "internal",
+      "sha256": "b2ad4bfe3b570f51c5e48a2c9f1f8c9bc9e3b80d3562710d6f8956f5311a0e9e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "vpssentry"
+      ],
+      "title": "Single-Owner PRODUCT Release Authority",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3393,8 +3416,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-workspace-post1394-20261117",
-    "commit": "f87f9967470febe85958d834bbeb8d1f178bad5e"
+    "branch": "session-c/we2-storage-train-post1394-20261117",
+    "commit": "2776ccdb9a5704e7ea1334e1929494407aed1d10"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

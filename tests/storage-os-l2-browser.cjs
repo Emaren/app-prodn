@@ -28,6 +28,9 @@ async function main(){
      await page.goto("/admin/storage-os",{waitUntil:"domcontentloaded",timeout:45000});
      await page.waitForURL(url=>url.pathname==="/",{timeout:30000});
      assert.equal(await page.getByText("L2 OWNER PREVIEW").count(),0,role+" saw private storage review");
+     await page.goto("/admin/storage-os/explorer",{waitUntil:"domcontentloaded",timeout:45000});
+     await page.waitForURL(url=>url.pathname==="/",{timeout:30000});
+     assert.equal(await page.getByRole("heading",{name:/Storage Explorer/}).count(),0,role+" saw private explorer");
      await ctx.close();
    }
    const admin=await jwt("fixture-admin");
@@ -64,9 +67,39 @@ async function main(){
      assert.deepEqual(violations,[],"L2 owner preview serious/critical axe at "+width);
      assert.deepEqual(errors,[],"uncaught Storage OS errors at "+width);
      await page.screenshot({path:path.join(output,"storage-os-l2-"+width+".png"),fullPage:true});
+     // Genuine page acceptance for the new radial Explorer (not just L2 preview).
+     const explorerResponse=await page.goto("/admin/storage-os/explorer",{waitUntil:"domcontentloaded",timeout:45000});
+     assert.equal(explorerResponse.status(),200);
+     await page.waitForLoadState("load",{timeout:30000});
+     const explorer=page.locator('main:visible').first();
+     await explorer.getByRole("heading",{name:/Storage Explorer/}).waitFor({state:"visible",timeout:30000});
+     const cards=explorer.locator('section[aria-label="Three independent storage volumes"]');
+     assert.equal(await cards.getByRole("button").count(),3,"exactly three source planes");
+     for(const name of [/M1.*Development Mac/,/HEL1.*Root/,/HEL1.*Data volume/]){
+       assert.equal(await cards.getByRole("button",{name}).count(),1,"missing storage drive "+name);
+     }
+     await explorer.getByText(/No current signed hog inventory for this drive/).waitFor({state:"visible",timeout:15000});
+     assert.equal(await explorer.getByRole("button",{name:/Record classification/i}).isDisabled(),true);
+     assert.equal(await explorer.getByText(/Individual file coverage: NOT ADMITTED/).count(),1);
+     assert.equal(await explorer.getByText(/No automated deletes/).count(),1);
+     assert.equal(await explorer.getByText(/L5.*Never delete/).count(),1);
+     const expBounds=await page.evaluate(()=>({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth}));
+     assert.ok(expBounds.documentWidth<=width+4,"Explorer horizontal overflow: "+JSON.stringify(expBounds));
+     await page.addScriptTag({content:axe.source});
+     const explorerViolations=await page.evaluate(async()=>{
+       const el=document.querySelector('main');
+       const r=await window.axe.run(el,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
+       return r.violations.filter(v=>["serious","critical"].includes(v.impact)).map(v=>({
+         id:v.id,impact:v.impact,nodes:v.nodes.slice(0,8).map(n=>({target:n.target,checks:n.any.map(a=>a.message).slice(0,2)}))
+       }));
+     });
+     assert.deepEqual(explorerViolations,[],"Explorer serious/critical axe at "+width);
+     assert.deepEqual(errors,[],"uncaught Explorer page errors at "+width);
+     await page.screenshot({path:path.join(output,"storage-explorer-"+width+".png"),fullPage:true});
      report.results.push({width,adminAuthorized:true,guestDenied:true,nonadminDenied:true,
        noPhysicalMacEvidenceInvented:true,selectionBlockedWithoutSource:true,axeSeriousCritical:0,
-       horizontalOverflow:false});
+       explorerRendered:true,explorerDriveCards:3,explorerUnverifiedCategoriesWithheld:true,
+       explorerRecordDisabled:true,explorerAxeSeriousCritical:0,horizontalOverflow:false});
      await ctx.close();
    }
    report.status="PASS";
