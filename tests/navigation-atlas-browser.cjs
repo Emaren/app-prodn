@@ -93,10 +93,12 @@ async function main(){
    await page.waitForFunction(() => (()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===38&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===38;})(),
      null, {timeout:20000});
    const routeCount=await atlas.locator('a[data-atlas-href]').count();
-   assert.equal(routeCount,38,"must show every source-backed private route");
+   assert.equal(routeCount,39,"must show every source-backed private route");
+   assert.equal(await atlas.locator('a[data-atlas-href="/admin/storage-os/explorer"]').count(),1,
+     "Private Storage Explorer must appear exactly once in Q17 Atlas");
    assert.equal(await atlas.locator('a[data-atlas-href="/admin/aoe2war-os/umbrella-tree"]').count(),1,
      "Private Umbrella Tree must appear exactly once in Q17 Atlas");
-   assert.equal(await atlas.getByRole("status").first().innerText(),"38 of 38 source routes · LIVE STATUS UNVERIFIED");
+   assert.equal(await atlas.getByRole("status").first().innerText(),"39 of 39 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
    // Playwright fill() dispatches input but React may not have committed its
@@ -106,14 +108,15 @@ async function main(){
      const atlas=document.querySelector("#navigation-atlas");
      const paths=[...(atlas?.querySelectorAll("a[data-atlas-href]")||[])]
        .map(node=>node.getAttribute("data-atlas-href")).sort();
-     return paths.length===2 && paths[0]==="/admin/storage-os" &&
-       paths[1]==="/admin/storage-transfer" &&
-       atlas?.querySelector('[role="status"]')?.textContent?.includes("2 of 38");
+     return paths.length===3 && paths[0]==="/admin/storage-os" &&
+       paths[1]==="/admin/storage-os/explorer" &&
+       paths[2]==="/admin/storage-transfer" &&
+       atlas?.querySelector('[role="status"]')?.textContent?.includes("3 of 39");
    }, null, {timeout:15000});
    const storageHrefs=await atlas.locator('a[data-atlas-href]').evaluateAll(
      nodes=>nodes.map(node=>node.getAttribute("data-atlas-href")).sort());
-   assert.deepEqual(storageHrefs,["/admin/storage-os","/admin/storage-transfer"],
-     "storage search must show only the two exact source-backed private pages");
+   assert.deepEqual(storageHrefs,["/admin/storage-os","/admin/storage-os/explorer","/admin/storage-transfer"],
+     "storage search must show all three exact source-backed private pages");
    await input.fill("");
    await page.waitForFunction(() =>
      document.querySelectorAll("#navigation-atlas a[data-atlas-href]").length===38,
@@ -123,7 +126,7 @@ async function main(){
    assert.equal(await people.getAttribute("aria-pressed"),"true","keyboard cluster filter");
    assert.ok(await atlas.locator('a[data-atlas-href]').count()>0);
    await atlas.getByRole("button",{name:"All chambers"}).click();
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),38);
+   assert.equal(await atlas.locator('a[data-atlas-href]').count(),39);
    const boardEntry = atlas.locator('a[data-atlas-href="/admin/central-command/job-board"]');
    assert.equal(await boardEntry.count(),1,"new accepted Job Exchange must be linked exactly once");
    const boardSearch=atlas.getByRole("searchbox",{name:"Find a chamber"});

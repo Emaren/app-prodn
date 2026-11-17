@@ -25,9 +25,10 @@ const JOB_EXCHANGE = "/admin/central-command/job-board";
 const WORK_BOARD = "/admin/central-command/work-board";
 const LANES = "/admin/central-command/lanes";
 const UMBRELLA = "/admin/aoe2war-os/umbrella-tree";
+const STORAGE_EXPLORER = "/admin/storage-os/explorer";
 const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES] as const;
 
-test("all 38 approved static admin pages have an exact authenticated navigation edge", () => {
+test("all 39 approved static admin pages have an exact authenticated navigation edge", () => {
   assert.equal(topLevel.length, 33, "Unexpected top-level admin source changes must be reviewed");
   assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
@@ -44,8 +45,14 @@ test("all 38 approved static admin pages have an exact authenticated navigation 
     "The new nested private OS hierarchy must independently enforce admin auth");
   assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>route.href===UMBRELLA && route.visibility==="admin").length,1,
     "Exactly one authenticated Umbrella Tree navigation edge is allowed");
-  const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES,UMBRELLA].sort();
-  assert.equal(approvedStaticRoutes.length, 38);
+  assert.ok(existsSync(new URL("app" + STORAGE_EXPLORER + "/page.tsx", root)),
+    "Private Storage Explorer source must exist");
+  assert.match(src("app" + STORAGE_EXPLORER + "/page.tsx"),/await requireServerAdmin\(\)/,
+    "The Storage Explorer independently enforces admin auth");
+  assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>route.href===STORAGE_EXPLORER && route.visibility==="admin").length,1,
+    "Exactly one authenticated Storage Explorer navigation edge is allowed");
+  const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES,UMBRELLA,STORAGE_EXPLORER].sort();
+  assert.equal(approvedStaticRoutes.length, 39);
   for(const href of ["/admin/backup-os","/admin/code-health","/admin/documents-os",
                       "/admin/storage-transfer","/admin/system-composer"]) {
     assert.ok(staticAdminPaths.includes(href), "real B3/B4 source page missing: "+href);
