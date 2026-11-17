@@ -1361,3 +1361,45 @@ permit, Intel receiver, protected prior rollback, WE1 FINANCIAL gate,
 private WE3 PAPER journals or actual recovered disk bytes. It requires
 ordinary independent source review, exact-head CI, artifact validation,
 owner-approved normal release and real authenticated Chrome acceptance.
+
+
+## November 17, 2026 — WE2 premium inspector / provisional manifest rail
+
+The production #1403 source `9a51e962a7fb1c181c6698dbc957ca4b606b4e2e`
+was independently observed at the physical 3032 service/HTTP source header,
+with BUILD_ID `-3U-V_PIlb3pd2eYPuBSM`. Do **not** redeploy #1403.
+
+The next independently releasable source candidate adds
+`StoragePremiumInspector` and a private owner-only manifest-*draft* endpoint
+without modifying existing Factory, signed producer, custody, or rollback.
+Exactly three planes remain fixed: M1 native APFS/Data, HEL1 root, and UUID-
+verified HEL1 ext4 volume.
+
+**Explicit limited scope:** original signed C/G v1 accepts gross buckets
+only (`INDIVIDUAL_TRANSPORT_ADOPTED=false`). It is not whole-disk scanning.
+A producer'''s partial V2 exact-file source is not admitted merely because a
+UI or manifest type supports aliases. The inventory therefore shows UNKNOWN,
+L1 shows ZERO CERTIFIED ITEMS, and signed free-space trends remain UNKNOWN
+until a separately reviewed and signed schema publishes actual samples.
+Source-bound manifest drafts cannot verify inode, mount, full content hashes,
+dependency quiescence or independent recovery on their own. All destructive
+stages, including approval/execution/reclaim, remain HOLD.
+
+The admin-only `POST /api/admin/storage-os/dry-run` accepts only
+`plane,alias,observedAt,sourceDigest`; it is origin-checked and byte-bounded,
+has no raw path parameter, host filesystem access or execution controller.
+It refuses every request under the current v1 transport. A future reviewed
+transport may enable a *provisional* immutable draft, never deletion.
+Regression: `node --experimental-strip-types --test tests/storage-exact-dry-run.test.mts`.
+
+**Failure lesson:** a category-level owner training event is not an
+individually identified file, an L1 certification or a deletion permit. No
+UI enhancement may imply that gross allocations are unique physically
+reclaimable bytes. Complete exact-file identity, dependency/recovery attestations,
+separate single-use owner execution authority and native before/after free
+capacity readings are required before any controlled cleanup admission.
+
+Release protocol: source-qualified PR head and independent Linux artifact
+must be released with a fresh exact-source owner signature *before* merging.
+Then perform protected T10 rollback/reactivation and authenticated Chrome
+acceptance. Existing #1401 authority cannot be reused.
