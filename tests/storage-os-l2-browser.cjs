@@ -89,7 +89,9 @@ async function main(){
      const explorerViolations=await page.evaluate(async()=>{
        const el=document.querySelector('main');
        const r=await window.axe.run(el,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
-       return r.violations.filter(v=>["serious","critical"].includes(v.impact)).map(v=>({id:v.id,impact:v.impact}));
+       return r.violations.filter(v=>["serious","critical"].includes(v.impact)).map(v=>({
+         id:v.id,impact:v.impact,nodes:v.nodes.slice(0,8).map(n=>({target:n.target,checks:n.any.map(a=>a.message).slice(0,2)}))
+       }));
      });
      assert.deepEqual(explorerViolations,[],"Explorer serious/critical axe at "+width);
      assert.deepEqual(errors,[],"uncaught Explorer page errors at "+width);

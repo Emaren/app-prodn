@@ -112,7 +112,7 @@ function Drive({reading,id,active,onSelect,topCount}:{
     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
       <div className="h-full rounded-full bg-cyan-400" style={{width:(used??0)+"%"}}/>
     </div>
-    <div className="mt-3 flex justify-between text-[10px] text-slate-500">
+    <div className="mt-3 flex justify-between text-[10px] text-slate-400">
       <span>{topCount} verified gross categories</span><span>{shortTime(reading?.asOf??null)} OLD</span>
     </div>
   </button>;
@@ -270,7 +270,7 @@ export default function StorageHogWorkbench(){
               aria-pressed={isSelected} className={"w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
                 (isSelected?"border-cyan-300/60 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/20")}>
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">#{i+1} · {h.overlaps?"OVERLAP":"GROSS ALLOCATION"}</div>
+                <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">#{i+1} · {h.overlaps?"OVERLAP":"GROSS ALLOCATION"}</div>
                   <div className="mt-1 truncate text-sm font-semibold text-white">{h.label}</div></div>
                 <div className="shrink-0 text-right"><div className="font-mono text-sm font-bold text-white">{bytes(h.grossBytes)}</div>
                   <div className="mt-1 text-[10px] font-bold" style={{color:level>1?LVLCOLORS[level as TeachingLevel]:"#22d3ee"}}>L{level} {past?"· taught":"· source"}</div></div>
@@ -310,7 +310,7 @@ export default function StorageHogWorkbench(){
               disabled={!item||priorL5} onChange={e=>setNote(e.target.value)}
               placeholder="Historical release archive; preserve until restored on Intel…"
               className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-slate-100 outline-none focus:border-cyan-300/60 disabled:opacity-40"/>
-            <div className="mt-2 text-[11px] text-slate-500">{note.length}/160 characters</div>
+            <div className="mt-2 text-[11px] text-slate-400">{note.length}/160 characters</div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300"><Clock3 className="h-4 w-4"/> Classification evidence</div>
@@ -319,7 +319,7 @@ export default function StorageHogWorkbench(){
               <div>Previous owner record: <strong className="text-white">{last?"L"+last.requestedLevel+" · "+last.at:"NONE"}</strong></div>
               <div>Source protection: <strong className="text-amber-200">L{item.level} floor; permanent L5 cannot be withdrawn</strong></div>
               <div>Unique reclaim and exact-file admission: <strong className="text-amber-200">NOT VERIFIED</strong></div>
-            </div>:<p className="mt-3 text-xs text-slate-500">No category selected.</p>}
+            </div>:<p className="mt-3 text-xs text-slate-400">No category selected.</p>}
           </div>
         </div>
         {chosen===5&&item&&!priorL5&&<label className="mt-4 flex items-start gap-3 rounded-xl border border-rose-300/25 bg-rose-300/[.04] p-4 text-sm text-rose-100">
@@ -350,7 +350,7 @@ export default function StorageHogWorkbench(){
           <h3 className="mt-4 font-bold text-white">No automated deletes</h3>
           <p className="mt-2 text-xs leading-5 text-slate-400">No cron, systemd timer, web POST or dashboard choice has cleanup authority. Owner-approved exact-file retirement uses the existing native controller after fresh checks.</p></div>
       </section>
-      <footer className="border-t border-white/10 py-5 text-xs text-slate-500">
+      <footer className="border-t border-white/10 py-5 text-xs text-slate-400">
         Storage OS / Owner learning · Data provenance on each drive · Receipt freshness matters · No artificial sizes or fake deletion metrics
       </footer>
     </div>
