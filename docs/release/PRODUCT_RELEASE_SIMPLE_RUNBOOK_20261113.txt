@@ -63,6 +63,22 @@ are source/artifact/SHA matches, never latest branch/latest artifact selection.
 Do not rebuild an unchanged accepted commit for ceremony.
 
 4. OBTAIN THE REAL EXACT-SOURCE OWNER PERMIT
+
+SINGLE-OWNER AUTHORITY CORRECTION, 2026-11-17: Emaren is the only human
+owner/reviewer/operator. Do NOT demand a distinct human reviewer, external
+GitHub collaborator, or self-approval on a PR. Independent means actual
+source-bound GitHub CI, artifact digest and Linux verifier proof, and host
+runtime/rollback witnesses. See
+docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md.
+
+For exact PR #1394, the M1 UID501 owner-only private issuer is
+~/AoE2WAR-Recovery/WE2-approval-tools/issue_pr1394.py.
+First optional --check, then --issue from the owner's local interactive
+Terminal. No CI- or AI-generated owner permit, no second GitHub account.
+The only human gesture is the exact typed SHA-bound consent. The signer
+does not install root services or authorize FINANCIAL. The returned 0600
+permit path is then passed as --approval to the EXISTING Factory command.
+
 A different source requires genuine owner authorization bound to its SHA, PR,
 BUILD_ID, run and artifact/proof identities, permitted phases and expiry. B keeps
 its owner-approval.v1 file privately, mode0600. An expired old permit is not a
