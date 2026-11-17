@@ -102,6 +102,26 @@ plan remains read-only; transport intentionally stops before production mutation
 Only release performs a production acceptance cycle. An exact successful command
 and final source/receipt pins must be recorded in the physical release handoff.
 
+2026-11-17 POST-MERGE ANCESTRY RECOVERY (READ THIS BEFORE MERGING):
+The installed Factory requires the exact approved source SHA to CONTAIN the
+current canonical main SHA as an ancestor. It cannot release a PR source after
+that PR has already been merged into main, even when the merge tree is byte-
+identical to the approved artifact. This is a real FAIL-CLOSED source identity
+boundary, not an excuse to move main backward or substitute a new SHA under
+an existing permit. Preserve any failed plan receipt. Correct sequence:
+qualify exact reviewed PR head + Linux artifact; issue sole-owner exact permit;
+run Factory plan, release, real rollback/reactivate, T10 and browser acceptance;
+ONLY AFTER root T10 merge the same PR and advance canonical main. If a PR
+was mistakenly merged first, create a NEW minimally scoped forward-only
+source derived from actual current main, fully requalify CI + Linux member
+proof, and obtain a NEW exact-source owner permit. Never rewrite main,
+alter source hashes, monkey-patch the Factory or reuse an older approval.
+The 2026-11-17 Storage Explorer #1401 source was prematurely merged at
+88214ecb9473d516980a03e175bbfc18eb2120ec; its approved f961e600...
+Factory plan correctly held at SOURCE_DOES_NOT_INCLUDE_CURRENT_CANONICAL_MAIN
+without transport/activation. This runbook clarifies release order; it
+does not itself prove any subsequent production release or delete authority.
+
 Never substitute gitpull, in-place host builds, manual service restarts, the
 obsolete hardcoded we2 launcher, or another deployment framework.
 
