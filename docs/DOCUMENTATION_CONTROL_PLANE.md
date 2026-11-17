@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-premium-uid650-20261117` at `699495f5f12dae4a956ae3aa745a0580086ced1c`
+Implementation baseline: `session-c/we2-intel-cold-storage-os-20261117` at `35624577eaaf0b3a79043406089b54765adb28df`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

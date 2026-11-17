@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
+import IntelColdStoragePanel from "./IntelColdStoragePanel";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {
   Activity,Archive,ArrowLeft,Check,Clock3,Database,HardDrive,
@@ -228,6 +229,7 @@ export default function StorageHogWorkbench(){
           onSelect={()=>choosePlane(id)} reading={data?.planes.find(p=>p.id===id)}
           topCount={data?.visual?.planes.find(p=>p.id===id)?.hogs.length??0}/>)}
       </section>
+      <IntelColdStoragePanel/>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
         <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{safeCount}/3 drives with current capacity receipts · Individual file coverage: NOT ADMITTED</span>
         <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):"UNKNOWN / STALE"} · Owner learning ledger: {ledgerStatus}</span>
