@@ -67,3 +67,16 @@ test("new route is owner-only, same-origin, size-limited and nonexecuting",()=>{
   assert.doesNotMatch(route+hostPolicy,/\b(?:unlink|rmdir|rmSync|execSync|spawn|chmod|chown)\s*\(/);
   assert.doesNotMatch(route,/export\s+(?:async\s+)?function\s+(?:DELETE|PUT|PATCH)\b/);
 });
+
+test("premium tiny step numerals maintain WCAG AA contrast at 375px",()=>{
+  const page=readFileSync(path.join(process.cwd(),"components/storage-os/StoragePremiumInspector.tsx"),"utf8");
+  const step=/\<div className="text-\[10px\] text-slate-(\d+)">\{String\(i\+1\)/.exec(page);
+  assert.equal(step?.[1],"400","step labels require text-slate-400 or stronger");
+  // The previous slate-500 foreground (#64748b) over the rendered dark
+  // panel (#0a111d) was 3.97:1; the corrected slate-400 is comfortably AA.
+  const linear=(x:number)=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4;
+  const luma=(hex:string)=>{const cs=[1,3,5].map(n=>linear(parseInt(hex.slice(n,n+2),16)/255));return cs[0]*.2126+cs[1]*.7152+cs[2]*.0722;};
+  const a=luma("#94a3b8"),b=luma("#0a111d");
+  const contrast=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  assert.ok(contrast>=4.5, "small labels must achieve WCAG AA 4.5:1, got "+contrast.toFixed(2));
+});

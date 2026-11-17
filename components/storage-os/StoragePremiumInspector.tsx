@@ -192,7 +192,7 @@ export default function StoragePremiumInspector({visual,activeId}:{
         </div>
         <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{stages.map((s,i)=>
           <li key={s.name} className="rounded-lg border border-white/10 px-3 py-3">
-            <div className="text-[10px] text-slate-500">{String(i+1).padStart(2,"0")} / 11</div>
+            <div className="text-[10px] text-slate-400">{String(i+1).padStart(2,"0")} / 11</div>
             <div className="mt-1 text-[11px] font-bold text-slate-100">{s.name}</div>
             <div className="mt-2 text-[10px] font-black text-amber-200">{s.verdict}</div>
           </li>)}</ol>
