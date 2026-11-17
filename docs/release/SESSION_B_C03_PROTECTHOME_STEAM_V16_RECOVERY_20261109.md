@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only exact-identity fail-closed App release; no funding"
-reviewed_at: "2026-11-09"
+reviewed_at: "2026-11-17"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -24,3 +24,26 @@ This second one-use forward controller v2 uses a fresh root-private directory an
 **Functional acceptance is strengthened:** /api/bets must return 200 in the repaired process. A financial HOLD 503 is safe but is NOT accepted as a working bet board; its observation triggers the guarded restricted rollback. V16 health also explicitly refuses 503 and 500. Partially copied evidence or stale V16 directory blocks reactivation; a stale/missing policy, wrong unit, orphaned lease evidence or changed C03/C04 identity must fail closed in scheduled refresh.
 
 Source-only targeted tests cover exact evidence scope, 0400 sandbox copies, missing/changed privileged source, denial on partial publication, finance socket masks, 503 disqualification, process recovery. **No current-source test alone proves production:** the live second cutover, signed-in Steam OpenID, ordinary/admin/AI-Scribe Chrome sessions, session persistence and nonce replay, all seven views, images, sustained RSS/heap, recurring Steam rotation, and real C02 HEL1 8094 POST/GET remain separate physical requirements. C03_APP_HANDOFF=HOLD and C02_APP_TRANSPORT=HOLD until those are met.
+
+
+## November 17, 2026 — WE2 historical-source re-review
+
+This is a **dated November 9 draft/source-and-incident record**, not the current
+HEL1 release procedure, current process-ID census, operational signer permit,
+or proof that its proposed Steam/rollback runtime is now installed. Statements
+such as “current PID,” “original runtime” and candidate BUILD_ID in the
+historical sections refer to their recorded November 9 observation. The
+November 16 public website had source
+`09ff9eeccb93b4701d1cfd1ff329f0286cdc6e16`, with the existing
+Factory V3 controller and finance sockets 8092–8095 closed; the proposed
+nonfinancial follow-up PR #1394 has separate exact-source review, Factory and
+authenticated browser gates. Never run a historical controller or trust an
+old source-pinned permit against the newer runtime. All WoloChain custody,
+writer fences, funding, C02/C03/05/06/07/09 and independent restores remain
+under WE1 authority; nothing in this re-review authorizes financial SQL,
+native 8094/8095, customer funds or changes to protected services.
+
+This WE2 `aoe2war-web` source-owner review renewed the **historical-document
+freshness only**. It does not re-attest the original host's transient PID,
+systemd, NFT, PostgreSQL or memory measurements. New physical assertions
+require a fresh, source-bound operational receipt.

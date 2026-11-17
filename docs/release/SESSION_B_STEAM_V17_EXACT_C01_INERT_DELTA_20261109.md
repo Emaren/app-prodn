@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only reviewed App release with physical production acceptance required"
-reviewed_at: "2026-11-09"
+reviewed_at: "2026-11-17"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -30,3 +30,26 @@ Non-negotiable boundaries: no Chain keys, owner DB mutations, financial grants, 
 ## HEL1 physical in-memory adversarial receipt (source-only)
 
 An independent physical check imported the original installed V14 > V5z > C03 V1 > C04 guards without modifying any systemd unit, key, financial table, socket, nft set or wallet. The source-staged exact C01 delta guard confirmed the authentic original fingerprint. Five adversarial variations were all rejected: synthetic active reviewer PID, unrelated protected-unit PID change, legacy 3030 socket substitution, present maintenance-approval sentinel and modified reviewer executable bytes. The test changed only in-memory snapshot copies and mocked reads. Physical six-result receipt under root-private staging is SHA256 370ab38312d0aa8f5cf6eecce3f7d5ad046ec8761a9d3fdd7e019ea55cec2714; status PASS_EXACT_C01_DELTA_ADVERSARIAL_READONLY. This is a source/host proof, NOT a completed scheduled Steam enrollment or a C03 financial acceptance.
+
+
+## November 17, 2026 — WE2 historical-source re-review
+
+This is a **dated November 9 draft/source-and-incident record**, not the current
+HEL1 release procedure, current process-ID census, operational signer permit,
+or proof that its proposed Steam/rollback runtime is now installed. Statements
+such as “current PID,” “original runtime” and candidate BUILD_ID in the
+historical sections refer to their recorded November 9 observation. The
+November 16 public website had source
+`09ff9eeccb93b4701d1cfd1ff329f0286cdc6e16`, with the existing
+Factory V3 controller and finance sockets 8092–8095 closed; the proposed
+nonfinancial follow-up PR #1394 has separate exact-source review, Factory and
+authenticated browser gates. Never run a historical controller or trust an
+old source-pinned permit against the newer runtime. All WoloChain custody,
+writer fences, funding, C02/C03/05/06/07/09 and independent restores remain
+under WE1 authority; nothing in this re-review authorizes financial SQL,
+native 8094/8095, customer funds or changes to protected services.
+
+This WE2 `aoe2war-web` source-owner review renewed the **historical-document
+freshness only**. It does not re-attest the original host's transient PID,
+systemd, NFT, PostgreSQL or memory measurements. New physical assertions
+require a fresh, source-bound operational receipt.

@@ -16,6 +16,7 @@ export const GITHUB_ERROR_CACHE_MS = 10_000;
 
 const ROOT = "https://api.github.com/repos/Emaren/app-prodn/";
 const ALLOWED_PATHS = new Set([
+  "branches/main", // WE2 canonical source only; private WE3 is NOT publicly queried
   "branches/" + encodeURIComponent("session-c/next-renaissance-website-20261114"),
   "branches/" + encodeURIComponent("session-c/we3-website-observatory-20261115"),
   "pulls/1362", "pulls/1363", "pulls/1364",
@@ -101,7 +102,7 @@ export async function readBoundedGithubPublic(
   const entry: CacheEntry = {
     fetcher, expiresAt: Date.now() + GITHUB_POSITIVE_CACHE_MS, result,
   };
-  // Exactly five fixed endpoints; never accumulate user-provided URLs.
+  // Exact static allowlist only; never accept caller-provided repositories or URLs.
   evidenceCache.set(key, entry);
   void result.then(value => {
     if (value === null && evidenceCache.get(key) === entry)

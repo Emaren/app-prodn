@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfunded source-only App transport parity; Chain finance owner retains execution"
-reviewed_at: "2026-11-09"
+reviewed_at: "2026-11-17"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -28,3 +28,26 @@ The library requires a finance-owner durable insertOnce journal before any POST 
 The full C02 finance journal / native return runtime and their PostgreSQL14-migration source, original claim/funding lineage, reserve reviewer identity and financial proof verifier still reside in the separate financial integration branch, with Session A. They are NOT copied, imported, installed or activated into the restricted web runtime. An upstream 13th test for funded Prisma journal/migration compatibility is explicitly skipped in this App-only source port and labeled HOLD; this is not silently made green. The real Go 8094 handler test is also intentionally skipped unless a separately authorized isolated inert listener is explicitly provisioned. Neither source-only port nor upstream inert Mac tests establish authentic HEL1 production 8094/8095 operation acceptance.
 
 This branch does not change Next routes, existing App read projections, systemd units, V8 heap, memory cap, port listeners, PostgreSQL grants, C01 keys, C05 reserves or C09 funding. No third Next, legacy payout fallback, chain reset or WOLO movement. C02_APP_TRANSPORT=HOLD; C03_APP_HANDOFF=HOLD until physical and independent evidence qualifies. Merge only after exact-head CI, and do not count the two skipped Chain-owned gates as App transport completion.
+
+
+## November 17, 2026 — WE2 historical-source re-review
+
+This is a **dated November 9 draft/source-and-incident record**, not the current
+HEL1 release procedure, current process-ID census, operational signer permit,
+or proof that its proposed Steam/rollback runtime is now installed. Statements
+such as “current PID,” “original runtime” and candidate BUILD_ID in the
+historical sections refer to their recorded November 9 observation. The
+November 16 public website had source
+`09ff9eeccb93b4701d1cfd1ff329f0286cdc6e16`, with the existing
+Factory V3 controller and finance sockets 8092–8095 closed; the proposed
+nonfinancial follow-up PR #1394 has separate exact-source review, Factory and
+authenticated browser gates. Never run a historical controller or trust an
+old source-pinned permit against the newer runtime. All WoloChain custody,
+writer fences, funding, C02/C03/05/06/07/09 and independent restores remain
+under WE1 authority; nothing in this re-review authorizes financial SQL,
+native 8094/8095, customer funds or changes to protected services.
+
+This WE2 `aoe2war-web` source-owner review renewed the **historical-document
+freshness only**. It does not re-attest the original host's transient PID,
+systemd, NFT, PostgreSQL or memory measurements. New physical assertions
+require a fresh, source-bound operational receipt.
