@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 13,
-    "routeHandlerTemplates": 285,
-    "apiHandlerTemplates": 282,
+    "routeHandlerTemplates": 286,
+    "apiHandlerTemplates": 283,
     "nonApiHandlerTemplates": 3
   },
   "pages": [

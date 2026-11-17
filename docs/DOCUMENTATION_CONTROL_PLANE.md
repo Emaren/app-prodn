@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-workspace-post1394-20261117` at `f87f9967470febe85958d834bbeb8d1f178bad5e`
+Implementation baseline: `session-c/we2-storage-train-post1394-20261117` at `4b8bb45e55c1303a69f276e40139e421d507dccf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **149**
+- Authoritative repository documents: **150**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 81
-- `runbook`: 49
+- `runbook`: 50
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 90
+- `active`: 91
 - `draft`: 43
 - `generated`: 1
 - `historical`: 12
@@ -176,6 +176,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Deployment OS final certification source audit](release/DEPLOYMENT_OS_FINAL_CERTIFICATION_AUDIT_20261114.md) | `reference` | `active` | `product-source-audit-not-production-acceptance` |
 | [F1 PRODUCT BOOT RECOVERY — LIVE P0 HOLD](release/F1_PRODUCT_BOOT_RECOVERY_HOLD_20261114.md) | `reference` | `draft` | `product-source-review-only-not-root-install` |
 | [Bounded PRODUCT cold-storage transfer plan](release/F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md) | `reference` | `draft` | `product-transfer-proposal-not-retirement-permission` |
+| [Single-Owner PRODUCT Release Authority](release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md) | `runbook` | `active` | `nonfinancial-owner-release-governance` |
 | [WE3 independent PRODUCT source: two ChatGPT sessions without shared Git writes](release/PRODUCT_WE3_PARALLEL_WORK_ENVIRONMENTS_20261114.md) | `runbook` | `active` | `restricted PRODUCT source operations only; no FINANCIAL or release-root authority` |
 | [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |

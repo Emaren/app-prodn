@@ -8,11 +8,11 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 161 exact page templates and 285 handler templates match Git HEAD",()=>{
+test("all 161 exact page templates and 286 handler templates match Git HEAD",()=>{
   const actual=census(withRestrictedReadOnlyGitHead(() => gitHeadPaths()),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
     pageTemplates:161,adminTemplates:40,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:13,routeHandlerTemplates:285,apiHandlerTemplates:282,nonApiHandlerTemplates:3
+    excludedStaticTemplates:13,routeHandlerTemplates:286,apiHandlerTemplates:283,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
