@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-explorer-node-docseal-20261117` at `70e3b23466e4afeea642d03a98474cc2211e1b5e`
+Implementation baseline: `session-c/we2-storage-explorer-chrome-docseal-20261117` at `42a9f403cd7181c7b5c6236af69068b38d89a8d8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
