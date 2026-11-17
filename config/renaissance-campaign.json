@@ -208,6 +208,7 @@
         "/realm",
         "/kingdom",
         "/kingdom-traders",
+        "/kingdom-traders/cockpit",
         "/factory",
         "/admin",
         "/admin/translations",
