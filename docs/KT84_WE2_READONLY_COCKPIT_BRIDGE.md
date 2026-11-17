@@ -13,7 +13,7 @@ review_interval_days: 14
 sensitivity: "internal"
 ---
 
-# KT84 — one signed WE3 telemetry handoff, no trading authority
+# KT84 WE3-to-WE2 Signed Read-Only Cockpit Contract
 
 ## Source and custody separation
 
