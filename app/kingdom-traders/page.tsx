@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PaperFleetPreview from "./PaperFleetPreview";
+import Kt84CockpitEntry from "./Kt84CockpitEntry";
 import StrategyBlueprintWorkshop from "./StrategyBlueprintWorkshop";
 import {
   ArrowRight,
@@ -100,6 +101,13 @@ export default function KingdomTradersPage() {
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
+            href="/kingdom-traders/cockpit"
+            className="inline-flex items-center gap-2 rounded-full border border-amber-200/40 bg-amber-200/10 px-5 py-3 text-sm font-bold text-amber-100 transition hover:bg-amber-200/20"
+          >
+            Protected PAPER observatory
+            <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <Link
             href="/kingdom"
             className="inline-flex items-center rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-slate-200 transition hover:border-white/30 hover:text-white"
           >
@@ -162,6 +170,8 @@ export default function KingdomTradersPage() {
           })}
         </div>
       </section>
+
+      <Kt84CockpitEntry />
 
       <PaperFleetPreview />
 

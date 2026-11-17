@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8130d3034591263396cd9a18ef6e62ef045a8a306063a1d6519f1405375be2e1",
+      "sha256": "f432955c3d68b988d1dcfe6724f9916ae1057c22c7c6e65ca05af3fc08c76f52",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1088,6 +1088,29 @@
       ],
       "title": "Transparent Kingdom Machine Instruments",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-readonly-product-source-review",
+      "id": "aoe2war.app-prodn.kt84-we2-owner-cockpit",
+      "owner": "aoe2war-web",
+      "path": "docs/KT84_WE2_READONLY_COCKPIT_BRIDGE.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-17",
+      "sensitivity": "internal",
+      "sha256": "efe5898a0ce958ccac2c59a0c9a8d0e43a2d50efd71fc277b0c095941e32c435",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "kingdom-traders"
+      ],
+      "title": "KT84 WE3-to-WE2 Signed Read-Only Cockpit Contract",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3416,8 +3439,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-train-post1394-20261117",
-    "commit": "2776ccdb9a5704e7ea1334e1929494407aed1d10"
+    "branch": "session-c/we2-kt84-cockpit-20261117",
+    "commit": "0918fcb73531e81694734769acbd5cc56bebc058"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

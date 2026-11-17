@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-train-post1394-20261117` at `2776ccdb9a5704e7ea1334e1929494407aed1d10`
+Implementation baseline: `session-c/we2-kt84-cockpit-20261117` at `0918fcb73531e81694734769acbd5cc56bebc058`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **150**
+- Authoritative repository documents: **151**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 81
-- `runbook`: 50
+- `runbook`: 51
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 91
+- `active`: 92
 - `draft`: 43
 - `generated`: 1
 - `historical`: 12
@@ -98,6 +98,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md) | `reference` | `active` | `self-knowledge-contract` |
 | [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [Transparent Kingdom Machine Instruments](KINGDOM_TRANSPARENT_MACHINERY.md) | `reference` | `active` | `visual-only-read-side-projection-contract` |
+| [KT84 WE3-to-WE2 Signed Read-Only Cockpit Contract](KT84_WE2_READONLY_COCKPIT_BRIDGE.md) | `runbook` | `active` | `nonfinancial-readonly-product-source-review` |
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |

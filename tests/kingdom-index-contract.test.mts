@@ -47,6 +47,20 @@ test("every static public App Router page has exactly one nonprivate Kingdom Ind
     assert.ok(["citadel","arena","forge","bazaar","commons"].includes(item.district));
   }
 });
+test("KT84 owner-only GET entry is not a public candidate and cannot bypass auth",()=>{
+  const guarded=readFileSync(join(root,"app/kingdom-traders/cockpit/route.ts"),"utf8");
+  const sourceAudit=readFileSync(join(root,"scripts/kingdom_index_source_audit.mjs"),"utf8");
+  const publicPage=readFileSync(join(root,"app/kingdom-traders/page.tsx"),"utf8");
+  assert.match(guarded,/requireAdmin\(request\)/);
+  assert.match(guarded,/NextResponse.redirect/);
+  assert.match(guarded,/status:303/);
+  assert.match(guarded,/private, no-store/);
+  assert.doesNotMatch(guarded,/export async function POST|signTransaction/);
+  assert.match(sourceAudit,/row.name.startsWith\("\["\)/);
+  assert.equal(catalog.filter(x=>x.href==="/kingdom-traders/cockpit").length,0);
+  assert.equal(catalog.length,88);
+  assert.match(publicPage,/href="\/kingdom-traders\/cockpit"/);
+});
 test("public index uses actual source-attested scores and refuses guessed completion",()=>{
  const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
  assert.match(source,/measuredVersion===version/);
