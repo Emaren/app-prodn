@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d850b063382b7b2e5d5061ea62624709cb692f4749fb538d2fad722b3b19ca35",
+      "sha256": "16fcefbb41f81e048b86d1abfa61f462eddf0a3eb53376203067368c5a027ea4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3393,8 +3393,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-explorer-census-docseal-20261117",
-    "commit": "ed33713135daa2f155701f8b7db9985b98301fe3"
+    "branch": "session-c/we2-storage-explorer-node-docseal-20261117",
+    "commit": "70e3b23466e4afeea642d03a98474cc2211e1b5e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
