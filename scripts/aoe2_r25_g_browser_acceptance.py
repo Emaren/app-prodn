@@ -411,8 +411,7 @@ def production_routes(root):
         raise ValueError("Unsafe public route census")
     private=tuple(row["href"] for row in inventory["pages"]
                   if row["href"].startswith("/admin") and "[" not in row["href"])
-    if len(private)!=39 or len(set(private))!=39 or "/admin/storage-os/explorer" not in private:
-        raise ValueError("Protected Atlas census changed")
+    if len(private)!=38 or len(set(private))!=38:raise ValueError("Protected Atlas census changed")
     graph=[row for row in inventory["pages"] if row["href"]=="/kingdom-construction"]
     if len(graph)!=1 or graph[0].get("scope")!="excluded-static":
         raise ValueError("Independent B4 route admission missing")

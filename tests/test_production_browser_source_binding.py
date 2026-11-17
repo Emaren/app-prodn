@@ -2,6 +2,7 @@
 import contextlib
 import hashlib
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -213,15 +214,26 @@ class ProductionBrowserSource(unittest.TestCase):
                     self.fail("Source symlink fixture was entered")
         self.assertEqual(git_fingerprint(context),before)
 
-    def test_actual_census_preserves_historical_88_and_separate_b4_route(self):
-        public,protected=browser.production_routes(ROOT)
-        self.assertEqual(len(public),89)
-        self.assertEqual(public[-1],"/kingdom-construction")
+    def test_unreviewed_private_explorer_preserves_historical_b_browser_fail_closed(self):
+        public=json.loads((ROOT/"config/kingdom-index-routes.json").read_text())
+        pages=json.loads((ROOT/"config/kingdom-index-inventory.json").read_text())["pages"]
+        routes={row["href"] for row in public}
+        protected=tuple(row["href"] for row in pages
+                        if row["href"].startswith("/admin") and "[" not in row["href"])
+        self.assertEqual(len(routes),len(public))
+        self.assertEqual(len(routes),88)
+        self.assertNotIn("/kingdom-construction",routes)
+        self.assertNotIn("/admin/storage-os/explorer",routes)
+        self.assertIn("/kingdom-construction",{row["href"] for row in pages})
+        self.assertEqual(len(protected),len(set(protected)))
         self.assertEqual(len(protected),39)
-        self.assertIn("/admin/storage-os/explorer",protected)
         self.assertIn("/admin/aoe2war-os/umbrella-tree",protected)
-        self.assertNotIn("/admin/aoe2war-os/umbrella-tree",public)
-        self.assertEqual(len(set(public)),89)
+        self.assertIn("/admin/storage-os/explorer",protected)
+        # A newly registered private page is NOT an admitted production
+        # browser candidate. The exact hash-pinned B script must HOLD until
+        # its separate, independently reviewed release-authority update.
+        with self.assertRaisesRegex(ValueError,"Protected Atlas census changed"):
+            browser.production_routes(ROOT)
 
 
 if __name__=="__main__":
