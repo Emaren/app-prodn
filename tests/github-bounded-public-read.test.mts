@@ -13,7 +13,7 @@ test("no arbitrary GitHub path, credential endpoint or user-provided URL can be 
   let requests = 0;
   try {
     globalThis.fetch = async () => { requests++; throw new Error("must not run"); };
-    for (const path of ["repos/Emaren/app-prodn", "pulls/1365", "branches/main", "pulls/../../users", "https://example.com"]) {
+    for (const path of ["repos/Emaren/app-prodn", "pulls/1365", "branches/unknown", "branches/../../users", "repos/Emaren/kingdom-traders/branches/main", "pulls/../../users", "https://example.com"]) {
       assert.equal(await readBoundedGithubPublic(path, 40_000), null);
     }
     assert.equal(requests, 0);
@@ -120,4 +120,24 @@ test("PR and branch endpoints are separately bounded; observation time is not re
     assert.ok(ref?.observedAt);
     assert.equal(requests, 2);
   } finally { globalThis.fetch = oldFetch; }
+});
+
+
+test("the newly admitted WE2 canonical main source read is EXACTLY allowlisted, not a private Traders proxy", async () => {
+  const oldFetch=globalThis.fetch;
+  const requests: string[]=[];
+  try {
+    globalThis.fetch=async (url,init) => {
+      requests.push(String(url));
+      assert.equal(String(url),"https://api.github.com/repos/Emaren/app-prodn/branches/main");
+      assert.equal(new Headers(init?.headers).get("authorization"),null);
+      return json({name:"main",commit:{sha:"a".repeat(40)}});
+    };
+    const main=await readBoundedGithubPublic("branches/main",40_000);
+    assert.equal((main?.data as {name:string}).name,"main");
+    assert.equal(requests.length,1);
+    assert.equal(await readBoundedGithubPublic("branches/kingdom-traders",40_000),null);
+    assert.equal(await readBoundedGithubPublic("https://api.github.com/repos/Emaren/kingdom-traders/branches/main",40_000),null);
+    assert.equal(requests.length,1);
+  } finally {globalThis.fetch=oldFetch;}
 });
