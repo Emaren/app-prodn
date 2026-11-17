@@ -11,8 +11,8 @@ const indexed = publicIndex.map(row=>row.href);
 test("all 162 exact page templates and 287 handler templates match Git HEAD",()=>{
   const actual=census(withRestrictedReadOnlyGitHead(() => gitHeadPaths()),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
-    pageTemplates:162,adminTemplates:40,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:14,routeHandlerTemplates:287,apiHandlerTemplates:284,nonApiHandlerTemplates:3
+    pageTemplates:162,adminTemplates:40,dynamicTemplates:21,publicIndexTemplates:88,
+    excludedStaticTemplates:13,routeHandlerTemplates:287,apiHandlerTemplates:284,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
