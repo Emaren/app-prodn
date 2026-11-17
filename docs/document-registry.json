@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7f9c97967276dad4c1654994c6007688574c0772f0c62eaca8e27b5492b09870",
+      "sha256": "611897bba39bdd7f7a71003b700df395fc5d905f417d0d390d855a69b0047900",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3417,7 +3417,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-storage-premium-uid650-20261117",
-    "commit": "a42c3990b16575eef21f61877cb3046c1fa086c8"
+    "commit": "699495f5f12dae4a956ae3aa745a0580086ced1c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
