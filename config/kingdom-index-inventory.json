@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 13,
-    "routeHandlerTemplates": 286,
-    "apiHandlerTemplates": 283,
+    "routeHandlerTemplates": 287,
+    "apiHandlerTemplates": 284,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1063,6 +1063,11 @@
     },
     {
       "entrypoint": "app/api/admin/championship-transfers/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/chronicle-press-pack/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
