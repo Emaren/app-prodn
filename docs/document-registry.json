@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3d120fa613dbdeab240568f1f866b2b1d354df83221e83f335e5201cfea496fd",
+      "sha256": "026019c50d66d2fbbfbf3b6fefe40d5d5dd101dba35135a817617d60fde1410b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3394,7 +3394,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-workspace-post1394-20261117",
-    "commit": "2fdfdabd40d2483489b746dd820404b3d4ef1b20"
+    "commit": "f87f9967470febe85958d834bbeb8d1f178bad5e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
