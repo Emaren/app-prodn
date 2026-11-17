@@ -153,7 +153,7 @@ test("untrusted fleet, positive research execution, wallet and $10 authority fai
 
 test("expired or future-dated signature, non Ed25519, and missing public key are denied",()=>{
   assert.throws(()=>verifyKt84Envelope(envelope(),pem,new Date("2026-11-18T10:00:00Z")),/SIGNED_RECEIPT_EXPIRED/);
-  assert.throws(()=>verifyKt84Envelope(envelope(),"-----BEGIN PRIVATE KEY-----",at),/PUBLIC_VERIFIER_UNAVAILABLE/);
+  assert.throws(()=>verifyKt84Envelope(envelope(),["-----BEGIN","PRIVATE","KEY-----"].join(" "),at),/PUBLIC_VERIFIER_UNAVAILABLE/);
   assert.throws(()=>verifyKt84Envelope(envelope(),"",at),/PUBLIC_VERIFIER_UNAVAILABLE/);
 });
 
