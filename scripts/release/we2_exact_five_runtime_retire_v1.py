@@ -193,8 +193,12 @@ def services() -> dict:
     primary = command(["/usr/bin/systemctl", "show",
                        "aoe2hdbets-web-prod.service", "-p", "ActiveState",
                        "-p", "WorkingDirectory", "-p", "MainPID", "-p", "NRestarts"])
-    need("ActiveState=active" in primary and
-         "WorkingDirectory=/var/lib/aoe2war-web-prod-fcd58f2ac05b" in primary,
+    fields = dict(line.split("=",1) for line in primary.splitlines() if "=" in line)
+    need(fields.get("ActiveState") == "active" and
+         fields.get("WorkingDirectory") ==
+         "/var/lib/aoe2war-web-prod-fcd58f2ac05b" and
+         int(fields.get("MainPID","0")) > 0 and
+         int(fields.get("NRestarts","-1")) >= 0,
          "PUBLIC_3032_RUNTIME_DRIFT")
     sockets = command(["/usr/bin/ss", "-H", "-ltn"])
     for port in PORTS_UP:
@@ -225,6 +229,8 @@ def services() -> dict:
     need("fcd58f2ac05bc94ddb8154cce9e130e244d501b0" in out,
          "PUBLIC_SOURCE_DRIFT")
     return {"runtime": "fcd58f2ac05b", "https_200": True,
+            "main_pid": int(fields["MainPID"]),
+            "restart_count": int(fields["NRestarts"]),
             "protected_up": list(PORTS_UP), "financial_down": list(PORTS_DOWN)}
 
 
@@ -257,6 +263,10 @@ def validate_packet(packet: dict, preview: dict, *, now: datetime) -> dict:
          and x.get("action") == "RETIRE_EXACT_FIVE_ONLY"
          and x.get("financial_authorized") is False
          and x.get("owner") == "Emaren", "WRONG_OWNER_SCOPE")
+    need(set(x) == {"schema","action","owner","financial_authorized",
+                    "controller_sha256","owner_spki_sha256",
+                    "inventory_sha256","targets","live_runtime","nonce",
+                    "issued_utc","expires_utc"}, "EXTRA_PERMIT_AUTHORITY_FIELD")
     need(x.get("controller_sha256") == preview["controller_sha256"]
          and x.get("inventory_sha256") == preview["inventory_sha256"]
          and x.get("targets") == preview["targets"]
@@ -277,7 +287,11 @@ def validate_packet(packet: dict, preview: dict, *, now: datetime) -> dict:
 
 def owner_signature(packet: dict) -> None:
     trusted_ancestors(TRUST.parent)
-    owner_key = filebytes(TRUST, limit=30000)
+    for protected in (TRUST, TRUST_PIN):
+        info = protected.lstat()
+        need(stat.S_ISREG(info.st_mode) and info.st_uid == 0 and
+             info.st_nlink == 1 and not info.st_mode & 0o022,
+             "UNTRUSTED_OWNER_PUBLIC_PIN")
     expected = filebytes(TRUST_PIN, limit=100).decode().strip()
     need(HEX64.fullmatch(expected) is not None, "OWNER_SPKI_PIN")
     spki = subprocess.run(["/usr/bin/openssl", "pkey", "-pubin", "-in",
@@ -318,6 +332,7 @@ def receipt_write(name: str, value: dict) -> None:
 def guarded_destroy(entry: dict, nonce: str) -> tuple[int, int]:
     before = free_bytes()
     inspect_one(entry)
+    health_before = services()
     # Quarantine on the exact same filesystem first: if health fails, restore
     # the name before any bytes are removed. No broad wildcard or user path.
     original = Path(entry["path"])
@@ -329,8 +344,8 @@ def guarded_destroy(entry: dict, nonce: str) -> tuple[int, int]:
         q = quarantine.lstat()
         need(q.st_ino == entry["root_inode"] and q.st_dev == entry["root_dev"],
              "QUARANTINE_IDENTITY_DRIFT")
-        live_refs(exact_inventory())
-        services()
+        live_refs(exact_inventory() + [{"path":str(quarantine)}])
+        need(services() == health_before, "POST_RENAME_SERVICE_OR_PID_DRIFT")
     except Exception:
         os.rename(quarantine, original)
         raise
@@ -339,7 +354,7 @@ def guarded_destroy(entry: dict, nonce: str) -> tuple[int, int]:
     need(not quarantine.exists() and not original.exists(), "INCOMPLETE_REMOVAL")
     after = free_bytes()
     need(after > before, "NO_PHYSICAL_ROOT_RECLAIM")
-    services()
+    need(services() == health_before, "POST_DELETE_SERVICE_OR_PID_DRIFT")
     return before, after
 
 
