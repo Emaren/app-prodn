@@ -46,7 +46,7 @@ export default function CentralCommandView(){
      <div><p className="text-[11px] font-bold uppercase tracking-[.32em] text-cyan-300">Private command deck · Wave 1</p>
        <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">Central Command</h1>
        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Six engineering lanes. One source-frozen nonfinancial release. Every gate requires evidence, not confidence.</p></div>
-     <div className="flex items-center gap-3"><Link href="/admin/central-command/lanes#work-environments" className="rounded-xl border border-violet-300/20 px-4 py-2 text-sm hover:bg-white/10">Work Environments 2 + 3</Link> <Link href="/admin/storage-os" className="rounded-xl border border-cyan-300/20 px-4 py-2 text-sm hover:bg-white/10">Storage OS</Link>
+     <div className="flex items-center gap-3"><Link href="/admin/central-command/lanes#work-environments" className="rounded-xl border border-violet-300/20 px-4 py-2 text-sm hover:bg-white/10">Work Environments 1 · 2 · 3</Link> <Link href="/admin/storage-os" className="rounded-xl border border-cyan-300/20 px-4 py-2 text-sm hover:bg-white/10">Storage OS</Link>
        <button type="button" onClick={()=>void refresh()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white"><RefreshCw className="h-4 w-4"/> {loading?"Reading…":"Refresh"}</button></div>
     </div>
     <p className="mt-6 text-xs text-slate-400" role="status">{data?"GitHub metadata observed: "+seen(data.generatedAt)+" · native/runtime states UNKNOWN":loading?"Reading bounded private source…":"No accepted live source"}
