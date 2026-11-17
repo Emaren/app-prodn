@@ -20,7 +20,7 @@ test("known restricted public board read surfaces fail shut", () => {
   for (const name of [
     "bet_markets", "bet_wagers", "pending_wolo_claims",
     "bet_counter_actions", "bet_stake_intents", "bet_stake_tickets",
-    "bet_auto_executions", "wolo_indexed_transfers",
+    "bet_auto_executions", "bet_auto_presets", "wolo_indexed_transfers",
   ]) {
     assert.equal(isRestrictedBetsReadDenied(error(name)), true, name);
   }
@@ -51,6 +51,8 @@ test("Prisma P2039 across separate JavaScript realm still preserves narrow finan
 
 test("unknown SQL, table, unrelated database errors and malicious payload are not silently hidden", () => {
   assert.equal(isRestrictedBetsReadDenied(error("users")), false);
+  assert.equal(isRestrictedBetsReadDenied(error("bet_auto_presets", "P2002")), false);
+  assert.equal(isRestrictedBetsReadDenied(error("bet_auto_presets", "P2039", "23505")), false);
   assert.equal(isRestrictedBetsReadDenied(error("bet_markets", "P2002")), false);
   assert.equal(isRestrictedBetsReadDenied(error("bet_markets", "P2039", "23505")), false);
   assert.equal(isRestrictedBetsReadDenied(new Error("permission denied for table bet_markets 42501")), false);

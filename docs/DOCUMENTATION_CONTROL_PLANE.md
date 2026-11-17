@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/ember-november-polish-20261116` at `0e9fa1acd86194683b840672753ac35f3e723fad`
+Implementation baseline: `session-c/we2-recovery-integration-20261116` at `754c35314ce4c1cb42630b26ae99a968a0bc570a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
