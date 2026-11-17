@@ -37,9 +37,13 @@ state as verified until a separate signed KT83 source input is admitted.
 
 ## WE2 frontend and API
 
-- Protected `GET /kingdom-traders/cockpit` requires existing
-  `requireServerAdmin()`. Anonymous and Scribe are denied using the
-  existing source-auth gate. The public gateway remains publicly
+- Protected `GET /kingdom-traders/cockpit` is implemented through the
+  parameterized `app/kingdom-traders/[section]/page.tsx`. It requires
+  existing `requireServerAdmin()` before checking the allowlisted
+  `section === "cockpit"`, and rejects every other slug with `notFound()`.
+  Anonymous and Scribe are denied using the existing source-auth gate.
+  This private route MUST NOT enter the frozen 88-route public Kingdom
+  Index; the immutable source-auditor script and SHA guard are untouched. The public gateway remains publicly
   reachable and never leaks this backend state.
 - Protected `GET /api/kingdom-traders/paper-readonly` uses existing
   `requireAdmin(request)`, owner-only no-cache with `Vary: Cookie`.

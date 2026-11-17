@@ -164,8 +164,10 @@ test("web API is owner-authenticated and requires independently signed read-only
   assert.match(route,/Cache-Control/);
   assert.match(route,/private, no-store/);
   assert.doesNotMatch(route,/export async function POST|signTransaction|sendTransaction|prisma|sqlite3/i);
-  const server=readFileSync(new URL("../app/kingdom-traders/cockpit/page.tsx",import.meta.url),"utf8");
+  const server=readFileSync(new URL("../app/kingdom-traders/[section]/page.tsx",import.meta.url),"utf8");
   assert.match(server,/requireServerAdmin\(\)/);
+  assert.match(server,/section !== "cockpit"/);
+  assert.match(server,/notFound\(\)/);
   const source=readFileSync(new URL("../lib/kt84ReadonlyProjection.ts",import.meta.url),"utf8");
   assert.match(source,/O_NOFOLLOW/);
   assert.match(source,/root\.uid|parent\.uid|before\.uid/);

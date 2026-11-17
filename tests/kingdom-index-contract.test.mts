@@ -47,6 +47,18 @@ test("every static public App Router page has exactly one nonprivate Kingdom Ind
     assert.ok(["citadel","arena","forge","bazaar","commons"].includes(item.district));
   }
 });
+test("KT84 cockpit remains a server-guarded one-slug private route and never joins public scoring",()=>{
+  const guarded=readFileSync(join(root,"app/kingdom-traders/[section]/page.tsx"),"utf8");
+  const sourceAudit=readFileSync(join(root,"scripts/kingdom_index_source_audit.mjs"),"utf8");
+  const originalRoute=readFileSync(join(root,"app/kingdom-traders/page.tsx"),"utf8");
+  assert.match(guarded,/requireServerAdmin\(\)/);
+  assert.match(guarded,/section !== "cockpit"/);
+  assert.match(guarded,/notFound\(\)/);
+  assert.match(sourceAudit,/row.name.startsWith\("\["\)/);
+  assert.equal(catalog.filter(x=>x.href==="/kingdom-traders/cockpit").length,0);
+  assert.equal(catalog.length,88);
+  assert.match(originalRoute,/href="\/kingdom-traders\/cockpit"/);
+});
 test("public index uses actual source-attested scores and refuses guessed completion",()=>{
  const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
  assert.match(source,/measuredVersion===version/);
