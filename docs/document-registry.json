@@ -406,7 +406,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "20cb304f018fbc6a466090a517200611827334639001d86c999ba949df8fd9f2",
+      "sha256": "d99710715b0191100ebdef94cab0d08bdc7dec1783452e73790bec37dde76362",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ae0d245e93570e20a54383e3acf68ee786de42c8361caae61a813146a5d33c1",
+      "sha256": "c74c1efc3a11548565557acebae505ef3a7ebf5679a490c84878d452da417b78",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2858,6 +2858,29 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-owner-release-governance",
+      "id": "aoe2war.app-prodn.product-single-owner-release-authority",
+      "owner": "aoe2war-web",
+      "path": "docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-17",
+      "sensitivity": "internal",
+      "sha256": "b2ad4bfe3b570f51c5e48a2c9f1f8c9bc9e3b80d3562710d6f8956f5311a0e9e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "vpssentry"
+      ],
+      "title": "Single-Owner PRODUCT Release Authority",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3393,8 +3416,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-workspace-os-three-lane-20261117",
-    "commit": "5f223a77fa9653bc87c430458fe8acaddac20e2b"
+    "branch": "session-c/we2-single-owner-policy-reviewed-base-20261117",
+    "commit": "bc62c5f976fd1b95acfa7bf7a66024d80a456b81"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
