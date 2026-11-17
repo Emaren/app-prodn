@@ -24,8 +24,14 @@ const initialEvidence: WorkEvidence = {
     ...lane,
     remote: {
       state: "UNKNOWN" as const, headSha: null, observedAt: null,
-      reason: "NOT_OBSERVED" as const,
+      reason: lane.id === "WE1" ? "FINANCIAL_SOURCE_QUARANTINED" as const :
+        lane.id === "WE3" ? "PRIVATE_SOURCE_NOT_CONNECTED" as const : "NOT_OBSERVED" as const,
     },
+    status: lane.id === "WE1" ? "BLOCKED" as const : "UNKNOWN" as const,
+    hostReceipt: "NOT_AVAILABLE" as const,
+    localHead: null, localTree: null, localDirtyState: "UNKNOWN" as const,
+    physicalRuntime: "UNKNOWN" as const, ownerPermit: "UNKNOWN" as const,
+    storageAdmission: "UNKNOWN" as const,
   })),
   sessionPresence: "UNKNOWN",
   localDirtyState: "UNKNOWN",
@@ -54,14 +60,15 @@ export function WorkEnvironmentObservatory() {
             Work Environment Observatory
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300">
-            Two independently owned development benches, one protected production release
-            path. Commit SHA is source evidence, not agent presence or deployment.
-            Missing and stale evidence stays UNKNOWN.
+            Three logical environments, two separately owned PRODUCT source lanes and one
+            quarantined FINANCIAL boundary. Public GitHub source is not local checkout,
+            authenticated session, Factory permit, deployment or storage recovery.
+            Private Trader state stays UNKNOWN until a separately authorized receipt exists.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-lg border border-cyan-300/30 px-3 py-2">WE2 · Existing PRODUCT</span>
-            <span className="rounded-lg border border-violet-300/30 px-3 py-2">WE3 · Independent PRODUCT clone</span>
-            <span className="rounded-lg border border-amber-300/30 px-3 py-2">FINANCIAL · Separate, held</span>
+            <span className="rounded-lg border border-amber-300/30 px-3 py-2">WE1 · Financial quarantined</span>
+            <span className="rounded-lg border border-cyan-300/30 px-3 py-2">WE2 · Website + Factory</span>
+            <span className="rounded-lg border border-violet-300/30 px-3 py-2">WE3 · Private Kingdom Traders</span>
           </div>
         </header>
 
@@ -76,7 +83,7 @@ export function WorkEnvironmentObservatory() {
               Browser GitHub requested {evidence.queriedAt} · Branch observations cached up to 5 min · Local processes: UNKNOWN
             </span>
           </div>
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-5 xl:grid-cols-3">
             {evidence.lanes.map(lane => (
               <article key={lane.id}
                 className="min-w-0 rounded-3xl border border-white/15 bg-slate-950/80 p-5 sm:p-7">
@@ -88,7 +95,7 @@ export function WorkEnvironmentObservatory() {
                     <h3 className="mt-2 text-2xl font-bold">{lane.label}</h3>
                   </div>
                   <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-amber-200">
-                    Session heartbeat: UNKNOWN
+                    {lane.status} · Session heartbeat: UNKNOWN
                   </span>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-300">{lane.description}</p>
@@ -102,14 +109,19 @@ export function WorkEnvironmentObservatory() {
                     <dd className="mt-1 font-mono">{lane.repo}</dd>
                   </div>
                   <div className="border-b border-white/10 pb-3">
-                    <dt className="text-slate-400">Branch namespace / working branch</dt>
-                    <dd className="mt-1 break-all font-mono">{lane.branch}</dd>
+                    <dt className="text-slate-400">Branch namespace / configured source ref</dt>
+                    <dd className="mt-1 break-all font-mono">{lane.namespace} · {lane.branch}</dd>
                   </div>
                   <div className="border-b border-white/10 pb-3">
                     <dt className="text-slate-400">GitHub branch read</dt>
                     <dd className={"mt-1 font-semibold " + color(lane.remote.state)}>
                       {lane.remote.state === "GITHUB_REF_OBSERVED"
-                        ? "GITHUB SOURCE OBSERVED" : "UNKNOWN — no current source proof"}
+                        ? "GITHUB SOURCE OBSERVED" :
+                        lane.remote.reason === "PRIVATE_SOURCE_NOT_CONNECTED"
+                          ? "UNKNOWN — private Traders feed not connected" :
+                        lane.remote.reason === "FINANCIAL_SOURCE_QUARANTINED"
+                          ? "BLOCKED — protected FINANCIAL source" :
+                          "UNKNOWN — no current source proof"}
                     </dd>
                     <dd className="mt-1 break-all font-mono text-slate-200">
                       {lane.remote.headSha ?? "No verified remote HEAD"}
@@ -121,7 +133,9 @@ export function WorkEnvironmentObservatory() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Isolation contract</dt>
+                    <dt className="text-slate-400">Source owner / isolation contract</dt>
+                    <dd className="mt-1 font-mono">{lane.sourceOwner}</dd>
+                    <dd className="mt-1 text-slate-300">Local HEAD, dirty state, physical runtime, storage and permit: UNKNOWN without an authenticated host receipt</dd>
                     <dd className="mt-1 font-mono text-xs text-cyan-200">{lane.isolation}</dd>
                     <dd className="mt-2 leading-5 text-slate-400">{lane.scope}</dd>
                   </div>
@@ -148,9 +162,9 @@ export function WorkEnvironmentObservatory() {
           <article className="rounded-3xl border border-amber-300/25 bg-slate-950/75 p-6">
             <h2 className="text-xl font-bold">Other session · Storage OS</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              The parallel session owns VPSSentry, Kingdom Atlas, host storage
-              and systemd scheduling. WE3 does not modify those repositories,
-              their branches, private host data or production timers.
+              WE2 owns the website, Factory and the existing VPSSentry Storage OS.
+              WE3 alone owns its separate private Traders repository and PAPER journals.
+              Neither lane can modify the WE1 financial estate.
               Historical scan claims are not an authenticated live status feed.
             </p>
             <a href="https://github.com/Emaren/VPSSentry"
@@ -162,7 +176,7 @@ export function WorkEnvironmentObservatory() {
           <article className="rounded-3xl border border-white/15 bg-slate-950/75 p-6">
             <h2 className="text-xl font-bold">One release authority</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Neither WE2 nor WE3 can automatically release to HEL1. All PRODUCT
+              Neither website nor Traders source can automatically release to HEL1. All website
               changes travel through reviewed source, exact-head CI, independent
               Linux artifact proof, an owner-scoped B permit, and the root T10
               release/rollback controller. FINANCIAL authorization remains denied.
@@ -184,8 +198,8 @@ export function WorkEnvironmentObservatory() {
           </p>
           <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
             {[
-              ["Before editing", "Confirm isolated WE3 Git directory, branch and clean status"],
-              ["Before publishing", "Only session-c/we3-* branches; fast-forward with reviewed PR"],
+              ["Before editing", "Confirm source owner, repository, UID and clean/staged worktree state"],
+              ["Before publishing", "WE2 website and WE3 private Traders sources use separate approved branches and PRs"],
               ["Before deployment", "B controls one 3032 source; verify rollback and durable T10"],
             ].map(([name, detail]) => (
               <div key={name} className="rounded-xl border border-white/10 p-4">
@@ -195,10 +209,9 @@ export function WorkEnvironmentObservatory() {
             ))}
           </div>
           <p className="mt-4 text-xs text-amber-200">
-            Hard-OS isolation is not claimed: WE2 and WE3 currently use the same
-            restricted UID650. Their .git object stores, working files, node_modules
-            and scratch are separate. Full UID isolation needs a separately admitted
-            agent and kernel ACL configuration.
+            Source repository separation is not separate kernel UID proof. WE2 and WE3
+            may share restricted UID650; no browser GitHub result certifies local
+            filesystem access, a running agent, clean Git state or Trader risk gates.
           </p>
         </section>
       </div>
