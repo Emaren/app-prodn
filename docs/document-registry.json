@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4e617663840b47215a076915d02e23e500ab924b36872f48da777fabdfc7e339",
+      "sha256": "4e12c24d86e953c16ab163f50e2d2fc1b082cf82db31d59c02d6adc513e815b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3417,7 +3417,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-intel-cold-storage-os-20261117",
-    "commit": "beac660b46ae4430c5207d72d2264da246d06401"
+    "commit": "35624577eaaf0b3a79043406089b54765adb28df"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
