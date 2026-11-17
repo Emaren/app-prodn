@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, symlink, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, symlink, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
   normalizedImageLocation, localPressFile, validatePackEntries,
   pressPackChunks, safePressBasename, pressPackStream,
+  type PressPackSeed,
 } from "../lib/chroniclePressPack.ts";
 import { readFileSync } from "node:fs";
-const seed={
+const seed:PressPackSeed={
   schema:"aoe2war.chronicle.press-pack.v1",
   exportedAt:"2026-11-17T12:00:00.000Z",
   selectedSurface:"hero-studio-publication",
@@ -17,7 +18,7 @@ const seed={
     {position:0,headline:"The Long War",editionLabel:"November Dispatch",
      images:[{role:"main-hero",url:"/uploads/managed-assets/chronicle/cover.png"}]},
   ],sourceWarnings:[],
-} as const;
+};
 
 test("only known origin and explicitly approved managed media roots accepted",()=>{
   assert.deepEqual(normalizedImageLocation("/uploads/managed-assets/chronicle/cover.png").segments,
@@ -74,7 +75,7 @@ test("stream is a standard STORE ZIP with original bytes, metadata and hashes",a
       archiveName:"images/001-issue-007.png",size:content.length};
     const pack={...seed,placements:seed.placements.map(x=>({...x}))};
     const chunks:Uint8Array[]=[];
-    for await(const part of pressPackChunks([file],pack as any))chunks.push(part);
+    for await(const part of pressPackChunks([file],pack))chunks.push(part);
     const zip=Buffer.concat(chunks.map(x=>Buffer.from(x)));
     assert.equal(zip.readUInt32LE(0),0x04034b50);
     assert.equal(zip.readUInt32LE(zip.length-22),0x06054b50);
@@ -85,7 +86,7 @@ test("stream is a standard STORE ZIP with original bytes, metadata and hashes",a
     assert.ok(zip.includes(Buffer.from("hero-studio-publication")));
     const crypto=await import("node:crypto");
     assert.ok(zip.includes(Buffer.from(crypto.createHash("sha256").update(content).digest("hex"))));
-    const streamed=await new Response(pressPackStream([file],pack as any)).arrayBuffer();
+    const streamed=await new Response(pressPackStream([file],pack)).arrayBuffer();
     assert.deepEqual(Buffer.from(streamed),zip);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
@@ -98,7 +99,7 @@ test("a changing original is not silently packed as if verified",async()=>{
     const file={sourceUrl:"/images/cover.png",diskPath:filePath,
       archiveName:"images/001-cover.png",size:2};
     await assert.rejects(async()=>{
-      for await(const _chunk of pressPackChunks([file],seed as any)){}
+      for await(const part of pressPackChunks([file],seed)){assert.ok(part.length>0);}
     },/SOURCE_CHANGED/);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
