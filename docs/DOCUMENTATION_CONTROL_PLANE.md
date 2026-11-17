@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-chronicle-press-pack-20261117` at `bda6499b1cedb9a45180476343e42e3aa87f82f8`
+Implementation baseline: `session-c/we2-chronicle-press-pack-20261117` at `e68f65707e202fac3675de76d07b24aa39ed1c0d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
