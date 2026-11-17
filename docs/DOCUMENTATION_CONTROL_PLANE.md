@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-explorer-q17-publisher-20261117` at `cbb35ca65341bbed24bc3f15e485b3bb8cf4cbc6`
+Implementation baseline: `session-c/we2-storage-explorer-q17-publisher-20261117` at `3023707f0992a247a8aa79b2df3d3609876b6154`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
