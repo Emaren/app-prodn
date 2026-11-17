@@ -256,7 +256,7 @@ export default function StorageHogWorkbench(){
             <SlidersHorizontal className="h-5 w-5 text-slate-400"/>
           </div>
           {hogs.length===0?<div className="mt-6 flex min-h-[330px] flex-col justify-center rounded-2xl border border-dashed border-white/15 p-6 text-sm leading-6 text-amber-100/90">
-            No current signed hog inventory for this drive. Connect the approved bounded host collector; don't substitute old screenshots or calculated guesses.
+            No current signed hog inventory for this drive. Connect the approved bounded host collector; do not substitute old screenshots or calculated guesses.
           </div>:
           <div className="mt-5 max-h-[610px] space-y-2 overflow-y-auto pr-1">{hogs.map((h,i)=>{
             const total=hogs.reduce((acc,x)=>acc+x.grossBytes,0);
