@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ae0d245e93570e20a54383e3acf68ee786de42c8361caae61a813146a5d33c1",
+      "sha256": "af928eab2bc0a93a11a5acb40cbda72a0cac92c8403e79afe0b4775b77bf97f9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "d3ef68d9277afa21479a5bac9602df7aa713fe8fec66a02765a2e43d3f291231",
+      "sha256": "6e5966da625fa987f00a9c4863291134f391cb19e3c3e60d4909bc5f3ce9e2d2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3393,8 +3393,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-workspace-os-three-lane-20261117",
-    "commit": "5f223a77fa9653bc87c430458fe8acaddac20e2b"
+    "branch": "session-c/we2-storage-explorer-20261117",
+    "commit": "f9d4dbc6feb510398341b471db7f9da3a21412e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
