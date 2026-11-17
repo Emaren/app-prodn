@@ -122,6 +122,20 @@ Factory plan correctly held at SOURCE_DOES_NOT_INCLUDE_CURRENT_CANONICAL_MAIN
 without transport/activation. This runbook clarifies release order; it
 does not itself prove any subsequent production release or delete authority.
 
+EXPERIMENTAL SOURCE CENSUS IS NOT A RELEASE GATE:
+The optional/manual Renaissance Tab D Next census is NOT a browser approval,
+deployment source proof, or certified dependency closure. On 2026-11-17 its
+manually dispatched experimental built-route check reported a mismatch from
+framework-emitted metadata handlers (favicon, robots, sitemap, OpenGraph) and
+the generated not-found page despite the complete source-side census of
+161 page templates / 286 handlers. Do not suppress this failed run or
+relax the Factory's all-observed-checks invariant. For a new release SHA,
+run the required App, PRODUCT, independently verified Linux artifact and
+reviewed browser contracts. Leave the optional source-bound Next census
+untriggered until its own source-owned normalization is independently
+reviewed. Historical PR #1401 12/12 exact-source tests and Chrome remain
+evidence only for the unchanged product-code blobs, not a new-SHA permit.
+
 Never substitute gitpull, in-place host builds, manual service restarts, the
 obsolete hardcoded we2 launcher, or another deployment framework.
 
