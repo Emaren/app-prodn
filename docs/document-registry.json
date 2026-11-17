@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8130d3034591263396cd9a18ef6e62ef045a8a306063a1d6519f1405375be2e1",
+      "sha256": "d8a214b11661c013012b91eebe928ed0e06eab7e60becd47bd7eafcda1908697",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3416,8 +3416,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-train-post1394-20261117",
-    "commit": "2776ccdb9a5704e7ea1334e1929494407aed1d10"
+    "branch": "session-c/we2-storage-release-main-descendant-20261117",
+    "commit": "21bb0f35ed5832c44291c35d790b948151a79ac3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
