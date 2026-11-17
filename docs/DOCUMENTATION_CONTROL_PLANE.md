@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/ember-november-polish-20261116` at `0e9fa1acd86194683b840672753ac35f3e723fad`
+Implementation baseline: `session-c/we2-workspace-os-three-lane-20261117` at `8acfd9fcf1bdc966fbce7349f07551e3d067cfd9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
