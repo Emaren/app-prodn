@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aaef2ecb8995b04808a33ac6c2461f04c9550dac06cc96154fc913b7e41f788a",
+      "sha256": "0ae0d245e93570e20a54383e3acf68ee786de42c8361caae61a813146a5d33c1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3394,7 +3394,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-workspace-os-three-lane-20261117",
-    "commit": "8acfd9fcf1bdc966fbce7349f07551e3d067cfd9"
+    "commit": "5f223a77fa9653bc87c430458fe8acaddac20e2b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
