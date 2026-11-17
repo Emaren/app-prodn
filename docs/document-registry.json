@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8f51e52896917b41e7cdf6453c736e2b92b5ad4c1d35ebf45965b890a3cdd1a",
+      "sha256": "f432955c3d68b988d1dcfe6724f9916ae1057c22c7c6e65ca05af3fc08c76f52",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3440,7 +3440,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we2-kt84-cockpit-20261117",
-    "commit": "b1798e1b0e97d13a8b49927782a81c9a7fefac5e"
+    "commit": "0918fcb73531e81694734769acbd5cc56bebc058"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
