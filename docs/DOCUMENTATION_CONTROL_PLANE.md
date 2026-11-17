@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-train-post1394-20261117` at `4b8bb45e55c1303a69f276e40139e421d507dccf`
+Implementation baseline: `session-c/we2-storage-train-post1394-20261117` at `749f7b5a7f42b507565844cdf7a2ff1e59ae607d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
