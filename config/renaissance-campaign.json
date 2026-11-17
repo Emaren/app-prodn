@@ -37,6 +37,7 @@
         "/admin/aoe2war-os",
         "/admin/aoe2war-os/umbrella-tree",
         "/admin/storage-os",
+        "/admin/storage-os/explorer",
         "/admin/central-command",
         "/admin/central-command/job-board",
         "/admin/central-command/lanes",
