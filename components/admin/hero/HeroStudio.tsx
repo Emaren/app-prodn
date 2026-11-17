@@ -726,7 +726,7 @@ export default function HeroStudio() {
               href="/api/admin/chronicle-press-pack"
               download
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-200/40 bg-amber-300/15 px-4 py-2 text-xs font-bold text-amber-50 transition hover:bg-amber-300/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-100"
-              title="Download every currently displayed original hero image with Chronicle edition history and SHA-256 provenance"
+              title="Download the current published hero images, editorial order, edition metadata and original SHA-256 checksums"
             >
               <Download className="h-4 w-4" />
               Download Chronicle ZIP

@@ -52,7 +52,12 @@ export async function GET(request:NextRequest){
         };
         add("main-hero",screen.config.backgroundImageUrl);
         add("mobile-hero",screen.config.mobileBackgroundImageUrl);
-        add("main-hero",screen.mediaAsset?.url);
+        if(screen.mediaAsset?.url){
+          const media=screen.mediaAsset;
+          if(media.mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif)(?:\?|$)/i.test(media.url)){
+            add("main-hero",media.url);
+          }else warnings.push("One non-image Hero media asset was excluded from the image-only ZIP.");
+        }
         if(screen.type==="featured_event"&&screen.eventTile){
           add("main-hero",screen.eventTile.backgroundImageUrl);
           add("mobile-hero",screen.eventTile.mobileBackgroundImageUrl);
