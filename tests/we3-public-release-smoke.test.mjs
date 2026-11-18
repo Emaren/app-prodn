@@ -22,12 +22,17 @@ const ROUTES = Object.freeze([
 ]);
 const PUBLIC_API = Object.freeze([
   ["/api/health", 200], ["/api/auth/session", 401], ["/api/traffic", 401],
+  ["/api/admin/storage-os", 401],
+  ["/api/admin/storage-os/freshness", 401],
+  ["/api/admin/storage-os/reviews", 401],
 ]);
 const env = {
   origin: process.env.WE3_SMOKE_ORIGIN,
   source: process.env.WE3_SMOKE_SOURCE,
   build: process.env.WE3_SMOKE_BUILD,
   certified: process.env.WE3_SMOKE_CERTIFIED_DAY,
+  chronicle: process.env.WE3_SMOKE_CHRONICLE_STATE || "skip",
+  intel: process.env.WE3_SMOKE_INTEL_STATE || "skip",
 };
 const active = Boolean(env.origin || env.source || env.build || env.certified);
 const SHA = /^[a-f0-9]{40}$/;
@@ -47,6 +52,9 @@ function configured(cfg) {
   if (!(url.protocol === "https:" && ["aoe2war.com", "www.aoe2war.com"].includes(url.hostname))
       && !(url.protocol === "http:" && url.hostname === "127.0.0.1")) {
     throw new Error("HOLD_UNEXPECTED_ORIGIN");
+  }
+  if (![cfg.chronicle || "skip", cfg.intel || "skip"].every(x => ["skip","unreleased","admin-only"].includes(x))) {
+    throw new Error("HOLD_UNSUPPORTED_FEATURE_STATE");
   }
   if (cfg.certified && (!DAY.test(cfg.certified) || !Number.isFinite(Date.parse(cfg.certified + "T00:00:00Z")))) {
     throw new Error("HOLD_INVALID_CERTIFIED_DATE");
@@ -141,6 +149,14 @@ test("traffic certification parser cannot silently substitute browser observatio
   assert.equal(getCertifiedDay('<p>LAST PUBLISHED UTC DAY: 2026-10-19</p><p>BROWSER OBSERVED 2026-11-17</p>'),"2026-10-19");
   assert.throws(() => getCertifiedDay("<p>BROWSER OBSERVED 2026-11-17</p>"),/HOLD_/);
 });
+test("FEATURE admission keeps unreleased routes distinct from admin-gated routes", () => {
+  const valid={origin:"https://aoe2war.com",source:"a".repeat(40),build:"sampleBuild123"};
+  for(const state of ["skip","unreleased","admin-only"]) {
+    assert.equal(configured({...valid,chronicle:state,intel:state}),"https://aoe2war.com");
+  }
+  assert.throws(() => configured({...valid,chronicle:"live"}),/HOLD_UNSUPPORTED_FEATURE_STATE/);
+});
+
 test("WEB RELEASE: source/build, public pages, anon API denial, graph date and image bytes",
   {skip: !active},
   async () => {
@@ -177,6 +193,25 @@ test("WEB RELEASE: source/build, public pages, anon API denial, graph date and i
       verifyReleaseHeaders(r,env,path);
       assert.equal(r.status,status,"HOLD_ANON_API_PERMISSION:"+path);
       findings.push({path,http:status,anonymousOnly:true});
+      if(path.includes("/api/admin/storage-os/")) {
+        assert.match(r.headers.get("cache-control") || "", /no-store/, "HOLD_PRIVATE_CACHE:"+path);
+      }
+    }
+    const newFeatureRoutes=[
+      ["/api/admin/chronicle-press-pack",env.chronicle],
+      ["/api/admin/storage-os/intel",env.intel],
+    ];
+    for(const [path,expected] of newFeatureRoutes) {
+      if(expected === "skip") { findings.push({path,state:"UNVERIFIED_FEATURE_NOT_PROBED"}); continue; }
+      const r=await boundedGet(origin,path,{accept:"application/json,text/html"});
+      verifyReleaseHeaders(r,env,path);
+      if(expected === "unreleased") {
+        assert.equal(r.status,404,"HOLD_FEATURE_UNEXPECTEDLY_LIVE:"+path);
+        findings.push({path,http:404,state:"UNRELEASED_NOT_A_REGRESSION"});
+      } else {
+        assert.ok([401,403].includes(r.status),"HOLD_FEATURE_NOT_ADMIN_GATED:"+path);
+        findings.push({path,http:r.status,state:"ADMIN_GATED_ANONYMOUS_ONLY_FULL_ARCHIVE_UNVERIFIED"});
+      }
     }
     console.log("WE3_PUBLIC_RELEASE_ACCEPTANCE",JSON.stringify({
       schema:"aoe2war.we3.public-smoke.v1",qualifiedSource:env.source,
