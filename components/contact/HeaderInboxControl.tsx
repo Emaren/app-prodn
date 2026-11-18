@@ -691,6 +691,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     if (!response.ok) {
                       throw new Error(readDetail(payload) || "Message failed.");
                     }
+                    if ("persisted" in payload && payload.persisted === true) {
+                      setBody("");
+                      setReplyingTo(null);
+                      setError("Message saved. Check history before retrying.");
+                      return;
+                    }
 
                     setBody("");
                     setReplyingTo(null);
