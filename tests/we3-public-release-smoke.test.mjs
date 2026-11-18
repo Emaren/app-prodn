@@ -7,6 +7,8 @@
  * WE3_SMOKE_ORIGIN=https://aoe2war.com \
  * WE3_SMOKE_SOURCE=<40hex_qualified_artifact_sha> \
  * WE3_SMOKE_BUILD=<exact_next_build_id> \
+ * WE3_SMOKE_CHRONICLE_STATE=unreleased \
+ * WE3_SMOKE_INTEL_STATE=unreleased \
  * node --test tests/we3-public-release-smoke.test.mjs
  *
  * Authenticated Emaren/Scribe browser, Chronicle ZIP, Storage L2, session
@@ -34,7 +36,8 @@ const env = {
   chronicle: process.env.WE3_SMOKE_CHRONICLE_STATE || "skip",
   intel: process.env.WE3_SMOKE_INTEL_STATE || "skip",
 };
-const active = Boolean(env.origin || env.source || env.build || env.certified);
+const active = Boolean(env.origin || env.source || env.build || env.certified ||
+  process.env.WE3_SMOKE_CHRONICLE_STATE || process.env.WE3_SMOKE_INTEL_STATE);
 const SHA = /^[a-f0-9]{40}$/;
 const BUILD = /^[A-Za-z0-9_-]{8,96}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,7 +59,8 @@ function configured(cfg) {
   if (![cfg.chronicle || "skip", cfg.intel || "skip"].every(x => ["skip","unreleased","admin-only"].includes(x))) {
     throw new Error("HOLD_UNSUPPORTED_FEATURE_STATE");
   }
-  if (cfg.certified && (!DAY.test(cfg.certified) || !Number.isFinite(Date.parse(cfg.certified + "T00:00:00Z")))) {
+  if (cfg.certified && (!DAY.test(cfg.certified) || !Number.isFinite(Date.parse(cfg.certified + "T00:00:00Z")) ||
+      new Date(cfg.certified + "T00:00:00Z").toISOString().slice(0,10) !== cfg.certified)) {
     throw new Error("HOLD_INVALID_CERTIFIED_DATE");
   }
   return url.origin;
@@ -155,6 +159,7 @@ test("FEATURE admission keeps unreleased routes distinct from admin-gated routes
     assert.equal(configured({...valid,chronicle:state,intel:state}),"https://aoe2war.com");
   }
   assert.throws(() => configured({...valid,chronicle:"live"}),/HOLD_UNSUPPORTED_FEATURE_STATE/);
+  assert.throws(() => configured({...valid,certified:"2026-02-30"}),/HOLD_INVALID_CERTIFIED_DATE/);
 });
 
 test("WEB RELEASE: source/build, public pages, anon API denial, graph date and image bytes",
