@@ -852,7 +852,7 @@ function KingdomMenuPanel({
                 <div className="text-sm font-semibold text-slate-100">
                   {copyKeys ? t(copyKeys.label) : item.label}
                 </div>
-                <div className="mt-0.5 text-xs text-slate-500">
+                <div className="mt-0.5 text-xs text-slate-400">
                   {copyKeys ? t(copyKeys.body) : item.body}
                 </div>
               </div>
