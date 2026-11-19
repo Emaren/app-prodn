@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest import mock
 
@@ -38,6 +39,7 @@ class BoundaryTests(unittest.TestCase):
         names=set(policy.EXACT_WE2_FACTORY_SHA256)
         self.assertEqual(names,{
           "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
+          "scripts/aoe2_product_release.py",
           "tests/test_product_controller_recovery.py"})
         doc_paths=policy.EXACT_WE2_FACTORY_DOCS_REVIEW
         self.assertEqual(len(doc_paths),13)
@@ -53,6 +55,15 @@ class BoundaryTests(unittest.TestCase):
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
             self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
                              expected)
+        # The existing runner's SINGLE pinned root hash follows this exact
+        # source controller, never a wildcard or runtime-discovered SHA.
+        import ast
+        runner_ast=ast.parse((source/"scripts/aoe2_product_release.py").read_text())
+        pin=[ast.literal_eval(n.value) for n in runner_ast.body
+             if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name)
+             and t.id=="CONTROLLER_SHA" for t in n.targets)]
+        self.assertEqual(pin,[hashlib.sha256((source/
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py").read_bytes()).hexdigest()])
         ordered=sorted(policy.EXACT_WE2_FACTORY_CHANGED)
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
@@ -66,6 +77,15 @@ class BoundaryTests(unittest.TestCase):
                 return policy.check_exact_we2_factory_source(
                     root,repo,branch,base,changes)
             self.assertIsNone(check())
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":policy.EXACT_WE2_FACTORY_BRANCH}):
+                self.assertEqual(policy.authorize_changed_source(root,
+                  policy.EXACT_WE2_FACTORY_BASE,
+                  "scripts/aoe2_product_release.py"),"scripts/aoe2_product_release.py")
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_FACTORY_RUNNER_BRANCH"):
+                    policy.authorize_changed_source(root,
+                      policy.EXACT_WE2_FACTORY_BASE,
+                      "scripts/aoe2_product_release.py")
             with self.assertRaisesRegex(policy.BoundaryHold,
                                         "WE2_FACTORY_EXACT_BASE_OR_REPO"):
                 check(repo="Emaren/kingdom-traders")
@@ -335,8 +355,18 @@ class BoundaryTests(unittest.TestCase):
                 with self.subTest(name=name):
                     self.denied_source(name)  # no ordinary scripts/ wildcard
                     reviewed = GUARD.parent.parent / name
+                    # The current HEAD intentionally changes the Factory's
+                    # root SHA pin; test F1 historical bytes from canonical
+                    # pre-change Git base, not the changed working file.
+                    original_fixture = reviewed.read_bytes()
+                    if name == "scripts/aoe2_product_release.py":
+                        result = subprocess.run(
+                            ["git","-C",str(GUARD.parent.parent),"show",
+                             policy.EXACT_WE2_FACTORY_BASE+":"+name],
+                            capture_output=True,check=True,timeout=25)
+                        original_fixture=result.stdout
                     target = checkout / name
-                    target.write_bytes(reviewed.read_bytes())
+                    target.write_bytes(original_fixture)
                     self.assertEqual(
                         __import__("hashlib").sha256(target.read_bytes()).hexdigest(),
                         digest)
@@ -371,7 +401,7 @@ class BoundaryTests(unittest.TestCase):
                         policy.authorize_changed_source(
                             checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name)
                     target.unlink()
-                    target.write_bytes(reviewed.read_bytes())
+                    target.write_bytes(original_fixture)
                     alias = checkout / ("alias-" + target.name)
                     os.link(target, alias)
                     with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
