@@ -15,9 +15,7 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
-## 2026-11-19 evidence-bound documentation review
-
-**Review evidence (November 19):** The route-census, static inspection, doctor, and score-lineage source references remain present, including `lib/generalInspections/serverSnapshot.ts` and `config/kingdom-index-routes.json`. Historical inspection numbers must retain their original source and review date: this documentation refresh does **not** certify a new live score, make a historical score current, or authorize operations. The live Chronicle deployment is independently source- and BUILD_ID-verified; finance operations remain quarantined.
+> **Source-only re-review, November 19, 2026:** Reconciled existing general inspection/Index/rubric/notice source, passing focused general inspections tests in 65/65 Node contract suite. All October scores and owner evidence remain historical, not certified anew. External AoE2WAR-docs governance paths are not app-prodn source.
 
 
 ## October 26, 2026 — historical Index numbers retain their original date and source

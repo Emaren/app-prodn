@@ -2,22 +2,20 @@
 id: "aoe2war.app-prodn.session-b-3032-two-cycle-protected-release-and-rollback-20261111"
 title: "Session B protected 3032 two-cycle release and rollback admission"
 type: "runbook"
-status: "superseded"
+status: "draft"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority"
 reviewed_at: "2026-11-19"
-review_interval_days: 0
+review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B protected 3032 two-cycle release and rollback admission
 
-## 2026-11-19 evidence-bound documentation review
-
-**November 19 historical disposition:** This November 11 V22/dual-cycle SOURCE-ONLY proposal is **superseded as a production execution runbook** by the source-pinned Factory V3 and Steam V27 controls. The Chronicle PR #1405 has since been deployed, T10-sealed, and merged; live 3032 is verified at source `75c6535bb00caa7f7403821188c5de350dce0af2` and BUILD_ID `UF6eT_o0yo5X-Wtlk8xTC`. Its November 11 NO-GO and expired permits stay as historical evidence; they cannot be re-used or promoted by this review. Preserve 3030, 3033, PAPER 9447, and finance quarantine.
+> **Source-only re-review, November 19, 2026:** Re-read protected 3032 source contract; R25 guard exists, release/recovery scripts present and 12/12 isolated tests pass. November 11 PIDs, signer and permit conditions are historical, NOT November 19 physical truth. Fresh WE2 owner/root/Factory/T10 acceptance still required.
 
 
 **NO-GO for execution.** This procedure is conditional, not a command permit. Central offline Ed25519 signer is unenrolled; privileged source-install executable, physical C UID650 proof, A C03 permissions and fresh owner/Central ACTIVATE_ONLY approvals are not accepted. The old SOURCE_INSTALL nonce expired 2026-11-11T17:00:35Z and is never reusable. Never run any review-only B Python module as a production root installer.

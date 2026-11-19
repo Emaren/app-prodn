@@ -15,9 +15,7 @@ sensitivity: "internal"
 
 # AoE2WAR Release Recovery OS
 
-## 2026-11-19 evidence-bound documentation review
-
-**Review evidence (November 19):** The original Factory V3 root controller is source-pinned in `docs/release/artifacts/aoe2war_product_release_controller_v3.py`; the live Chronicle release has its own HEL1 T10 receipts. The actual 15:25 UTC Chronicle startup incident was `EACCES` while Next.js scanned a private historical staging archive beneath `public/downloads`. The six archives are now protected outside the public tree and their six restore references were independently repaired. PR #1420 adds a production-UID public-tree pre-activation probe and fail-closed interrupted-`switching_live` recovery **in source only**; its installation is not implied by this review. A historical settlement-contracts file mentioned below is absent from the current app repository and must not be treated as newly verified or operationally approved.
+> **Source-only re-review, November 19, 2026:** Verified existing finish/update/readiness/recovery source, 12/12 isolated release-recovery Python tests. No root executor, HEL1 filesystem, real T10 or current boot tested. Historical observations remain historical; external settlement JSON not asserted present.
 
 
 ## Purpose

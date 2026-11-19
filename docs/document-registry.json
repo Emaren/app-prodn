@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "be8f1324568ba2147c3831b8c376c19f1a175738329e7460d0eebc03f8b24fd6",
+      "sha256": "e2f4a3052028895858e7af41501734ce458a7c4725bbca0049ab3819cb0ace4c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -801,7 +801,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "9a821eae6cbefe4c017eccb209ae880aefcfdd35c85ec54f599458ea6440132b",
+      "sha256": "f801c42fab951f89040d906ad44b500abf5ee6a4b4328731d8735944064bb18f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1078,7 +1078,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "cbe2e77b6c95d561241e8d136e4f2cc340a0ef04cf81227d9098a6f6c2cb2399",
+      "sha256": "ab07292a91f518543bdd3a7c6efefdb4204b1f9a45f2c8edf920fe858cb5428c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1695,7 +1695,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "6ecd2c0adaf7c1ccdf6ec2fde40b60c5f613e9d20b7fe15fd18f25227240d879",
+      "sha256": "c0783b96ebca532cc09e217407d732a65065a2a5535d5daf615c97f46db0346b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1761,7 +1761,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "ee172d2c1246934da2129e07116d63eb02c51adb6a881361a524abc13fd31d8e",
+      "sha256": "6ed8a19ca66609a1ca6982ff13c85ea6c981e7f687ec5e2fa7fc067a9f42f0cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2440,7 +2440,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "29e0f7fedfd9ad7a5573105fecbfa132b91df0222efbed031ac26a6726de93ce",
+      "sha256": "b3825092195ad41ee217658b3195a4bfba7f28c9adafed1d6c79b951104b50ef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-independent-review-request",
+      "id": "aoe2war.app-prodn.we3-kingdom-menu-exact-script-admission-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "internal",
+      "sha256": "c3d80bde7c0a05a0fa22b040e8bfddb9af26d3655bdbb8351dce11e62ff24f06",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Q09 Kingdom Menu Exact Script Admission Review",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -2715,7 +2737,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "14143e00d81704ad0c65ec237f87a3806dd96d5a00d695e9ff3329a5fb896861",
+      "sha256": "a413935ad9b2fedfb5605d321e7a3fb18913363efb24cbfd042b89983a5ae76d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2911,12 +2933,12 @@
       "id": "aoe2war.app-prodn.session-b-3032-two-cycle-protected-release-and-rollback-20261111",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
-      "review_interval_days": 0,
+      "review_interval_days": 7,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "85354ccc27f30d2cc55dcfafedc670638012a0e3dd37f1112db2167721dde876",
+      "sha256": "80b169800b8086d2a2e7e33774c0de41f374c66ddd921b9cd159a87abe0e1976",
       "source_of_truth": "git",
-      "status": "superseded",
+      "status": "draft",
       "systems": [
         "app-prodn"
       ],
@@ -2959,7 +2981,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "a4ef5a1e1fc765d8cc3c9a6720c8502cbeb0c134604fee5ed563379f8ee7678c",
+      "sha256": "ade1b016d44ff068d28e9b156fe713b5bf788c627f03e8f47e7e55e8d921c8a7",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3180,12 +3202,12 @@
       "id": "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
-      "review_interval_days": 0,
+      "review_interval_days": 7,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "76a4d840c1695e1e4c482256da25916e7b759fed50d259b4d5aff3232b502927",
+      "sha256": "43f994021406c24415fbe2d40fbe5bc2836014548ce7190f121e26886fa40153",
       "source_of_truth": "git",
-      "status": "superseded",
+      "status": "draft",
       "systems": [
         "app-prodn"
       ],
@@ -3205,7 +3227,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "edd411ab5906b3193cf6110e427f02c3b023b24efd5057e29b65205d962e63e0",
+      "sha256": "715616d5ce74a25ae84186c9d12182c28a1dab2836dfa75d8840316bb4b6b47f",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3335,12 +3357,12 @@
       "id": "aoe2war.app-prodn.session-b-v22-root-install-uid650-product-release-20261111",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
-      "review_interval_days": 0,
+      "review_interval_days": 7,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "b565ee66763a7c6d30049003fc58abb252a7d32ce5d31c7da3a8ff34a8c31f03",
+      "sha256": "baa03bccead0a054a4a9e24c889f62e8c2af97925a2381a5f2a25ab68decc091",
       "source_of_truth": "git",
-      "status": "superseded",
+      "status": "draft",
       "systems": [
         "app-prodn"
       ],
@@ -3416,8 +3438,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/factory-v3-incident-recovery-20261119",
-    "commit": "0d9b9014cc52b86706a76b267da1e6df152f39d3"
+    "branch": "session-c/we3-kingdom-traders-menu-visibility-20261118",
+    "commit": "d3fd9ea426813ad84736b8c45e4aa2f016239ba4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -33,7 +33,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(policy.EXACT_WE2_FACTORY_BRANCH,
                          "we2/factory-v3-incident-recovery-20261119")
         self.assertEqual(policy.EXACT_WE2_FACTORY_BASE,
-                         "81640c7d834c252fb1680190b3f431bd4beb3e58")
+                         "6da478878478d2f32ceb2efba06c8a6a2c043301")
         self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_WE2_FACTORY_BRANCH))
         self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-future-root"))
         names=set(policy.EXACT_WE2_FACTORY_SHA256)
@@ -42,7 +42,7 @@ class BoundaryTests(unittest.TestCase):
           "scripts/aoe2_product_release.py",
           "tests/test_product_controller_recovery.py"})
         doc_paths=policy.EXACT_WE2_FACTORY_DOCS_REVIEW
-        self.assertEqual(len(doc_paths),13)
+        self.assertEqual(set(doc_paths),{"docs/document-registry.json"})
         self.assertEqual(set(policy.EXACT_WE2_FACTORY_CHANGED),names|{
           "scripts/product_boundary_guard.py",
           "tests/test_product_boundary_guard.py"}|set(doc_paths))

@@ -15,9 +15,7 @@ sensitivity: "restricted"
 
 # Session B C03 existing-user-only Steam website contract
 
-## 2026-11-19 evidence-bound documentation review
-
-**November 19 technical review:** The referenced C03 auth source files (`lib/c03ProductionAuthServer.ts`, `lib/productionAuth.ts`, and `lib/adminSession.ts`) remain present. This is still a source-only *conditional* C03 contract, **not** evidence that auth reader/HBA changes or writer grants are installed. Real HEL1 Library activity queries currently demonstrate PostgreSQL `42501` read denials; WE1 alone controls the narrow financial-isolated database acceptance. Do not change account registration or broad SQL permissions to make an old draft appear complete.
+> **Source-only re-review, November 19, 2026:** Checked all three cited auth implementation source paths. Direct-login/finance C03 exclusion requires WE1 catalog proof and WE2 real authenticated physical tests; this old contract is no new production permit.
 
 
 ## Hard existing authentication boundary

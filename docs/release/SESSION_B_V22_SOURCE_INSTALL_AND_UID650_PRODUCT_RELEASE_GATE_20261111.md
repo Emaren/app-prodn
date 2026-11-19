@@ -2,22 +2,20 @@
 id: "aoe2war.app-prodn.session-b-v22-root-install-uid650-product-release-20261111"
 title: "Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine"
 type: "runbook"
-status: "superseded"
+status: "draft"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority"
 reviewed_at: "2026-11-19"
-review_interval_days: 0
+review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine
 
-## 2026-11-19 evidence-bound documentation review
-
-**November 19 historical disposition:** This conditional V22 SOURCE_INSTALL proposal and its expired November 11 permit are superseded for ongoing nonfinancial releases by the installed Steam V27 / Factory V3 contracts. Chronicle's independently accepted live deployment and sealed T10 do **not** authorize re-running historical V22 source install steps, relaxing the UID650 boundary, or reopening financial ports. The original V22 source hashes and failure conditions below remain preserved solely as historical evidence.
+> **Source-only re-review, November 19, 2026:** Verified UID650-only source/WE2-only root boundary and existing release and 12/12 recovery tests. Old V22 signer and host prerequisite statements are historical, NOT current approvals or deployment authorization.
 
 
 **Control:** B exclusively owns HEL1 source install, 3032 production replacement, authenticated acceptance and restricted same-slot rollback. C owns PRODUCT development/build under future UID650. A owns FINANCIAL and the C03 mutation authority. No new root/worktree architecture.

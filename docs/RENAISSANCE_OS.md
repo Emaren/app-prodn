@@ -15,9 +15,7 @@ sensitivity: "internal"
 
 # Renaissance OS
 
-## 2026-11-19 evidence-bound documentation review
-
-**Review evidence (November 19):** All seven cited Renaissance registry, index, assurance, and dependency-evidence source files are present. Counts of 132 templates and 76 baseline public routes are dated planning snapshots, **not** the November 19 live route census. Kingdom menu PR #1415 remains a separately qualified, unmerged source candidate; this documentation review does not confer a player-release permit or assert live route acceptance.
+> **Source-only re-review, November 19, 2026:** Verified campaign/rubric source and 12 destinations, seven phases, current 161-template inventory via renaissance verify, and 5/5 targeted Renaissance Node tests. Older 132-template and 76-route counts are explicitly old planning baselines; no current quality score/release claimed.
 
 
 Renaissance OS introduces a twelve-destination visual engineering campaign with **fifteen conceptual instruments** grouped into twelve independent visual views. It is a read-only *integration overlay* on existing AoE2WAR source owners, not a new domain authority.

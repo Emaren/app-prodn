@@ -15,9 +15,7 @@ sensitivity: "restricted"
 
 # Session B existing-profile website release before C03 finance quarantine
 
-## 2026-11-19 evidence-bound documentation review
-
-**November 19 technical review:** The two authentication profiles remain mutually exclusive. The deployed Chronicle R25 service uses `nonfinancial-production-v1` with the protected Steam guard and finance ports 8092–8095 closed; it must not be relabeled as the uninstalled C03 existing-only profile. Distinct WE1-authenticated writer/read-projection admission is still required for Clan/Nav messages and Library history. This source-only document grants no root, PostgreSQL, or source-merging authority.
+> **Source-only re-review, November 19, 2026:** Retained mutually exclusive ordinary nonfinancial and future C03 auth profiles, financial separation. No refreshed live R25, signed owner permit or authenticated 3032 witness from this source review.
 
 
 ## Two exclusive authentication profiles

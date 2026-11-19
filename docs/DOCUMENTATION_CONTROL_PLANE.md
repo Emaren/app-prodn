@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-v3-incident-recovery-20261119` at `0d9b9014cc52b86706a76b267da1e6df152f39d3`
+Implementation baseline: `session-c/we3-kingdom-traders-menu-visibility-20261118` at `d3fd9ea426813ad84736b8c45e4aa2f016239ba4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **150**
+- Authoritative repository documents: **151**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,15 +38,15 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 81
 - `runbook`: 50
-- `working`: 1
+- `working`: 2
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 40
+- `draft`: 44
 - `generated`: 1
 - `historical`: 12
-- `superseded`: 6
+- `superseded`: 3
 
 ## Documents
 
@@ -165,6 +165,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
+| [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
@@ -178,7 +179,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bounded PRODUCT cold-storage transfer plan](release/F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md) | `reference` | `draft` | `product-transfer-proposal-not-retirement-permission` |
 | [Single-Owner PRODUCT Release Authority](release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md) | `runbook` | `active` | `nonfinancial-owner-release-governance` |
 | [WE3 independent PRODUCT source: two ChatGPT sessions without shared Git writes](release/PRODUCT_WE3_PARALLEL_WORK_ENVIRONMENTS_20261114.md) | `runbook` | `active` | `restricted PRODUCT source operations only; no FINANCIAL or release-root authority` |
-| [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `superseded` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
+| [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
 | [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |
 | [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |
@@ -190,14 +191,14 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
 | [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `runbook` | `draft` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
-| [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `superseded` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
+| [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
 | [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
 | [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
-| [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `superseded` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
+| [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
 | [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |

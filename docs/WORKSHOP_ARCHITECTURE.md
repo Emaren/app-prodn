@@ -15,9 +15,7 @@ sensitivity: "internal"
 
 # AoE2WAR Workshop Architecture
 
-## 2026-11-19 evidence-bound documentation review
-
-**Review evidence (November 19):** The canonical `app/workshop/page.tsx` route exists in the reviewed source; Workshop remains a curated public projection, not a privileged deployment or finance console. Its August Clan writable-shadow discussion is historical design evidence, **not** proof that Clan/Nav chat currently has a production-approved SQL writer. Live messaging still requires WE1's independently admitted nonfinancial database boundary and genuine two-user acceptance.
+> **Source-only re-review, November 19, 2026:** Verified public Workshop source page, public/admin route existence and publication boundary source/test assertions in 65/65 focused Node suite. August host entries are historical, no fresh production database counts or writes certified.
 
 
 ## Purpose

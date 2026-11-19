@@ -15,9 +15,7 @@ sensitivity: "internal"
 
 # Universal Translator
 
-## 2026-11-19 evidence-bound documentation review
-
-**Review evidence (November 19):** The cited translator, language-context, dictionaries, home-copy, and internationalization provider source files remain present. The contract stays intentionally partial: selecting a locale is not proof that every page, legal text, or dynamic backend message is translated. The 2026-08-04 production note below is historical and is not renewed by the DocsV2 review timestamp.
+> **Source-only re-review, November 19, 2026:** Verified provider, selector, shell, Home implementation paths and all 16 locale pairs. Structural source review only; no native-language quality or current end-to-end translation certification.
 
 
 The Universal Translator is the global AoE2WAR language-preference surface. It honors the current international community without pretending the app has complete site-wide translation.
