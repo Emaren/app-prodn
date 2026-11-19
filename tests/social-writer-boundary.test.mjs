@@ -57,6 +57,7 @@ test("unknown action, oversized, forged creator and media return before any DB c
     ["clan",{slug:"aoe2war",message:"test",audience:"clan",attachments:[]},400],
     ["direct",{targetUid:"u_bob",body:"hello",senderUserId:1},400],
     ["direct",{targetUid:"u_bob",body:"x".repeat(4200)},400],
+    ["direct",{targetUid:"u_bob",body:"x".repeat(1001)},400],
     ["direct",{targetUid:"u_bob",body:"x",conversationId:1},400],
   ]) assert.equal((await call(scope,input)).status,status);
 });

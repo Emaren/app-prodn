@@ -130,7 +130,8 @@ function collapseManualBursts<T extends {
 }
 
 export async function GET() {
-  const prisma = getPrisma();
+  try {
+    const prisma = getPrisma();
   const now = new Date();
   const batchCutoff = new Date(now.getTime() - BATCH_LOOKBACK_MS);
   const dayCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -392,5 +393,14 @@ export async function GET() {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       },
     }
-  );
+  );  } catch (error) {
+    // Preserve source archive truth: never turn missing PG SELECT into zero.
+    const sqlstate = error && typeof error === "object" && "code" in error
+      ? String(error.code).slice(0, 12) : "unavailable";
+    console.error("Library activity read unavailable (SQLSTATE):", sqlstate);
+    return NextResponse.json(
+      { ok: false, detail: "Library activity temporarily unavailable." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

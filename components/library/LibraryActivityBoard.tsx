@@ -262,6 +262,8 @@ export default function LibraryActivityBoard() {
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [historyCertified, setHistoryCertified] = useState(false);
+  const [operationsCertified, setOperationsCertified] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(700);
   const [hasMore, setHasMore] = useState(false);
@@ -286,9 +288,12 @@ export default function LibraryActivityBoard() {
   const refreshOperations = useCallback(async () => {
     try {
       const response = await fetch("/api/library/activity", { cache: "no-store" });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error("Library operations unavailable");
       const result = await response.json() as OpsPayload;
-      if (Array.isArray(result.feed) && result.summary) setOps(result);
+      if (Array.isArray(result.feed) && result.summary) {
+        setOps(result);
+        setOperationsCertified(true);
+      }
     } catch {
       // An optional telemetry panel must not take the game ledger offline.
     }
@@ -301,6 +306,7 @@ export default function LibraryActivityBoard() {
       const data = await requestPage();
       if (epoch !== filterEpochRef.current) return;
       setItems(data.items);
+      setHistoryCertified(true);
       setTotal(data.total);
       setFilterTotal(data.filterTotal);
       setLast24h(data.last24h);
@@ -359,6 +365,7 @@ export default function LibraryActivityBoard() {
       for (let page = 0; page < 5; page++) {
         const data = await requestPage(`?after=${headRef.current}`);
         if (epoch !== filterEpochRef.current) return;
+        setHistoryCertified(true);
         setTotal(data.total);
         setFilterTotal(data.filterTotal);
         setLast24h(data.last24h);
@@ -514,15 +521,17 @@ export default function LibraryActivityBoard() {
               </div>
             ) : (
               <div className="mt-4 text-xl font-bold text-slate-400">
-                {loading ? "Connecting to the game ledger…" : "Awaiting first final replay"}
+                {loading ? "Connecting to the game ledger…" :
+                  failed && !historyCertified ? "Replay history unavailable — preserved records are not erased" :
+                  "Awaiting first final replay"}
               </div>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Metric icon={Database} caption="Final replay records" value={compactCount(total)} accent="text-amber-300" />
-            <Metric icon={Activity} caption="Received / 24h" value={compactCount(last24h)} accent="text-emerald-300" />
-            <Metric icon={RadioTower} caption="Active batches" value={compactCount(ops.summary.activeBatches)} accent="text-rose-300" />
-            <Metric icon={History} caption="Loaded history" value={compactCount(items.length)} accent="text-cyan-300" />
+            <Metric icon={Database} caption="Final replay records" value={historyCertified ? compactCount(total) : "—"} accent="text-amber-300" />
+            <Metric icon={Activity} caption="Received / 24h" value={historyCertified ? compactCount(last24h) : "—"} accent="text-emerald-300" />
+            <Metric icon={RadioTower} caption="Active batches" value={operationsCertified ? compactCount(ops.summary.activeBatches) : "—"} accent="text-rose-300" />
+            <Metric icon={History} caption="Loaded history" value={historyCertified ? compactCount(items.length) : "—"} accent="text-cyan-300" />
           </div>
         </section>
 
@@ -577,7 +586,9 @@ export default function LibraryActivityBoard() {
             </button>
           ) : null}
           <div className="flex items-center justify-between border-b border-white/[0.05] bg-black/25 px-4 py-2 font-mono text-[10px] text-slate-500 sm:px-6">
-            <span>{compactCount(visible.length)} loaded of {compactCount(filterTotal)} matching records · newest first</span>
+            <span>{historyCertified
+              ? `${compactCount(visible.length)} loaded of ${compactCount(filterTotal)} matching records · newest first`
+              : "Archive totals unavailable · no records deleted"}</span>
             <span>SCROLL ↓ FOR HISTORY</span>
           </div>
           <div
@@ -629,7 +640,8 @@ export default function LibraryActivityBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Signal className="h-3.5 w-3.5 text-emerald-300" />
-              {hasMore ? "More preserved history available" : "End of indexed source history"}
+              {failed && !historyCertified ? "Historical index unavailable" :
+                hasMore ? "More preserved history available" : "End of indexed source history"}
               {filter !== "all" ? " · Full-history source filter active" : ""}
             </div>
             {hasMore ? (
@@ -665,9 +677,9 @@ export default function LibraryActivityBoard() {
           {showOperations ? (
             <div className="grid gap-4 border-t border-white/[0.07] p-5 sm:p-6 lg:grid-cols-[300px_minmax(0,1fr)]">
               <div className="space-y-3">
-                <Metric icon={PackageOpen} caption="ZIP uploads / 24h" value={compactCount(ops.summary.packageEvents24h)} accent="text-amber-300" />
-                <Metric icon={UploadCloud} caption="Manual events / 24h" value={compactCount(ops.summary.manualEvents24h)} accent="text-cyan-300" />
-                <Metric icon={RadioTower} caption="Watcher events / 24h" value={compactCount(ops.summary.watcherEvents24h)} accent="text-emerald-300" />
+                <Metric icon={PackageOpen} caption="ZIP uploads / 24h" value={operationsCertified ? compactCount(ops.summary.packageEvents24h) : "—"} accent="text-amber-300" />
+                <Metric icon={UploadCloud} caption="Manual events / 24h" value={operationsCertified ? compactCount(ops.summary.manualEvents24h) : "—"} accent="text-cyan-300" />
+                <Metric icon={RadioTower} caption="Watcher events / 24h" value={operationsCertified ? compactCount(ops.summary.watcherEvents24h) : "—"} accent="text-emerald-300" />
               </div>
               <div className="space-y-2">
                 <h3 className="pb-2 font-mono text-[10px] font-bold tracking-[0.2em] text-slate-500">RECENT CHANNEL ACTIVITY</h3>
@@ -678,7 +690,9 @@ export default function LibraryActivityBoard() {
                     <span className="font-mono text-[10px] text-slate-600">{age(event.occurredAt)}</span>
                   </div>
                 ))}
-                {!ops.feed.length ? <p className="text-xs text-slate-600">No recent upload telemetry.</p> : null}
+                {!ops.feed.length ? <p className="text-xs text-slate-600">
+                  {operationsCertified ? "No recent upload telemetry." : "Intake telemetry unavailable; no zero-count claim."}
+                </p> : null}
               </div>
             </div>
           ) : null}
