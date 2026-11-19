@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "611897bba39bdd7f7a71003b700df395fc5d905f417d0d390d855a69b0047900",
+      "sha256": "3e4817e58672a64335f1fef975251d3c7fb08322000512d40fac8d59edb406f6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -893,7 +893,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "bc119c323235a2481e52689c448ef1aad4e1b93043bc2472f89b9190391ef516",
+      "sha256": "a9991af776f3e854b4fb68ca96cae14ae3e7be881481c2653d603b6a16cf14f1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3416,8 +3416,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-premium-uid650-20261117",
-    "commit": "699495f5f12dae4a956ae3aa745a0580086ced1c"
+    "branch": "session-c/we2-chronicle-press-pack-20261117",
+    "commit": "e6b90fc1f18d1c038d47010d041b567671e72893"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
