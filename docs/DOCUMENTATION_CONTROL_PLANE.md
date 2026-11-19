@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-v3-incident-recovery-20261119` at `60c73d401554e204dad1a85d43eda5f38f2e664c`
+Implementation baseline: `we2/factory-v3-incident-recovery-20261119` at `30edc45714e546cf7f3cd5b9456b7df09f5f3894`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
