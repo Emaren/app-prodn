@@ -95,7 +95,7 @@ EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ec
 # This is a SOURCE REVIEW CANDIDATE, not a second reviewer endorsement,
 # root permission or live website deployment authority. No wildcard scripts.
 EXACT_REVIEWED_KINGDOM_MENU_BRANCH = "session-c/we3-kingdom-traders-menu-visibility-20261118"
-EXACT_REVIEWED_KINGDOM_MENU_BASE = "4f236dbb76eed804e2cd19f1b64477be19c00dff"
+EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
 EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
 

@@ -46,8 +46,8 @@ pinning **all four constraints**:
 
 1. Repository-specific original PR branch:
    `session-c/we3-kingdom-traders-menu-visibility-20261118`.
-2. Original canonical base:
-   `4f236dbb76eed804e2cd19f1b64477be19c00dff`.
+2. Chronicle-integrated canonical base:
+   `81640c7d834c252fb1680190b3f431bd4beb3e58`.
 3. Source path:
    `scripts/r25_public_kingdom_menu_chrome.cjs`.
 4. Exact SHA-256 above, with race-aware no-follow open and inode/size

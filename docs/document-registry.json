@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5485096b7dc3b62d66ccdbc851564c713170de14d4e96871a97d1c92ed2e2054",
+      "sha256": "c56fc37a7faa4356038209847354dc2761b58789c0311ea04a193166ec589555",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -893,7 +893,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "bc119c323235a2481e52689c448ef1aad4e1b93043bc2472f89b9190391ef516",
+      "sha256": "a9991af776f3e854b4fb68ca96cae14ae3e7be881481c2653d603b6a16cf14f1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2625,7 +2625,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "4baf96c0e0c54b149de8169e52ee0856eaf424ee046e965854e0073649229eb1",
+      "sha256": "c3d80bde7c0a05a0fa22b040e8bfddb9af26d3655bdbb8351dce11e62ff24f06",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3439,7 +3439,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-kingdom-traders-menu-visibility-20261118",
-    "commit": "ff1e5bceb00a86fdfe9719f112397ca4b0ca38d6"
+    "commit": "6c190b0db0d52f76d8ce2771cb5090d21ce6efa7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
