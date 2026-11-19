@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest import mock
 
@@ -25,6 +26,106 @@ class BoundaryTests(unittest.TestCase):
                       "tests/test_player_profile.py"):
             with self.subTest(value=value):
                 self.assertEqual(policy.authorize_source(value), value)
+
+    def test_we2_factory_exact_protected_controller_source_admission(self):
+        import hashlib
+        source=GUARD.parent.parent
+        self.assertEqual(policy.EXACT_WE2_FACTORY_BRANCH,
+                         "we2/factory-v3-incident-recovery-20261119")
+        self.assertEqual(policy.EXACT_WE2_FACTORY_BASE,
+                         "6da478878478d2f32ceb2efba06c8a6a2c043301")
+        self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_WE2_FACTORY_BRANCH))
+        self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-future-root"))
+        names=set(policy.EXACT_WE2_FACTORY_SHA256)
+        self.assertEqual(names,{
+          "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
+          "scripts/aoe2_product_release.py",
+          "tests/test_product_controller_recovery.py"})
+        doc_paths=policy.EXACT_WE2_FACTORY_DOCS_REVIEW
+        self.assertEqual(set(doc_paths),{
+          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+          "docs/document-registry.json"})
+        self.assertEqual(set(policy.EXACT_WE2_FACTORY_CHANGED),names|{
+          "scripts/product_boundary_guard.py",
+          "tests/test_product_boundary_guard.py"}|set(doc_paths))
+        for path in doc_paths:
+            self.assertTrue(path.startswith("docs/"))
+            self.assertIn(path,
+                {"docs/DOCUMENTATION_CONTROL_PLANE.md",
+                 "docs/document-registry.json"} |
+                {x for x in doc_paths if x.endswith(".md")})
+        for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
+            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
+                             expected)
+        # The existing runner's SINGLE pinned root hash follows this exact
+        # source controller, never a wildcard or runtime-discovered SHA.
+        import ast
+        runner_ast=ast.parse((source/"scripts/aoe2_product_release.py").read_text())
+        pin=[ast.literal_eval(n.value) for n in runner_ast.body
+             if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name)
+             and t.id=="CONTROLLER_SHA" for t in n.targets)]
+        self.assertEqual(pin,[hashlib.sha256((source/
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py").read_bytes()).hexdigest()])
+        ordered=sorted(policy.EXACT_WE2_FACTORY_CHANGED)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for relative in policy.EXACT_WE2_FACTORY_SHA256:
+                out=root/relative
+                out.parent.mkdir(parents=True,exist_ok=True)
+                out.write_bytes((source/relative).read_bytes())
+            def check(repo="Emaren/app-prodn",
+                      branch=policy.EXACT_WE2_FACTORY_BRANCH,
+                      base=policy.EXACT_WE2_FACTORY_BASE,changes=ordered):
+                return policy.check_exact_we2_factory_source(
+                    root,repo,branch,base,changes)
+            self.assertIsNone(check())
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":policy.EXACT_WE2_FACTORY_BRANCH}):
+                self.assertEqual(policy.authorize_changed_source(root,
+                  policy.EXACT_WE2_FACTORY_BASE,
+                  "scripts/aoe2_product_release.py"),"scripts/aoe2_product_release.py")
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_FACTORY_RUNNER_BRANCH"):
+                    policy.authorize_changed_source(root,
+                      policy.EXACT_WE2_FACTORY_BASE,
+                      "scripts/aoe2_product_release.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_BASE_OR_REPO"):
+                check(repo="Emaren/kingdom-traders")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_BASE_OR_REPO"):
+                check(base="0"*40)
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered[:-1])
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered+["scripts/another_controller.py"])
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered+[ordered[0]])
+            path=root/"tests/test_product_controller_recovery.py"
+            original=path.read_bytes()
+            path.write_bytes(original+b"\n# unreviewed future change\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT"):
+                check()
+            path.write_bytes(original)
+            alias=root/"hardlink"
+            os.link(path,alias)
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_PROTECTED_SOURCE_CUSTODY"):
+                check()
+            alias.unlink()
+            path.unlink()
+            path.symlink_to(source/"tests/test_product_controller_recovery.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_SYMLINK_ANCESTOR"):
+                check()
+            path.unlink()
+            path.write_bytes(original)
+            # Do not allow non-exact branch fallback to an arbitrary Factory
+            # source: the generic branch grammar remains closed.
+            self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
 
     def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
         name = policy.EXACT_REVIEWED_B_EMBER_GUARD
@@ -256,8 +357,18 @@ class BoundaryTests(unittest.TestCase):
                 with self.subTest(name=name):
                     self.denied_source(name)  # no ordinary scripts/ wildcard
                     reviewed = GUARD.parent.parent / name
+                    # The current HEAD intentionally changes the Factory's
+                    # root SHA pin; test F1 historical bytes from canonical
+                    # pre-change Git base, not the changed working file.
+                    original_fixture = reviewed.read_bytes()
+                    if name == "scripts/aoe2_product_release.py":
+                        result = subprocess.run(
+                            ["git","-C",str(GUARD.parent.parent),"show",
+                             policy.EXACT_WE2_FACTORY_BASE+":"+name],
+                            capture_output=True,check=True,timeout=25)
+                        original_fixture=result.stdout
                     target = checkout / name
-                    target.write_bytes(reviewed.read_bytes())
+                    target.write_bytes(original_fixture)
                     self.assertEqual(
                         __import__("hashlib").sha256(target.read_bytes()).hexdigest(),
                         digest)
@@ -292,7 +403,7 @@ class BoundaryTests(unittest.TestCase):
                         policy.authorize_changed_source(
                             checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name)
                     target.unlink()
-                    target.write_bytes(reviewed.read_bytes())
+                    target.write_bytes(original_fixture)
                     alias = checkout / ("alias-" + target.name)
                     os.link(target, alias)
                     with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
