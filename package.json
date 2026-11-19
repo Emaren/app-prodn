@@ -89,7 +89,8 @@
     "deepmerge-ts": "8.0.0",
     "postcss-selector-parser": "7.1.6",
     "source-map-js": "1.2.2",
-    "minimatch": "11.0.1"
+    "minimatch": "11.0.1",
+    "effect": "3.22.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
