@@ -17,9 +17,11 @@ test("physical Kingdom menu acceptance guard has isolated passing and failing fi
   assert.match(run.stdout, /PASS_PUBLIC_KINGDOM_MENU_GUARD_FIXTURES/);
 });
 
-test("production checker enforces the original 39-route catalog and all viewport failures", () => {
+test("production checker enforces 39 historical plus PAPER gateway and all viewport failures", () => {
   const code = readFileSync(resolve(ROOT, "scripts/r25_public_kingdom_menu_chrome.cjs"), "utf8");
-  assert.match(code, /EXPECTED_39_CANONICAL_LINKS/);
+  assert.match(code, /EXPECTED_40_CANONICAL_LINKS_WITH_PAPER_TRADERS/);
+  assert.ok(code.includes('expected.filter(href=>href==="/kingdom-traders").length!==1'));
+  assert.ok(code.includes('traderIndex!==marketIndex+1'));
   assert.ok(code.includes("for(const width of [375,768,1440])"));
   assert.ok(code.includes("results.length===3&&results.every(r=>r.passed)"));
   assert.match(code, /HOLD_PUBLIC_KINGDOM_MENU_COLLAPSED_OR_REORDERED/);

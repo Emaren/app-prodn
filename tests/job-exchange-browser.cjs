@@ -47,7 +47,12 @@ async function run(){
    assert.equal(await p.getByText("UNKNOWN",{exact:true}).count()>0,true,"No forged deployed BUILD_ID");
    await p.getByRole("button",{name:"Inspect Session C source evidence"}).click();
    assert.equal(await p.getByRole("button",{name:"Inspect Session C source evidence"}).getAttribute("aria-pressed"),"true");
-   await p.getByText("No event currently evidenced for this lane").waitFor({timeout:4000});
+   const selectedEvidence=p.getByRole("region",{name:"Selected brain evidence drill down"});
+   await selectedEvidence.getByRole("heading",{name:"CORE C — RECEIPTS"}).waitFor({timeout:4000});
+   assert.equal(await selectedEvidence.count(),1,"Exactly one selected-lane evidence region");
+   const noEvent=selectedEvidence.getByText("No event currently evidenced for this lane");
+   await noEvent.waitFor({timeout:4000});
+   assert.equal(await noEvent.count(),1,"Exactly one empty-state message in selected CORE C evidence");
    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+4),"horizontal overflow");
    await p.keyboard.press("Tab");assert.ok(await p.evaluate(()=>document.activeElement!==document.body));
    await p.addScriptTag({content:axe.source});

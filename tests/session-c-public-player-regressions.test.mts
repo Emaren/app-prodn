@@ -262,11 +262,17 @@ function assertOriginalCastleRoutes(actual) {
   }
 }
 
-test("castle-icon Kingdom menu retains original 39 links in exact historical order", () => {
+test("castle-icon Kingdom menu retains original 39 links in exact order plus PAPER gateway", () => {
   const shell = source("app/AppShell.tsx");
   const links = castleSourceRoutes(shell);
   assertOriginalCastleRoutes(links);
-  assert.equal(links.length, 39, "canonical castle menu should be full, not four links");
+  assert.equal(links.length, ORIGINAL_CASTLE_ROUTES.length+1,
+    "39 original castle routes plus exactly one new PAPER gateway");
+  assert.equal(links.filter(href=>href==="/kingdom-traders").length,1,
+    "Kingdom Traders must appear exactly once");
+  assert.ok(links.includes("/market"), "original Marketplace route must exist");
+  assert.equal(links.indexOf("/kingdom-traders"),links.indexOf("/market")+1,
+    "PAPER gateway follows Marketplace without reordering original routes");
   assert.deepEqual(links.slice(0, 4),
     ["/kingdom", "/oracle", "/leaderboard", "/champions"]);
 });

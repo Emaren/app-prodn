@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority"
-reviewed_at: "2026-11-11"
+reviewed_at: "2026-11-19"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B protected 3032 two-cycle release and rollback admission
+
+> **Source-only re-review, November 19, 2026:** Re-read protected 3032 source contract; R25 guard exists, release/recovery scripts present and 12/12 isolated tests pass. November 11 PIDs, signer and permit conditions are historical, NOT November 19 physical truth. Fresh WE2 owner/root/Factory/T10 acceptance still required.
+
 
 **NO-GO for execution.** This procedure is conditional, not a command permit. Central offline Ed25519 signer is unenrolled; privileged source-install executable, physical C UID650 proof, A C03 permissions and fresh owner/Central ACTIVATE_ONLY approvals are not accepted. The old SOURCE_INSTALL nonce expired 2026-11-11T17:00:35Z and is never reusable. Never run any review-only B Python module as a production root installer.
 

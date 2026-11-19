@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-11-19"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # AoE2WAR Workshop Architecture
+
+> **Source-only re-review, November 19, 2026:** Verified public Workshop source page, public/admin route existence and publication boundary source/test assertions in 65/65 focused Node suite. August host entries are historical, no fresh production database counts or writes certified.
+
 
 ## Purpose
 
