@@ -727,10 +727,19 @@ export default function ContactEmarenWorkspace({
         }
       }
 
-      const response = await fetch("/api/contact-emaren", {
-        method: "POST",
-        body: formData,
-      });
+      // Text-only sends use bounded JSON so R25's separately reviewed
+      // nonfinancial writer can accept them without opening media uploads.
+      const response = await fetch("/api/contact-emaren", attachment
+        ? { method: "POST", body: formData }
+        : {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              body,
+              targetUid: selectedTargetUid || null,
+              replyToMessageId: replyingTo?.messageId ?? null,
+            }),
+          });
 
       const payload = (await response.json().catch(() => ({}))) as
         | ContactInboxPayload
@@ -738,6 +747,13 @@ export default function ContactEmarenWorkspace({
 
       if (!response.ok) {
         throw new Error(readDetail(payload) || "Message failed.");
+      }
+      if ("persisted" in payload && payload.persisted === true) {
+        setBody("");
+        setReplyingTo(null);
+        clearAttachment();
+        setError("Message saved. Readback is unavailable; check history before retrying.");
+        return;
       }
 
       void sendTypingState(false);

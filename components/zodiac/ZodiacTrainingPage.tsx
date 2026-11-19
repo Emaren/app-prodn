@@ -173,7 +173,8 @@ export default function ZodiacTrainingPage({
             </div>
           </div>
 
-          <div className="relative min-h-[390px] overflow-hidden border-t border-white/8 lg:min-h-full lg:border-l lg:border-t-0">
+          <div className="relative min-h-[390px] overflow-hidden border-t border-white/8 bg-[radial-gradient(ellipse_at_50%_34%,rgba(124,58,237,0.25),transparent_62%),#070816] lg:min-h-full lg:border-l lg:border-t-0">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_24%,rgba(148,163,184,0.12),transparent_64%)]" />
             <Image
               src={avatarUrl}
               alt={`${mentorName}, Deathmatch advisor`}
@@ -181,7 +182,8 @@ export default function ZodiacTrainingPage({
               priority
               unoptimized
               sizes="(max-width: 1024px) 100vw, 46vw"
-              className="object-cover object-center opacity-90"
+              className="origin-top scale-[0.88] translate-y-4 object-contain object-top opacity-95 [mask-image:linear-gradient(to_bottom,black_0%,black_70%,transparent_100%)]"
+              data-zodiac-training-portrait="contained"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,6,17,0.06),rgba(5,6,17,0.15)_45%,rgba(5,6,17,0.96)_100%),linear-gradient(90deg,rgba(5,6,17,0.36),transparent_45%)]" />
             <div className="absolute inset-x-4 bottom-4 grid gap-3 sm:inset-x-6 sm:bottom-6 sm:grid-cols-2">

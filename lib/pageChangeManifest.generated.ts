@@ -45,12 +45,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-84b7aa07cbb47d893679",
+    version: "src-9e26db74ec22c681ae07",
   },
   {
     href: "/academy",
     label: "Academy",
-    version: "src-efa95e74905e8f7c8401",
+    version: "src-712b6226549524060054",
   },
   {
     href: "/market",

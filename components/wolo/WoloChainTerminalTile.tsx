@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { parseWoloBrowserRpcStatus } from "@/lib/woloBrowserRpcStatus";
+import {
+  parseWoloBrowserBlockFeed,
+  type WoloRecentBlockFeed,
+} from "@/lib/woloBrowserBlockFeed";
 
 type WoloStatusSnapshot = {
   healthy: boolean;
@@ -33,6 +37,35 @@ const RUNTIME_VIEW_KEY = "wolo-runtime-view";
 const DAEMON_VIEW_KEY = "wolo-daemon-view";
 const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
 const WOLO_STATUS_POLL_MS = 8000;
+const BLOCK_FEED_MAX_BYTES = 131072;
+
+async function readBoundedBlockFeedJson(response: Response): Promise<unknown> {
+  if (!response.body) throw new Error("WOLO_BLOCK_STREAM_MISSING");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > BLOCK_FEED_MAX_BYTES) {
+        void reader.cancel("WOLO_BLOCK_REPLY_TOO_LARGE").catch(() => undefined);
+        throw new Error("WOLO_BLOCK_REPLY_TOO_LARGE");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+}
 
 function formatTime(value: string | null) {
   if (!value) return "Waiting on node";
@@ -207,6 +240,9 @@ export default function WoloChainTerminalTile() {
   const [snapshot, setSnapshot] = useState<WoloStatusSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastObservedHeight = useRef<string | null>(null);
+  const [recentBlocks, setRecentBlocks] = useState<WoloRecentBlockFeed | null>(null);
+  const [blockError, setBlockError] = useState<string | null>(null);
+  const lastObservedBlockHeight = useRef<string | null>(null);
   const [daemon, setDaemon] = useState<DaemonLogPayload | null>(null);
   const [premiumRuntimeView, setPremiumRuntimeView] = useState(() =>
     readStoredPremiumPreference(RUNTIME_VIEW_KEY, false)
@@ -227,6 +263,7 @@ export default function WoloChainTerminalTile() {
 
   useEffect(() => {
     let cancelled = false;
+    let blockFetchInFlight = false;
 
     async function loadStatus() {
       const controller = new AbortController();
@@ -261,6 +298,41 @@ export default function WoloChainTerminalTile() {
       }
     }
 
+    async function loadBlocks() {
+      if (blockFetchInFlight) return;
+      blockFetchInFlight = true;
+      const controller = new AbortController();
+      const deadline = window.setTimeout(() => controller.abort(), 5000);
+      try {
+        // Existing public same-origin RPC: 20 upstream metas, 8 shown,
+        // no signer, broadcast, server egress, SQL or daemon changes.
+        const response = await fetch("/rpc/blockchain", {
+          cache: "no-store", signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("WOLO_BLOCK_RPC_UNAVAILABLE");
+        const length = response.headers.get("content-length");
+        if (length && (!/^\d+$/.test(length) || Number(length) > BLOCK_FEED_MAX_BYTES))
+          throw new Error("WOLO_BLOCK_REPLY_TOO_LARGE");
+        const parsed = parseWoloBrowserBlockFeed(
+          await readBoundedBlockFeedJson(response), lastObservedBlockHeight.current, Date.now(),
+        );
+        if (!cancelled) {
+          lastObservedBlockHeight.current = parsed.latestHeight;
+          setRecentBlocks(parsed); setBlockError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          lastObservedBlockHeight.current = null;
+          setRecentBlocks(null);
+          setBlockError("Public block metadata unavailable or unverified");
+        }
+      } finally {
+        window.clearTimeout(deadline);
+        blockFetchInFlight = false;
+      }
+    }
+
     async function loadDaemonLog() {
       try {
         const response = await fetch("/api/wolo/daemon-log", { cache: "no-store" });
@@ -286,6 +358,7 @@ export default function WoloChainTerminalTile() {
       }
 
       void loadStatus();
+      void loadBlocks();
       void loadDaemonLog();
     };
 
@@ -458,6 +531,61 @@ export default function WoloChainTerminalTile() {
           </div>
         </section>
       )}
+
+      <section
+        aria-label="Recent WoloChain blocks"
+        data-wolo-public-block-feed
+        className="rounded-[1.75rem] border border-emerald-400/15 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-200">
+              Live WoloChain Blocks
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">
+              Read-only · public /rpc/blockchain · 8 newest headers
+            </p>
+          </div>
+          <div
+            role="status"
+            className={cx(
+              "rounded-full border px-3 py-1.5 text-xs",
+              recentBlocks?.stale || blockError
+                ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
+                : "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+            )}
+          >
+            {recentBlocks
+              ? recentBlocks.stale ? "Stale — awaiting new block"
+                : recentBlocks.progressing ? "Height advancing" : "Fresh headers"
+              : blockError || "Connecting to public chain"}
+          </div>
+        </div>
+        {recentBlocks ? (
+          <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Recent chain blocks">
+            {recentBlocks.rows.map((block) => (
+              <li key={block.height}
+                className="rounded-xl border border-white/10 bg-black/25 px-3 py-3 font-mono text-xs"
+              >
+                <div className="font-bold text-emerald-200">#{block.height}</div>
+                <div className="mt-1 text-slate-300">{formatTime(block.time)}</div>
+                <div className="mt-1 text-slate-400">
+                  {block.transactions === null ? "Tx unknown" : String(block.transactions) + " tx"}
+                  {" · "}
+                  {block.sizeBytes === null ? "size unknown" : block.sizeBytes.toLocaleString() + " B"}
+                </div>
+                <div className="mt-1 truncate text-[10px] text-slate-500" title={block.hash || "Hash unavailable"}>
+                  {block.hash ? block.hash.slice(0,10) + "…" + block.hash.slice(-8) : "Hash unavailable"}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-4 text-sm text-slate-400">
+            {blockError || "Waiting for verified public block headers. No block heights inferred."}
+          </p>
+        )}
+      </section>
 
       {premiumDaemonView ? (
         <section
