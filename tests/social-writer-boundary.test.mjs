@@ -33,7 +33,7 @@ test("original R25 guard and PRODUCT guard remain unchanged by P0 source",()=>{
   assert.match(production,/UNREVIEWED_EXECUTABLE_SURFACE/);
 });
 test("both production POST handlers use session/origin + exact writer, no direct DB sender",()=>{
-  const clan=src("app/api/clans/[slug]/route.ts");
+  const clan=src("app/api/social/clan-text/route.ts");
   const direct=src("app/api/contact-emaren/route.ts");
   for (const s of [clan,direct]) {
     assert.match(s,/usesNonfinancialProductionAuth\(\)/);
@@ -44,6 +44,7 @@ test("both production POST handlers use session/origin + exact writer, no direct
     assert.match(s,/callSocialWriter\(/);
   }
   assert.match(src("components/contact/ContactEmarenWorkspace.tsx"),/attachment\s*\?\s*\{ method: "POST", body: formData \}/);
+  assert.match(src("components/clans/ClanHallClient.tsx"),/fetch\("\/api\/social\/clan-text"/);
 });
 test("unknown action, oversized, forged creator and media return before any DB connect",async()=>{
   const call=(scope,input)=>executeSocialTextWrite({

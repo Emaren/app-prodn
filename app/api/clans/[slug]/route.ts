@@ -16,11 +16,6 @@ import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
-import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
-import {
-  callSocialWriter, readBoundedSocialJson, signedSocialCookie,
-  validateSocialWriteOrigin,
-} from "@/lib/socialWriterClient";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
 import { maybeCreateClanHallScribeReply } from "@/lib/clanHallScribe";
 import {
@@ -156,53 +151,6 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
-  // Production UID990 has zero direct social DML grants. Delegate ONLY plain
-  // text through the independently source-admitted authenticated social role.
-  if (usesNonfinancialProductionAuth()) {
-    const sessionUid = await getSessionUid(request);
-    if (!sessionUid) return NextResponse.json(
-      { detail: "Sign in with Steam to post in the clan hall." },
-      { status: 401, headers: NO_STORE_HEADERS },
-    );
-    if (!validateSocialWriteOrigin(request))
-      return NextResponse.json({ detail: "Same-origin request required." },
-        { status: 403, headers: NO_STORE_HEADERS });
-    const token = signedSocialCookie(request);
-    if (!token) return NextResponse.json({ detail: "Signed session required." },
-      { status: 401, headers: NO_STORE_HEADERS });
-    let body: unknown;
-    try { body = await readBoundedSocialJson(request); }
-    catch { return NextResponse.json({ detail: "Text-only JSON required." },
-      { status: 400, headers: NO_STORE_HEADERS }); }
-    if (!body || typeof body !== "object" || Array.isArray(body))
-      return NextResponse.json({ detail: "Invalid Clan Hall text request." },
-        { status: 400, headers: NO_STORE_HEADERS });
-    const input = body as Record<string, unknown>;
-    if (Object.keys(input).some((key) => !["message", "audience", "scribe"].includes(key)) ||
-        input.scribe === true) return NextResponse.json(
-      { detail: "This restricted send path accepts plain human text only." },
-      { status: 400, headers: NO_STORE_HEADERS });
-    const slug = await readSlug(context);
-    const result = await callSocialWriter("clan", token, {
-      slug, message: input.message, audience: input.audience,
-    });
-    if (result.status !== 201) return NextResponse.json(result.body,
-      { status: result.status, headers: NO_STORE_HEADERS });
-    const messageId = result.body.messageId;
-    if (typeof messageId !== "number")
-      return NextResponse.json({ persisted: true, detail: "Check Hall history before retrying." },
-        { status: 202, headers: NO_STORE_HEADERS });
-    publishClanHallEvent(slug, { type: "message", messageId });
-    try {
-      const snapshot = await loadClanHallSnapshot(getPrisma(), slug, sessionUid);
-      if (snapshot) return NextResponse.json(snapshot,
-        { status: 201, headers: NO_STORE_HEADERS });
-    } catch { /* committed: do not claim send failure */ }
-    return NextResponse.json({
-      persisted: true, messageId, clanSlug: slug,
-      detail: "Message saved. Clan Hall readback is currently unavailable.",
-    }, { status: 202, headers: NO_STORE_HEADERS });
-  }
   try {
     const slug = await readSlug(context);
     const prisma = getPrisma();
