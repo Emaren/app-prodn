@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 SOURCE = Path(__file__).resolve().parents[1] / 'docs/release/artifacts/aoe2war_product_release_controller_v3.py'
 NAMES = {'hold', 'sha_bytes', 'sha_file', 'fsync_dir', 'atomic', 'json_save', 'json_get',
-         'unit_guard', 'inspect_archive', 'stage', 'state_need', 'expected_old_factory_http', 'switch'}
+         'unit_guard', 'inspect_archive', 'stage', 'state_need', 'expected_old_factory_http', 'switch', 'candidate_public_preflight', 'ensure_empty_public_downloads', 'immutable_incident_receipt', 'reconcile_interrupted_live'}
 TREE = ast.parse(SOURCE.read_text())
 BLOCK = ast.fix_missing_locations(ast.Module(body=[n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name in NAMES], type_ignores=[]))
 
@@ -33,7 +33,7 @@ class RecoveryTests(unittest.TestCase):
         (self.old / '.aoe2war-source-sha').write_text('a' * 40)
         (self.old / '.next/BUILD_ID').write_text('OLD_BUILD_123')
         self.journal = self.base / 'journal'
-        self.journal.mkdir()
+        self.journal.mkdir(mode=0o700)
         self.original = self.journal / 'original-web-unit.service'
         self.candidate = self.journal / 'factory-web-unit.service'
         self.unit = self.base / 'active.service'
@@ -41,7 +41,8 @@ class RecoveryTests(unittest.TestCase):
         self.candidate.write_bytes(b'EXACT_NEW_UNIT')
         self.unit.write_bytes(self.original.read_bytes())
         self.precheck = self.journal / 'preflight.json'
-        self.precheck.write_text(json.dumps({'old_factory_http': 200, 'protected_pids': {'guarded': '7'}}))
+        self.precheck.write_text(json.dumps({'old_factory_http': 200, 'protected_pids': {'guarded': '7'},
+          'old_unit_sha256':hashlib.sha256(self.original.read_bytes()).hexdigest()}))
         self.state = self.journal / 'state.json'
         self.ops = []
         self.g = dict(Path=Path, PurePosixPath=PurePosixPath, os=os, stat=stat, json=json,
@@ -55,11 +56,15 @@ class RecoveryTests(unittest.TestCase):
             ARCHIVE=self.base/'runtime.tar.gz', ARCHIVE_BYTES=0, ARCHIVE_SHA='0'*64,
             UNIT_ORIGINAL_SHA=hashlib.sha256(self.unit.read_bytes()).hexdigest(),
             CONFIG={'independent_proof_sha256': '0'*64}, EXPECTED_RUNTIME_MEMBERS=3,
+            candidate_public_preflight=Mock(),
             guard_finance=Mock(), guard_web=Mock(), protected=Mock(return_value={'guarded':'7'}),
             hold_protected=Mock(), property=lambda unit, field: str(self.old) if field=='WorkingDirectory' else '42',
             url_status=lambda port, path: 200, run=self.run_command,
             create_journal=Mock(), target_health=Mock(return_value=True))
         exec(compile(BLOCK, str(SOURCE), 'exec'), self.g)
+        # Existing switch fixtures intentionally mock the separate UID probe.
+        self.g['candidate_public_preflight']=Mock()
+        self.g['unit_guard']=Mock()
 
     def run_command(self, *args, **kwargs):
         self.ops.append(args)
@@ -139,11 +144,105 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'JOURNAL_PHASE_switching_live'):
             self.g['state_need'](('prepared',))
 
+    def test_candidate_asset_preflight_blocks_switch_before_service_stop(self):
+        self.state_at()
+        self.g['candidate_public_preflight'].side_effect=RuntimeError(
+            "HOLD_PRODUCT_PUBLIC_ASSET_PROBE_FAILED")
+        with self.assertRaisesRegex(RuntimeError,'PUBLIC_ASSET_PROBE_FAILED'):
+            self.g['switch']('new','live',200)
+        self.assertEqual(self.ops,[])
+        self.assertEqual(self.unit.read_bytes(),b'EXACT_OLD_UNIT')
+        self.assertEqual(json.loads(self.state.read_text())['phase'],'prepared')
+
     def test_prepared_state_survives_new_process_namespace(self):
         self.state_at()
         namespace=dict(self.g)
         exec(compile(BLOCK, str(SOURCE), 'exec'), namespace)
         self.assertEqual(namespace['state_need'](('prepared',))['phase'], 'prepared')
+
+    def test_interrupted_live_recovers_exact_old_unit_and_seals_evidence(self):
+        self.state_at('switching_live')
+        original=self.original.read_bytes()
+        candidate=self.candidate.read_bytes()
+        interrupted={'phase':'switching_live','source':'b'*40,
+           'build':'NEW_BUILD_123',
+           'old_unit_sha256':hashlib.sha256(original).hexdigest(),
+           'new_unit_sha256':hashlib.sha256(candidate).hexdigest()}
+        self.state.write_text(json.dumps(interrupted))
+        self.unit.write_bytes(candidate)
+        self.assertTrue(self.g['reconcile_interrupted_live']())
+        self.assertEqual(self.unit.read_bytes(),original)
+        self.assertEqual(self.ops[0][:3],('systemctl','stop','fixture-web'))
+        self.assertEqual(self.ops[1][:2],('systemctl','daemon-reload'))
+        self.assertEqual(self.ops[2][:3],('systemctl','start','fixture-web'))
+        updated=json.loads(self.state.read_text())
+        self.assertEqual(updated['phase'],'auto_rolled_back')
+        self.assertEqual(updated['active_runtime'],str(self.old))
+        incident=self.journal/updated['incident_preimage']
+        self.assertEqual(hashlib.sha256(incident.read_bytes()).hexdigest(),
+                         updated['incident_preimage_sha256'])
+        self.assertEqual(json.loads(incident.read_text())['state'],interrupted)
+        recovery=self.journal/updated['immutable_recovery_receipt']
+        self.assertEqual(hashlib.sha256(recovery.read_bytes()).hexdigest(),
+                         updated['immutable_recovery_sha256'])
+        self.assertEqual(self.g['reconcile_interrupted_live'](),False)
+        self.assertEqual(len(self.ops),3)
+        self.assertEqual(incident.read_bytes(),incident.read_bytes())
+
+    def test_interrupted_live_healthy_original_is_no_restart(self):
+        self.state_at('switching_live')
+        self.state.write_text(json.dumps({
+          'phase':'switching_live','source':'b'*40,'build':'NEW_BUILD_123',
+          'old_unit_sha256':hashlib.sha256(self.original.read_bytes()).hexdigest(),
+          'new_unit_sha256':hashlib.sha256(self.candidate.read_bytes()).hexdigest()}))
+        self.assertTrue(self.g['reconcile_interrupted_live']())
+        self.assertEqual(self.ops,[])
+        self.assertEqual(json.loads(self.state.read_text())['phase'],
+                         'auto_rolled_back')
+
+    def test_interrupted_live_foreign_active_unit_holds_before_recovery(self):
+        self.state_at('switching_live')
+        self.state.write_text(json.dumps({
+          'phase':'switching_live','source':'b'*40,'build':'NEW_BUILD_123',
+          'old_unit_sha256':hashlib.sha256(self.original.read_bytes()).hexdigest(),
+          'new_unit_sha256':hashlib.sha256(self.candidate.read_bytes()).hexdigest()}))
+        self.unit.write_bytes(b'FOREIGN_UNIT_NOT_OLD_OR_NEW')
+        with self.assertRaisesRegex(RuntimeError,'INTERRUPTED_UNKNOWN_ACTIVE_UNIT'):
+            self.g['reconcile_interrupted_live']()
+        self.assertEqual(self.ops,[])
+        self.assertFalse(list(self.journal.glob('interrupted-live-*')))
+
+    def test_interrupted_live_tampered_unit_digest_holds(self):
+        self.state_at('switching_live')
+        self.state.write_text(json.dumps({
+          'phase':'switching_live','source':'b'*40,'build':'NEW_BUILD_123',
+          'old_unit_sha256':'0'*64,
+          'new_unit_sha256':hashlib.sha256(self.candidate.read_bytes()).hexdigest()}))
+        with self.assertRaisesRegex(RuntimeError,'INTERRUPTED_UNIT_DIGEST_DRIFT'):
+            self.g['reconcile_interrupted_live']()
+        self.assertEqual(self.ops,[])
+        self.assertFalse(list(self.journal.glob('interrupted-live-*')))
+
+    def test_interrupted_live_failed_restart_preserves_forensic_state(self):
+        self.state_at('switching_live')
+        interrupted={
+          'phase':'switching_live','source':'b'*40,'build':'NEW_BUILD_123',
+          'old_unit_sha256':hashlib.sha256(self.original.read_bytes()).hexdigest(),
+          'new_unit_sha256':hashlib.sha256(self.candidate.read_bytes()).hexdigest()}
+        self.state.write_text(json.dumps(interrupted))
+        self.unit.write_bytes(self.candidate.read_bytes())
+        def broken(*args,**kwargs):
+            self.ops.append(args)
+            if args[:2]==('systemctl','start'):
+                raise RuntimeError('SIMULATED_START_FAILURE')
+        self.g['run']=broken
+        with self.assertRaisesRegex(RuntimeError,'SIMULATED_START_FAILURE'):
+            self.g['reconcile_interrupted_live']()
+        self.assertEqual(json.loads(self.state.read_text()),interrupted)
+        saved=list(self.journal.glob('interrupted-live-preimage-*'))
+        self.assertEqual(len(saved),1)
+        self.assertEqual(json.loads(saved[0].read_text())['state'],interrupted)
+        self.assertEqual(self.unit.read_bytes(),self.original.read_bytes())
 
     def test_wrong_source_never_resumes(self):
         self.state_at(source='c'*40)
@@ -237,3 +336,127 @@ class ProtectedGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'PROTECTED_SERVICE_PID_CHANGED'):
             self.g['hold_protected'](before)
         self.g['subprocess'].run.assert_not_called()
+
+
+class PublicAssetProbeTests(unittest.TestCase):
+    """Real isolated permission/symlink regressions, no HEL1 mutation."""
+
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root=Path(self.tmp.name)/'candidate'
+        self.downloads=self.root/'public/downloads'
+        self.downloads.mkdir(parents=True)
+        self.assets=self.root/'public/images'
+        self.assets.mkdir()
+        (self.assets/'safe.txt').write_bytes(b'PUBLIC')
+        # Only the original checked-in controller contributes source code.
+        self.script=next(ast.literal_eval(n.value) for n in TREE.body
+            if isinstance(n,ast.Assign) and any(isinstance(x,ast.Name)
+            and x.id=='PUBLIC_ASSET_PROBE' for x in n.targets))
+
+    def probe(self):
+        import sys
+        return subprocess.run([sys.executable,'-I','-B','-c',
+            self.script,str(self.root)],text=True,capture_output=True,timeout=10)
+
+    def test_clean_public_assets_and_empty_downloads_pass(self):
+        p=self.probe()
+        self.assertEqual(p.returncode,0,p.stderr)
+        self.assertIn('PASS_PUBLIC_ASSETS_AS_PRODUCTION_USER',p.stdout)
+
+    def test_private_chronicle_staging_archive_in_downloads_is_denied(self):
+        private=self.downloads/'we2-staging-archive-20261119'
+        private.mkdir()
+        (private/'restore.txt').write_bytes(b'archive')
+        p=self.probe()
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('HOLD_PUBLIC_ASSET_DOWNLOADS_NOT_EMPTY',p.stderr)
+        self.assertEqual((private/'restore.txt').read_bytes(),b'archive')
+
+    def test_symlink_to_private_archive_is_denied(self):
+        private=self.root/'private-cold-store'
+        private.mkdir()
+        (self.assets/'untrusted').symlink_to(private,target_is_directory=True)
+        p=self.probe()
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('HOLD_PUBLIC_ASSET_SYMLINK',p.stderr)
+
+    def test_any_unapproved_static_download_is_denied(self):
+        (self.downloads/'sneaky-runtime.tar.gz').write_bytes(b'private')
+        p=self.probe()
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('HOLD_PUBLIC_ASSET_DOWNLOADS_NOT_EMPTY',p.stderr)
+
+    def test_public_directory_symlink_is_denied(self):
+        self.downloads.rmdir()
+        self.downloads.symlink_to(self.assets,target_is_directory=True)
+        p=self.probe()
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('HOLD_PUBLIC_ASSET_DIRECTORY',p.stderr)
+
+    def test_missing_public_downloads_is_created_as_empty_owner_dir(self):
+        self.downloads.rmdir()
+        function=next(n for n in TREE.body if isinstance(n,ast.FunctionDef)
+             and n.name=='ensure_empty_public_downloads')
+        module=ast.fix_missing_locations(ast.Module(body=[function],type_ignores=[]))
+        def hold(ok,why):
+            if not ok:raise RuntimeError("HOLD_PRODUCT_"+why)
+        def fsync_dir(p):pass
+        env={'Path':Path,'os':os,'stat':stat,'hold':hold,
+             'fsync_dir':fsync_dir}
+        exec(compile(module,str(SOURCE),'exec'),env)
+        env['ensure_empty_public_downloads'](self.root)
+        self.assertTrue(self.downloads.is_dir())
+        self.assertEqual(list(self.downloads.iterdir()),[])
+        self.assertEqual(stat.S_IMODE(self.downloads.stat().st_mode),0o755)
+        self.assertEqual(self.probe().returncode,0)
+
+    def test_symlink_download_boundary_is_not_followed_or_replaced(self):
+        self.downloads.rmdir()
+        self.downloads.symlink_to(self.assets,target_is_directory=True)
+        function=next(n for n in TREE.body if isinstance(n,ast.FunctionDef)
+             and n.name=='ensure_empty_public_downloads')
+        module=ast.fix_missing_locations(ast.Module(body=[function],type_ignores=[]))
+        def hold(ok,why):
+            if not ok:raise RuntimeError("HOLD_PRODUCT_"+why)
+        env={'Path':Path,'os':os,'stat':stat,'hold':hold,
+             'fsync_dir':lambda p:None}
+        exec(compile(module,str(SOURCE),'exec'),env)
+        with self.assertRaisesRegex(RuntimeError,
+                                    'UNTRUSTED_PUBLIC_DOWNLOADS_BOUNDARY'):
+            env['ensure_empty_public_downloads'](self.root)
+        self.assertTrue(self.downloads.is_symlink())
+
+    def test_candidate_preflight_uses_actual_service_identity(self):
+        from unittest.mock import patch
+        func=next(n for n in TREE.body if isinstance(n,ast.FunctionDef)
+                  and n.name=='candidate_public_preflight')
+        module=ast.fix_missing_locations(ast.Module(body=[func],type_ignores=[]))
+        fake=Mock(run=Mock(return_value=Mock(
+            returncode=0,stdout='PASS_PUBLIC_ASSETS_AS_PRODUCTION_USER 2')))
+        def hold(ok,why):
+            if not ok:raise RuntimeError('HOLD_PRODUCT_'+why)
+        env={'Path':Path,'os':os,'subprocess':fake,'hold':hold,
+             'PUBLIC_ASSET_PROBE':self.script}
+        exec(compile(module,str(SOURCE),'exec'),env)
+        self.assertTrue(env['candidate_public_preflight'](self.root))
+        args=fake.run.call_args.args[0]
+        self.assertEqual(args[:6],
+           ['/usr/sbin/runuser','-u','aoe2war-web-prod','--',
+            '/usr/bin/python3','-I'])
+        self.assertEqual(args[-1],str(self.root))
+
+    def test_failed_user_probe_is_hold_without_candidate_modification(self):
+        func=next(n for n in TREE.body if isinstance(n,ast.FunctionDef)
+                  and n.name=='candidate_public_preflight')
+        module=ast.fix_missing_locations(ast.Module(body=[func],type_ignores=[]))
+        fake=Mock(run=Mock(return_value=Mock(returncode=1,stdout='')))
+        def hold(ok,why):
+            if not ok:raise RuntimeError('HOLD_PRODUCT_'+why)
+        env={'Path':Path,'os':os,'subprocess':fake,'hold':hold,
+             'PUBLIC_ASSET_PROBE':self.script}
+        exec(compile(module,str(SOURCE),'exec'),env)
+        with self.assertRaisesRegex(RuntimeError,'PUBLIC_ASSET_PROBE_FAILED'):
+            env['candidate_public_preflight'](self.root)
+        self.assertEqual(list(self.downloads.iterdir()),[])
