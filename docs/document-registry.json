@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fd33939007b4fe8022db50c13662d8272abbf466a2314b785594b0338721d25d",
+      "sha256": "d8f4f03331efed1805f7d64b659c4fc74d5986a30cfe414a50f872b7e4c41de6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2640,6 +2640,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-independent-review-request",
+      "id": "aoe2war.app-prodn.we3-kingdom-menu-exact-script-admission-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "internal",
+      "sha256": "c3d80bde7c0a05a0fa22b040e8bfddb9af26d3655bdbb8351dce11e62ff24f06",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Q09 Kingdom Menu Exact Script Admission Review",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -3439,7 +3461,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-library-projections-20261119",
-    "commit": "2c4ea560a5feace2f22e98139cf27460cb0725ef"
+    "commit": "7c7d7106c8f906b21b028350215935e05ff479a7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
