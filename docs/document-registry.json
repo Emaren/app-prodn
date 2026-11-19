@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6bd98140cd9103950e657ae46eef6e2e2cf348978978a1c16af6c7fb1f4256a9",
+      "sha256": "9b09bda5ddcee38d82dabf8b2aa8b440cf4bf5f7c3d5c569f4eabf9ba9a01517",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -893,7 +893,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "bc119c323235a2481e52689c448ef1aad4e1b93043bc2472f89b9190391ef516",
+      "sha256": "a9991af776f3e854b4fb68ca96cae14ae3e7be881481c2653d603b6a16cf14f1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3439,7 +3439,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-library-projections-20261119",
-    "commit": "93ab43d5a5d51c26534b81e0d6bfac5b80670b8a"
+    "commit": "0afadf9fb77b56d8976b817a5a333b3449112ced"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

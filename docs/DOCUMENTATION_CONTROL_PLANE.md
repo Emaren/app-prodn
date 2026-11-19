@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-library-projections-20261119` at `93ab43d5a5d51c26534b81e0d6bfac5b80670b8a`
+Implementation baseline: `session-c/we3-library-projections-20261119` at `0afadf9fb77b56d8976b817a5a333b3449112ced`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
