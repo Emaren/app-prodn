@@ -1,7 +1,22 @@
+---
+id: "aoe2war.app-prodn.we3-social-text-sql-review-20261118"
+title: "WE3 Social Writer SQL Privilege and Inverse Proposal"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "unapproved-source-review-proposal"
+reviewed_at: "2026-11-18"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # WE3 P0 social text writer — SQL authority, dependencies and inverse
 **2026-11-18 · REVIEW-ONLY PROPOSAL · NOT AN INSTALLER · NOT A WE1 OR WE2 PERMIT**
 
-Source: Emaren/app-prodn PR #1418. Initial GitHub source tree `0127a217ec157f6df7c70332d7ee83354f9fa8e2`; UID650 local tree identical. Exact text writer `lib/socialWriterCore.mjs`, local Unix daemon `bin/social-writer.mjs`, signed-session verifier `lib/socialWriterSession.mjs`, Next transport `lib/socialWriterClient.ts`, two original route adapters, 115 focused tests. The PRODUCT guard prohibits changing *.sql, systemd, infra, scripts or protected runtime. This document deliberately does not install or grant anything. WE1 owns a source/physical database authorization and inverse; WE2 owns root/Factory/guard.
+Source: Emaren/app-prodn PR #1418. Initial GitHub source tree `0127a217ec157f6df7c70332d7ee83354f9fa8e2`; UID650 local tree identical. Exact text writer `lib/socialWriterCore.mjs`, local Unix daemon `bin/social-writer.mjs`, signed-session verifier `lib/socialWriterSession.mjs`, Next transport `lib/socialWriterClient.ts`, static Clan route plus original Direct route, 147 focused tests. The PRODUCT guard prohibits changing *.sql, systemd, infra, scripts or protected runtime. This document deliberately does not install or grant anything. WE1 owns a source/physical database authorization and inverse; WE2 owns root/Factory/guard.
 
 ## Credential, caller and runtime boundaries
 - Linux OS principal: `aoe2war-social-writer` only, **not** UID990 and not root, fixed socket `/run/aoe2war-social-writer/social.sock` (owner directory must not be writable by web; web only gets group-search/connect).
@@ -134,3 +149,17 @@ Prospective SELECT-only columns for `aoe2war_web_prod` **after WE1 confirms meta
 - No DML/sequence/function rights for public web; no raw replay rewrites; filter/paging/provenance original. UI shows UNKNOWN instead of 0 when reads fail.
 
 **Status:** SQL and grants are REVIEW ONLY; isolated synthetic PG16 passing is not HEL1 admission. Never treat this document as an owner-signed C03 or Factory permit.
+
+
+## Library metadata-denial read fallback (nonfinancial source behavior)
+
+When final replay records and public user display fields remain readable but
+either provenance event collection explicitly returns SQLSTATE 42501 or Prisma
+P1010, the unfiltered all-source Library can show genuine final replay rows.
+Its response sets provenanceComplete=false and names unreadable provenance
+streams. The browser warns that source labels are provisional; specific
+origin filters return 503 instead of claiming a complete zero. This is a
+degraded read-only path, NOT a claim that missing ZIP/Watcher provenance was
+restored. Unexpected errors or inability to read game records/users still
+return 503. All original replay archives and event rows remain untouched.
+Complete source filters require independently reviewed public projections.

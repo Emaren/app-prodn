@@ -15,7 +15,7 @@
     "href": "/academy",
     "label": "Academy",
     "district": "forge",
-    "sourceTree": "src-54495b4cf00ee5e7"
+    "sourceTree": "src-cace5c1bef000c55"
   },
   {
     "href": "/ai",
@@ -111,7 +111,7 @@
     "href": "/clans",
     "label": "Clans",
     "district": "commons",
-    "sourceTree": "src-28463d3e1e7fd437"
+    "sourceTree": "src-04d9164a68549edc"
   },
   {
     "href": "/download",
@@ -243,7 +243,7 @@
     "href": "/library",
     "label": "Library",
     "district": "forge",
-    "sourceTree": "src-d3af3d457bd43bfe"
+    "sourceTree": "src-7b44444abcd82d49"
   },
   {
     "href": "/live-games",
@@ -489,7 +489,7 @@
     "href": "/wolo",
     "label": "Wolo",
     "district": "bazaar",
-    "sourceTree": "src-915cb1c0e808d71c"
+    "sourceTree": "src-2d4ff894591fa96a"
   },
   {
     "href": "/wolo-1",
@@ -525,6 +525,6 @@
     "href": "/zodiac",
     "label": "Zodiac",
     "district": "arena",
-    "sourceTree": "src-b8f4ab87c3834ae9"
+    "sourceTree": "src-a921528df8bc3b39"
   }
 ]

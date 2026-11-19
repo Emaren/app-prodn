@@ -43,6 +43,8 @@ type PageResult = {
   total: number;
   filterTotal: number;
   last24h: number;
+  provenanceComplete?: boolean;
+  missingProvenanceSources?: string[];
   generatedAt: string;
   items: GameItem[];
   nextBefore: number | null;
@@ -263,6 +265,7 @@ export default function LibraryActivityBoard() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [failed, setFailed] = useState(false);
   const [historyCertified, setHistoryCertified] = useState(false);
+  const [provenanceComplete, setProvenanceComplete] = useState(true);
   const [operationsCertified, setOperationsCertified] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(700);
@@ -307,6 +310,7 @@ export default function LibraryActivityBoard() {
       if (epoch !== filterEpochRef.current) return;
       setItems(data.items);
       setHistoryCertified(true);
+      setProvenanceComplete(data.provenanceComplete !== false);
       setTotal(data.total);
       setFilterTotal(data.filterTotal);
       setLast24h(data.last24h);
@@ -366,6 +370,7 @@ export default function LibraryActivityBoard() {
         const data = await requestPage(`?after=${headRef.current}`);
         if (epoch !== filterEpochRef.current) return;
         setHistoryCertified(true);
+        setProvenanceComplete(data.provenanceComplete !== false);
         setTotal(data.total);
         setFilterTotal(data.filterTotal);
         setLast24h(data.last24h);
@@ -486,6 +491,15 @@ export default function LibraryActivityBoard() {
             </button>
           </div>
         </header>
+
+        {historyCertified && !provenanceComplete ? (
+          <div role="status" className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            Replay totals come from real final game records. Historical source
+            receipts are temporarily restricted; provenance classifications
+            are provisional and source-specific filters remain unavailable.
+            Original archives are untouched.
+          </div>
+        ) : null}
 
         <section className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,.85fr)]">
           <div className="relative overflow-hidden rounded-[24px] border border-amber-200/15 bg-[linear-gradient(120deg,rgba(39,26,12,.8),rgba(5,12,22,.97)_56%)] p-5 shadow-[0_12px_60px_rgba(0,0,0,.36)] sm:p-6">

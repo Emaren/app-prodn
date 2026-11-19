@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 13,
-    "routeHandlerTemplates": 287,
-    "apiHandlerTemplates": 284,
+    "routeHandlerTemplates": 288,
+    "apiHandlerTemplates": 285,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -2018,6 +2018,11 @@
     },
     {
       "entrypoint": "app/api/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/social/clan-text/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
