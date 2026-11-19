@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d30c420894b36fbae100ad905317fc37e89295ced29667bc39d11697c2e5eb99",
+      "sha256": "be8f1324568ba2147c3831b8c376c19f1a175738329e7460d0eebc03f8b24fd6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3417,7 +3417,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we2/factory-v3-incident-recovery-20261119",
-    "commit": "d5ad91844e8d4d3d52265f861b8ae9c084c87ada"
+    "commit": "0d9b9014cc52b86706a76b267da1e6df152f39d3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
