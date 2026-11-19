@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-11-19"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Universal Translator
+
+> **Source-only re-review, November 19, 2026:** Verified provider, selector, shell, Home implementation paths and all 16 locale pairs. Structural source review only; no native-language quality or current end-to-end translation certification.
+
 
 The Universal Translator is the global AoE2WAR language-preference surface. It honors the current international community without pretending the app has complete site-wide translation.
 

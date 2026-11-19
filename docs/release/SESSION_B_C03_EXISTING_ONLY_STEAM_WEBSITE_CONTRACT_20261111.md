@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial source only, session A sole FINANCIAL writer, no production admission"
-reviewed_at: "2026-11-11"
+reviewed_at: "2026-11-19"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B C03 existing-user-only Steam website contract
+
+> **Source-only re-review, November 19, 2026:** Checked all three cited auth implementation source paths. Direct-login/finance C03 exclusion requires WE1 catalog proof and WE2 real authenticated physical tests; this old contract is no new production permit.
+
 
 ## Hard existing authentication boundary
 

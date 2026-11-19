@@ -89,6 +89,16 @@ EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-november-polish-20261116"
 EXACT_REVIEWED_B_EMBER_BASE = "d36e9f98e44b0a4de438c5cc623706873c333ca5"
 EXACT_REVIEWED_B_EMBER_GUARD = "scripts/r25_b_guard_production_v1.cjs"
 EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ecd91985355e181f6f1"
+
+# WE3 Q09/Q17 40-link PAPER menu: one exact immutable Chrome acceptance
+# source, only for the original reviewed #1415 branch and canonical base.
+# This is a SOURCE REVIEW CANDIDATE, not a second reviewer endorsement,
+# root permission or live website deployment authority. No wildcard scripts.
+EXACT_REVIEWED_KINGDOM_MENU_BRANCH = "session-c/we3-kingdom-traders-menu-visibility-20261118"
+EXACT_REVIEWED_KINGDOM_MENU_BASE = "4f236dbb76eed804e2cd19f1b64477be19c00dff"
+EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
+EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -148,6 +158,32 @@ def authorize_source(raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_REVIEWED_KINGDOM_MENU_BRANCH:
+            raise BoundaryHold("KINGDOM_MENU_REVIEWED_WRONG_BRANCH")
+        if base != EXACT_REVIEWED_KINGDOM_MENU_BASE:
+            raise BoundaryHold("KINGDOM_MENU_REVIEWED_WRONG_BASE")
+        if (checkout / "scripts").is_symlink():
+            raise BoundaryHold("KINGDOM_MENU_REVIEWED_SYMLINK_ANCESTOR")
+        path = checkout / relative_path(raw)
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 25000 or
+            stat.S_IMODE(st.st_mode) & 0o022):
+            raise BoundaryHold("KINGDOM_MENU_REVIEWED_SINGLE_FILE")
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            live = os.fstat(fd)
+            if (live.st_dev, live.st_ino, live.st_size) != (
+                st.st_dev, st.st_ino, st.st_size):
+                raise BoundaryHold("KINGDOM_MENU_REVIEWED_INODE_CHANGED")
+            blob = os.read(fd, 25001)
+        finally:
+            os.close(fd)
+        if (len(blob) != st.st_size or
+            hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_KINGDOM_MENU_SHA256):
+            raise BoundaryHold("KINGDOM_MENU_REVIEWED_EXACT_SHA_MISMATCH")
+        return raw
     if raw == EXACT_REVIEWED_B_EMBER_GUARD:
         if base != EXACT_REVIEWED_B_EMBER_BASE:
             raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
