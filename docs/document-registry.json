@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eceee5a78bb2a3e474da15dacb03990a994078f06dc6cb17e6b22818f666dedd",
+      "sha256": "5eba750e04fc6836ba8fafaed1148c50e4951d05402d0ea6ccb351cd482710d2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-library-review",
+      "id": "aoe2war.app-prodn.we3-library-public-projections-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "internal",
+      "sha256": "5e1905f4bbe0374629bc76dc81733859ece2a49ee09ba70b61b893997738b575",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Library Public Read Projection Contract",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-independent-review-request",
       "id": "aoe2war.app-prodn.we3-kingdom-menu-exact-script-admission-20261119",
       "owner": "aoe2war-web",
@@ -3438,8 +3460,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/factory-v3-incident-recovery-20261119",
-    "commit": "30edc45714e546cf7f3cd5b9456b7df09f5f3894"
+    "branch": "session-c/we3-library-projections-20261119",
+    "commit": "8c81c4e1bd84a554e47b5a2a17039907947419b0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-v3-incident-recovery-20261119` at `30edc45714e546cf7f3cd5b9456b7df09f5f3894`
+Implementation baseline: `session-c/we3-library-projections-20261119` at `8c81c4e1bd84a554e47b5a2a17039907947419b0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **151**
+- Authoritative repository documents: **152**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 81
 - `runbook`: 50
-- `working`: 2
+- `working`: 3
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 44
+- `draft`: 45
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -165,6 +165,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
+| [WE3 Library Public Read Projection Contract](WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md) | `working` | `draft` | `source-only-library-review` |
 | [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |

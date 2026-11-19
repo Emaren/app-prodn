@@ -46,6 +46,12 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
     const history = await loadLibraryHistoricalSnapshot(prisma);
+    if (!history.provenanceComplete && filter !== "all") {
+      return NextResponse.json(
+        { ok: false, detail: "Library provenance filters temporarily unavailable." },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const page = selectLibraryHistoryPage(history, {
       filter,
       before,
@@ -99,6 +105,8 @@ export async function GET(request: NextRequest) {
         generatedAt: new Date().toISOString(),
         total: history.total,
         last24h: history.last24h,
+        provenanceComplete: history.provenanceComplete,
+        missingProvenanceSources: history.missingProvenanceSources,
         filterTotal: page.filterTotal,
         origin: filter,
         items,

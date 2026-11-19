@@ -27,11 +27,16 @@ test("Library owns a live replay intake command surface", () => {
 });
 
 test("Library distinguishes package, manual, and watcher ingestion from durable activity truth", () => {
-  assert.match(activityRoute, /userActivityEvent\.findMany/);
-  assert.match(activityRoute, /type: "replay_upload"/);
+  // WE1 42501 repair: only fixed public projections, not protected raw tables.
+  const projection = fs.readFileSync("lib/libraryPublicProjection.ts", "utf8");
+  assert.match(activityRoute, /loadLibraryActivityUploads\(prisma\)/);
+  assert.match(activityRoute, /loadLibraryActivityBatches\(prisma, batchCutoff\)/);
+  assert.doesNotMatch(activityRoute, /userActivityEvent\.findMany|watcherClientEvent\.findMany/);
+  assert.match(projection, /FROM aoe2war_library_activity_public\.replay_uploads/);
+  assert.match(projection, /FROM aoe2war_library_watcher_public\.batch_receipts/);
   assert.match(activityRoute, /packageUpload/);
   assert.match(activityRoute, /viaWatcher/);
-  assert.match(activityRoute, /watcherClientEvent\.findMany/);
+  assert.match(activityRoute, /loadLibraryActivityBatches/);
   assert.match(activityRoute, /batch_upload_started/);
   assert.match(activityRoute, /batch_upload_finished/);
   assert.match(activityRoute, /collapseManualBursts/);
