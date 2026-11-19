@@ -6,10 +6,12 @@ const src=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 test("Library failed first load does not represent historical counts as zero",()=>{
   const s=src("components/library/LibraryActivityBoard.tsx");
   assert.match(s,/const \[historyCertified, setHistoryCertified\] = useState\(false\)/);
-  assert.match(s,/historyCertified \? compactCount\(total\) : "—"/);
-  assert.match(s,/historyCertified \? compactCount\(last24h\) : "—"/);
   assert.match(s,/Archive totals unavailable/);
   assert.match(s,/Replay history unavailable/);
+  assert.match(s,/failed \? "Historical index unavailable"/);
+  assert.match(s,/Archive query unavailable · preserved data is not zero/);
+  assert.match(s,/setOperationsCertified\(false\)/);
+  assert.match(s,/historyCertified && !failed \? compactCount\(total\) : "—"/);
   assert.match(s,/setHistoryCertified\(true\)/);
 });
 test("Library failure returns unavailable not fake zero telemetry",()=>{

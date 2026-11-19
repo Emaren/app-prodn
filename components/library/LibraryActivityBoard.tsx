@@ -298,6 +298,7 @@ export default function LibraryActivityBoard() {
         setOperationsCertified(true);
       }
     } catch {
+      setOperationsCertified(false);
       // An optional telemetry panel must not take the game ledger offline.
     }
   }, []);
@@ -536,16 +537,16 @@ export default function LibraryActivityBoard() {
             ) : (
               <div className="mt-4 text-xl font-bold text-slate-400">
                 {loading ? "Connecting to the game ledger…" :
-                  failed && !historyCertified ? "Replay history unavailable — preserved records are not erased" :
+                  failed ? "Replay history unavailable — preserved records are not erased" :
                   "Awaiting first final replay"}
               </div>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Metric icon={Database} caption="Final replay records" value={historyCertified ? compactCount(total) : "—"} accent="text-amber-300" />
-            <Metric icon={Activity} caption="Received / 24h" value={historyCertified ? compactCount(last24h) : "—"} accent="text-emerald-300" />
+            <Metric icon={Database} caption="Final replay records" value={historyCertified && !failed ? compactCount(total) : "—"} accent="text-amber-300" />
+            <Metric icon={Activity} caption="Received / 24h" value={historyCertified && !failed ? compactCount(last24h) : "—"} accent="text-emerald-300" />
             <Metric icon={RadioTower} caption="Active batches" value={operationsCertified ? compactCount(ops.summary.activeBatches) : "—"} accent="text-rose-300" />
-            <Metric icon={History} caption="Loaded history" value={historyCertified ? compactCount(items.length) : "—"} accent="text-cyan-300" />
+            <Metric icon={History} caption="Loaded history" value={historyCertified && !failed ? compactCount(items.length) : "—"} accent="text-cyan-300" />
           </div>
         </section>
 
@@ -600,9 +601,10 @@ export default function LibraryActivityBoard() {
             </button>
           ) : null}
           <div className="flex items-center justify-between border-b border-white/[0.05] bg-black/25 px-4 py-2 font-mono text-[10px] text-slate-500 sm:px-6">
-            <span>{historyCertified
+            <span>{historyCertified && !failed
               ? `${compactCount(visible.length)} loaded of ${compactCount(filterTotal)} matching records · newest first`
-              : "Archive totals unavailable · no records deleted"}</span>
+              : failed ? "Archive query unavailable · preserved data is not zero"
+                : "Archive totals unavailable · no records deleted"}</span>
             <span>SCROLL ↓ FOR HISTORY</span>
           </div>
           <div
@@ -654,7 +656,7 @@ export default function LibraryActivityBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Signal className="h-3.5 w-3.5 text-emerald-300" />
-              {failed && !historyCertified ? "Historical index unavailable" :
+              {failed ? "Historical index unavailable" :
                 hasMore ? "More preserved history available" : "End of indexed source history"}
               {filter !== "all" ? " · Full-history source filter active" : ""}
             </div>
