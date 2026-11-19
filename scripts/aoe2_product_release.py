@@ -29,7 +29,7 @@ import aoe2_product_release_transport as transport
 
 CONTROLLER = "/root/aoe2war_product_release_controller_v3.py"
 PREPARE = "/root/aoe2war_prepare_product_manifest_v2.py"
-CONTROLLER_SHA = "771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452"
+CONTROLLER_SHA = "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064"
 PREPARE_SHA = "17f2ee180d69fae4f4b4c7e01f282e6e11db87a0c2d74a129d2eb7d63fbb6d20"
 INSPECTOR = "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
 INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"

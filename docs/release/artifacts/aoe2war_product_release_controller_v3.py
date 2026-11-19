@@ -230,6 +230,77 @@ def unit_guard(raw,root):
         hold(bad not in text,"UNIT_PRIVILEGE_EXPANSION")
     return text
 
+# Public assets must be traversable by the ACTUAL production UID before any
+# service stop. The Chronicle incident (2026-11-19) came from a private
+# mode-0700 archive under public/downloads that crashed Next.js on scandir.
+# This small process runs as aoe2war-web-prod (never root) and does not write.
+PUBLIC_ASSET_PROBE = r"""
+import os, pathlib, stat, sys
+runtime=pathlib.Path(sys.argv[1])
+base=runtime/"public"
+def need(ok, reason):
+    if not ok: raise SystemExit("HOLD_PUBLIC_ASSET_"+reason)
+for name in (base, base/"downloads"):
+    st=name.lstat()
+    need(stat.S_ISDIR(st.st_mode) and not name.is_symlink(), "DIRECTORY")
+    need(not os.path.ismount(name), "MOUNT")
+# public/downloads is reserved; authenticated Chronicle ZIPs are served by
+# guarded application routes, not copied into a world-readable static folder.
+with os.scandir(base/"downloads") as items:
+    need(next(items,None) is None, "DOWNLOADS_NOT_EMPTY")
+pending=[base]
+seen=0
+while pending:
+    item=pending.pop()
+    with os.scandir(item) as entries:
+        for ent in entries:
+            seen+=1
+            need(seen<=100000, "TREE_BOUNDS")
+            st=ent.stat(follow_symlinks=False)
+            need(not stat.S_ISLNK(st.st_mode), "SYMLINK")
+            if stat.S_ISDIR(st.st_mode):
+                need(not os.path.ismount(ent.path), "NESTED_MOUNT")
+                pending.append(pathlib.Path(ent.path))
+            elif stat.S_ISREG(st.st_mode):
+                with open(ent.path,"rb") as f: f.read(1)
+            else:
+                need(False,"SPECIAL_NODE")
+print("PASS_PUBLIC_ASSETS_AS_PRODUCTION_USER",seen)
+"""
+
+def ensure_empty_public_downloads(runtime):
+    """Create only the empty root-owned boundary omitted by some Git tarballs."""
+    public=Path(runtime)/"public"
+    st=public.lstat()
+    hold(stat.S_ISDIR(st.st_mode) and not public.is_symlink()
+         and st.st_uid==os.geteuid() and not os.path.ismount(public),
+         "UNTRUSTED_PUBLIC_SOURCE_DIRECTORY")
+    downloads=public/"downloads"
+    if not downloads.exists() and not downloads.is_symlink():
+        downloads.mkdir(mode=0o755)
+        fsync_dir(public)
+    st=downloads.lstat()
+    hold(stat.S_ISDIR(st.st_mode) and not downloads.is_symlink()
+         and st.st_uid==os.geteuid() and not os.path.ismount(downloads),
+         "UNTRUSTED_PUBLIC_DOWNLOADS_BOUNDARY")
+
+def candidate_public_preflight(runtime):
+    root=Path(runtime)
+    hold(root.is_dir() and not root.is_symlink(),"CANDIDATE_ROOT_NOT_DIRECTORY")
+    for part in (root/"public",root/"public/downloads"):
+        hold(part.is_dir() and not part.is_symlink(),
+             "PUBLIC_DOWNLOADS_DIRECTORY_INVALID")
+        hold(not os.path.ismount(part),"PUBLIC_ASSET_MOUNT_FORBIDDEN")
+    # No additional web runtime; runuser only probes filesystem visibility.
+    probe=subprocess.run(
+       ["/usr/sbin/runuser","-u","aoe2war-web-prod","--",
+        "/usr/bin/python3","-I","-B","-c",PUBLIC_ASSET_PROBE,str(root)],
+       capture_output=True,text=True,timeout=45)
+    hold(probe.returncode==0 and
+         "PASS_PUBLIC_ASSETS_AS_PRODUCTION_USER" in probe.stdout,
+         "PUBLIC_ASSET_PROBE_FAILED")
+    return True
+
 def inspect_archive():
     st=ARCHIVE.lstat()
     hold(stat.S_ISREG(st.st_mode) and st.st_nlink==1 and st.st_uid==1000,
@@ -330,6 +401,8 @@ def stage():
     # Create only this empty runtime mountpoint before sealing the candidate.
     (TEMP/".next/cache").mkdir(mode=0o755,exist_ok=True)
     hold((TEMP/".next/cache").is_dir(),"NEXT_CACHE_MOUNTPOINT_MISSING")
+    ensure_empty_public_downloads(TEMP)
+    candidate_public_preflight(TEMP)
     os.rename(TEMP,TARGET)
     fsync_dir(TARGET.parent)
     json_save(STATE,{"phase":"prepared","source":SOURCE,"build":BUILD,
@@ -374,8 +447,103 @@ def target_health(target,precheck):
             url_status(3032,"/api/bets")==503 and
             url_status(3032,"/api/auth/session") in (401,403))
 
+def immutable_incident_receipt(prefix, data):
+    """Append-only source-pinned evidence; never overwrite earlier incidents."""
+    st=JOURNAL.lstat()
+    hold(stat.S_ISDIR(st.st_mode) and not JOURNAL.is_symlink()
+         and st.st_uid==os.geteuid() and stat.S_IMODE(st.st_mode)==0o700,
+         "INCIDENT_JOURNAL_CUSTODY")
+    stamp=dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    path=JOURNAL/(prefix+"-"+stamp+".json")
+    raw=(json.dumps(data,sort_keys=True,separators=(",",":"))+"\n").encode()
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    try:
+        with os.fdopen(fd,"wb",closefd=False) as f:
+            f.write(raw);f.flush()
+        os.fsync(fd)
+    finally:os.close(fd)
+    fsync_dir(JOURNAL)
+    return path,sha_bytes(raw)
+
+def reconcile_interrupted_live():
+    """Fail-closed, original-unit restoration after a process died switching_live.
+
+    Must be called under the existing root controller/Factory lock and same
+    exact source manifest. It never deletes runtimes or promotes the candidate.
+    """
+    if not STATE.exists():return False
+    obj=json_get(STATE)
+    if obj.get("phase")!="switching_live":return False
+    hold(obj.get("source")==SOURCE and obj.get("build")==BUILD,
+         "INTERRUPTED_JOURNAL_IDENTITY")
+    oldunit=ORIGINAL.read_bytes()
+    newunit=CANDIDATE.read_bytes()
+    hold(sha_bytes(oldunit)==UNIT_ORIGINAL_SHA and
+         sha_bytes(oldunit)==obj.get("old_unit_sha256") and
+         sha_bytes(newunit)==obj.get("new_unit_sha256"),
+         "INTERRUPTED_UNIT_DIGEST_DRIFT")
+    unit_guard(oldunit,PREVIOUS_ROOT)
+    unit_guard(newunit,TARGET)
+    current=APP_UNIT.read_bytes()
+    hold(current in (oldunit,newunit),"INTERRUPTED_UNKNOWN_ACTIVE_UNIT")
+    pre=json_get(PRECHECK)
+    hold(pre.get("old_unit_sha256")==sha_bytes(oldunit),
+         "INTERRUPTED_PRECHECK_DRIFT")
+    hold_protected(pre["protected_pids"])
+    prev=Path(PREVIOUS_ROOT)
+    hold(prev.is_dir() and not prev.is_symlink() and
+         (prev/".aoe2war-source-sha").read_text().strip()==PREVIOUS_SOURCE and
+         (prev/".next/BUILD_ID").read_text().strip()==PREVIOUS_BUILD,
+         "INTERRUPTED_ORIGINAL_RUNTIME_DRIFT")
+    guard_finance()
+    # Sealed BEFORE touching the unit; survives another power loss.
+    incident,incident_sha=immutable_incident_receipt(
+       "interrupted-live-preimage",
+       {"schema":"aoe2war.product.interrupted-switch-preimage.v1",
+        "state":obj,"active_unit_sha256":sha_bytes(current),
+        "original_unit_sha256":sha_bytes(oldunit),
+        "candidate_unit_sha256":sha_bytes(newunit),
+        "source":SOURCE,"build":BUILD,
+        "protected_pids":pre["protected_pids"]})
+    if not (current==oldunit and target_health("old",pre)):
+        run("systemctl","stop",SERVICE,timeout=50)
+        atomic(APP_UNIT,oldunit,0o644)
+        run("systemctl","daemon-reload",timeout=30)
+        run("systemctl","start",SERVICE,timeout=70)
+        healthy=False
+        for _ in range(35):
+            if target_health("old",pre):
+                healthy=True;break
+            time.sleep(1)
+        hold(healthy,"INTERRUPTED_ORIGINAL_RESTORE_NOT_HEALTHY")
+    guard_finance()
+    hold_protected(pre["protected_pids"])
+    hold(target_health("old",pre),"INTERRUPTED_ORIGINAL_POSTCHECK_FAILED")
+    recovered={"phase":"auto_rolled_back","source":SOURCE,"build":BUILD,
+       "reason":"reconciled_interrupted_switching_live",
+       "active_runtime":PREVIOUS_ROOT,
+       "active_unit_sha256":sha_bytes(oldunit),
+       "incident_preimage":incident.name,
+       "incident_preimage_sha256":incident_sha,
+       "timestamp":dt.datetime.now(dt.timezone.utc).isoformat()}
+    success,success_sha=immutable_incident_receipt(
+        "interrupted-live-recovered",
+        {"schema":"aoe2war.product.interrupted-switch-recovery.v1",
+         "recovery":recovered,"original_healthy":True,
+         "financial_authorized":False,"source":SOURCE,"build":BUILD})
+    recovered["immutable_recovery_receipt"]=success.name
+    recovered["immutable_recovery_sha256"]=success_sha
+    json_save(STATE,recovered)
+    print("PASS_INTERRUPTED_LIVE_ORIGINAL_3032_RESTORED",
+          "EVIDENCE",incident.name,success.name,flush=True)
+    return True
+
 def switch(target,phase,desired):
     guard_finance()
+    if target=="new":
+        # Repeat after staging: historical archives could have been mounted
+        # or relocated beneath the candidate after extraction.
+        candidate_public_preflight(TARGET)
     oldunit=ORIGINAL.read_bytes()
     newunit=CANDIDATE.read_bytes()
     current=APP_UNIT.read_bytes()
@@ -445,14 +613,24 @@ def switch(target,phase,desired):
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument("phase",choices=("stage","activate","rollback","reactivate","release","status"))
+    ap.add_argument("phase",choices=("stage","activate","rollback","reactivate","release","status","recover"))
     ap.add_argument("--manifest",required=True)
     args=ap.parse_args()
     hold(os.geteuid()==0,"ROOT_OS_OWNER_REQUIRED")
     fd=os.open(LOCK,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        if args.phase=="stage":stage()
+        # A SIGKILL/power loss cannot enter the normal release sequence with
+        # a half-switched unit. First restore the original and STOP; never
+        # automatically reactivate the candidate in the same invocation.
+        if args.phase!="status":
+            restored=reconcile_interrupted_live()
+            if restored:
+                print("HOLD_EXPLICIT_REACTIVATION_AFTER_RECOVERY",flush=True)
+                return
+        if args.phase=="recover":
+            print("PASS_NO_INTERRUPTED_SWITCH_NOOP",flush=True)
+        elif args.phase=="stage":stage()
         elif args.phase=="release":
             stage()
             state_need(("prepared",))

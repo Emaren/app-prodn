@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e2f4a3052028895858e7af41501734ce458a7c4725bbca0049ab3819cb0ace4c",
+      "sha256": "eceee5a78bb2a3e474da15dacb03990a994078f06dc6cb17e6b22818f666dedd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3438,8 +3438,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-kingdom-traders-menu-visibility-20261118",
-    "commit": "d3fd9ea426813ad84736b8c45e4aa2f016239ba4"
+    "branch": "we2/factory-v3-incident-recovery-20261119",
+    "commit": "30edc45714e546cf7f3cd5b9456b7df09f5f3894"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

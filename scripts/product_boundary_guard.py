@@ -116,7 +116,31 @@ ALLOWED_TASK_ARGV = (
      "-p", "test_product_boundary_guard.py", "-v"),
 )
 SHA = re.compile(r"^[a-f0-9]{40}$")
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|main)$")
+# One WE2 protected Factory source review. The two source blobs and original
+# Chronicle main base are immutable pins, not a standing release authority.
+# Future controller code, new branch or base require another exact review.
+EXACT_WE2_FACTORY_BRANCH = "we2/factory-v3-incident-recovery-20261119"
+EXACT_WE2_FACTORY_BASE = "6da478878478d2f32ceb2efba06c8a6a2c043301"
+EXACT_WE2_FACTORY_SHA256 = {
+    "scripts/aoe2_product_release.py":
+        "84d9a0e277595b1492d88f19e7c9829dc2896929738328ec37419c792f1f23f5",
+    "docs/release/artifacts/aoe2war_product_release_controller_v3.py":
+        "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064",
+    "tests/test_product_controller_recovery.py":
+        "6eda90f9e39646657916b02d07993567c694f6f49e0906afb00b400e8aebdaaf",
+}
+# Kingdom menu was legitimately merged as canonical main after this Factory
+# controller was installed. Preserve its up-to-date reviewed documents; this
+# exact replay updates ONLY the DocsV2 registry for the source baseline.
+# All three root/runner/test SHA pins and negative guards stay unchanged.
+EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
+} | EXACT_WE2_FACTORY_DOCS_REVIEW
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -254,6 +278,29 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         if (len(content) != st.st_size or
                 hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_B_BROWSER_SHA256):
             raise BoundaryHold("B_BROWSER_EXACT_SHA_MISMATCH")
+        return raw
+    # One exact reviewed Factory-root pin transition on the sole WE2 branch.
+    # This does not admit a general release runner or change root authority.
+    if raw == "scripts/aoe2_product_release.py" and base == EXACT_WE2_FACTORY_BASE:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_FACTORY_BRANCH:
+            raise BoundaryHold("WE2_FACTORY_RUNNER_BRANCH")
+        target=checkout/"scripts/aoe2_product_release.py"
+        st=target.lstat()
+        if (target.is_symlink() or (checkout/"scripts").is_symlink()
+            or not stat.S_ISREG(st.st_mode) or st.st_nlink!=1
+            or st.st_uid!=os.geteuid() or stat.S_IMODE(st.st_mode)&0o022
+            or not 100<=st.st_size<=100000):
+            raise BoundaryHold("WE2_FACTORY_RUNNER_CUSTODY")
+        fd=os.open(target,os.O_RDONLY|os.O_NOFOLLOW)
+        try:
+            live=os.fstat(fd)
+            if (live.st_dev,live.st_ino,live.st_size)!=(st.st_dev,st.st_ino,st.st_size):
+                raise BoundaryHold("WE2_FACTORY_RUNNER_INODE")
+            raw_bytes=os.read(fd,100001)
+        finally:
+            os.close(fd)
+        if len(raw_bytes)!=st.st_size or hashlib.sha256(raw_bytes).hexdigest()!=EXACT_WE2_FACTORY_SHA256["scripts/aoe2_product_release.py"]:
+            raise BoundaryHold("WE2_FACTORY_RUNNER_SHA256")
         return raw
     if (raw in EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE or
             raw in EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE):
@@ -441,6 +488,36 @@ def changed_source(checkout: Path, base: str) -> list[str]:
     return changes
 
 
+def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
+                                  base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE2_FACTORY_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY_BASE:
+        raise BoundaryHold("WE2_FACTORY_EXACT_BASE_OR_REPO")
+    if frozenset(changes) != EXACT_WE2_FACTORY_CHANGED or len(changes) != len(EXACT_WE2_FACTORY_CHANGED):
+        raise BoundaryHold("WE2_FACTORY_EXACT_SOURCE_SCOPE")
+    for relative, expected in EXACT_WE2_FACTORY_SHA256.items():
+        target=checkout
+        for component in Path(relative).parts:
+            target=target/component
+            if target.is_symlink():
+                raise BoundaryHold("WE2_FACTORY_SYMLINK_ANCESTOR")
+        st=target.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink!=1
+            or st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode)&0o022
+            or not 100<=st.st_size<=100000):
+            raise BoundaryHold("WE2_FACTORY_PROTECTED_SOURCE_CUSTODY")
+        fd=os.open(target,os.O_RDONLY|os.O_NOFOLLOW)
+        try:
+            live=os.fstat(fd)
+            if (live.st_dev,live.st_ino,live.st_size)!=(st.st_dev,st.st_ino,st.st_size):
+                raise BoundaryHold("WE2_FACTORY_INODE_CHANGED")
+            raw=os.read(fd,100001)
+        finally:
+            os.close(fd)
+        if len(raw)!=st.st_size or hashlib.sha256(raw).hexdigest()!=expected:
+            raise BoundaryHold("WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT")
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -455,6 +532,8 @@ def main() -> int:
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
         receipt["changed_files"] = changed_source(checkout, base)
+        check_exact_we2_factory_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
