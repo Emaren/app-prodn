@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-library-projections-20261119` at `8c81c4e1bd84a554e47b5a2a17039907947419b0`
+Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `63c17c07d93fd26187d0464a01e9e4b07856b9a8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **152**
+- Authoritative repository documents: **155**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 81
 - `runbook`: 50
-- `working`: 3
+- `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 45
+- `draft`: 48
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -167,6 +167,9 @@ This page is generated from the validated front matter in this repository. Cross
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WE3 Library Public Read Projection Contract](WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md) | `working` | `draft` | `source-only-library-review` |
 | [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
+| [WE3 Additive Social Gateway V1: Source and Exact Inverse](WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md) | `working` | `draft` | `unapproved-source-review-proposal` |
+| [WE3 HD-Only Restricted Social Gateway V2 Source Contract](WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md) | `working` | `draft` | `source-only-restricted-db-handoff` |
+| [WE3 Social Writer SQL Privilege and Inverse Proposal](WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md) | `working` | `draft` | `unapproved-source-review-proposal` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |

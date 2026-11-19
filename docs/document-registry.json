@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5eba750e04fc6836ba8fafaed1148c50e4951d05402d0ea6ccb351cd482710d2",
+      "sha256": "3f0695c54683e8eeaee3ae63e3ab4d6793c5527220a8e873f6877998598280a7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2662,6 +2662,72 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "unapproved-source-review-proposal",
+      "id": "aoe2war.app-prodn.we3-social-gateway-v1-review-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "b0d9a22ffe9d8d259733c5be565060726ab3fa69bd126326c340d3068c94edce",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Additive Social Gateway V1: Source and Exact Inverse",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-restricted-db-handoff",
+      "id": "aoe2war.app-prodn.we3-social-hd-v2-source-contract-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "4212cac0d2bc810fa0952db5daedf21f1a07e9f3232d35f96866cdcafc0f26f1",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 HD-Only Restricted Social Gateway V2 Source Contract",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "unapproved-source-review-proposal",
+      "id": "aoe2war.app-prodn.we3-social-text-sql-review-20261118",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "d1f3a21793b1e8b97aac5afd1c7a9dd97b6fc34cb54e24dc82a780d0698d5dbd",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Social Writer SQL Privilege and Inverse Proposal",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -3460,8 +3526,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-library-projections-20261119",
-    "commit": "8c81c4e1bd84a554e47b5a2a17039907947419b0"
+    "branch": "session-c/we3-p0-social-text-send-20261118",
+    "commit": "63c17c07d93fd26187d0464a01e9e4b07856b9a8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
