@@ -42,7 +42,9 @@ class BoundaryTests(unittest.TestCase):
           "scripts/aoe2_product_release.py",
           "tests/test_product_controller_recovery.py"})
         doc_paths=policy.EXACT_WE2_FACTORY_DOCS_REVIEW
-        self.assertEqual(set(doc_paths),{"docs/document-registry.json"})
+        self.assertEqual(set(doc_paths),{
+          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+          "docs/document-registry.json"})
         self.assertEqual(set(policy.EXACT_WE2_FACTORY_CHANGED),names|{
           "scripts/product_boundary_guard.py",
           "tests/test_product_boundary_guard.py"}|set(doc_paths))

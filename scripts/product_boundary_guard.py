@@ -134,6 +134,7 @@ EXACT_WE2_FACTORY_SHA256 = {
 # exact replay updates ONLY the DocsV2 registry for the source baseline.
 # All three root/runner/test SHA pins and negative guards stay unchanged.
 EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
 })
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
