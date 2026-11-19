@@ -8,12 +8,17 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority"
-reviewed_at: "2026-11-11"
+reviewed_at: "2026-11-19"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B existing-profile website release before C03 finance quarantine
+
+## 2026-11-19 evidence-bound documentation review
+
+**November 19 technical review:** The two authentication profiles remain mutually exclusive. The deployed Chronicle R25 service uses `nonfinancial-production-v1` with the protected Steam guard and finance ports 8092–8095 closed; it must not be relabeled as the uninstalled C03 existing-only profile. Distinct WE1-authenticated writer/read-projection admission is still required for Clan/Nav messages and Library history. This source-only document grants no root, PostgreSQL, or source-merging authority.
+
 
 ## Two exclusive authentication profiles
 

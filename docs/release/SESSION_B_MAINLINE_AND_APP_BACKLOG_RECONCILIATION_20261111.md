@@ -2,18 +2,23 @@
 id: "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111"
 title: "Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026"
 type: "reference"
-status: "draft"
+status: "superseded"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority"
-reviewed_at: "2026-11-11"
-review_interval_days: 7
+reviewed_at: "2026-11-19"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026
+
+## 2026-11-19 evidence-bound documentation review
+
+**November 19 historical disposition:** The branch counts, ancestral merge, exact SHAs, and PR #1331 facts below are a *November 11 snapshot*, not the live canonical repo graph. Chronicle PR #1405 merged at canonical main `81640c7d834c252fb1680190b3f431bd4beb3e58`; independent current PR work such as Factory #1420 and Kingdom #1415 must rebase or verify against that source. This ledger is superseded for today's merge and deployment decisions, but its original observation remains intact for audit.
+
 
 **Read-only analysis of App refs, not permission to merge, delete, deploy, alter A's financial domain, or operate HEL1.** The associated machine-readable ledger is at [SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json](evidence/SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json) and records all exact SHAs plus 107 per-commit source effects.
 

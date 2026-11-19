@@ -8,12 +8,17 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-10-18"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR General Inspections
+
+## 2026-11-19 evidence-bound documentation review
+
+**Review evidence (November 19):** The route-census, static inspection, doctor, and score-lineage source references remain present, including `lib/generalInspections/serverSnapshot.ts` and `config/kingdom-index-routes.json`. Historical inspection numbers must retain their original source and review date: this documentation refresh does **not** certify a new live score, make a historical score current, or authorize operations. The live Chronicle deployment is independently source- and BUILD_ID-verified; finance operations remain quarantined.
+
 
 ## October 26, 2026 — historical Index numbers retain their original date and source
 

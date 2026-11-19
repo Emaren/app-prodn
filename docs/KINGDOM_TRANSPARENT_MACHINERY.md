@@ -8,12 +8,17 @@ systems: ["app-prodn","wolochain","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "visual-only-read-side-projection-contract"
-reviewed_at: "2026-10-19"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Transparent Kingdom Machine Instruments
+
+## 2026-11-19 evidence-bound documentation review
+
+**Review evidence (November 19):** `components/kingdom-instruments/KingdomInstruments.tsx` and `config/wolo-machine-capabilities.json` remain in the reviewed mainline source. These are read-side visual projections; a source reference or route declaration is **not** a completed browser or live-data acceptance. No new financial listener, write permission, or independent backend authority is admitted by these instruments.
+
 
 Six new visual-first source-bound instrumentation **pages**, not six new authorities. Source: `components/kingdom-instruments/KingdomInstruments.tsx` and its distinct per-view CSS. All six are publicly navigable and registered in the Kingdom Index and Speed OS public template cohort. They reuse existing read-only API projections, use no-store requests with bounded timeouts, poll at most once per 90 seconds when visible and distinguish unavailable from zero.
 
