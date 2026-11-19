@@ -30,7 +30,12 @@ WE1 WoloChain draft #248 source-only filtered read model:
 `scripts/c03_library_public_projection_inverse_candidate.sql` (blob
 `a472c349acae55e21c48508e594dd5a946fcff86`).
 WE1 explicitly requires separate source-qualified NONFINANCIAL owner
-substitutions for two existing event tables. This WE3 candidate does
+substitutions for two existing event tables.
+The SQL texts and their SHA-256-pinned **private UID650 test copies** remain
+outside the PRODUCT Git tree: PRODUCT's source boundary deliberately
+prohibits checking in `.sql` files. The opt-in PG16 test reads the exact
+private files through explicit environment paths and rejects SHA-256 mismatch.
+WE1 remains the sole installer/source owner for those SQL bytes. This WE3 candidate does
 not infer or install the owners, perform SQL grants or change finance.
 
 ## Exact application read boundaries

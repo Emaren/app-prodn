@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import pg from "pg";
 import {
   loadLibraryActivityUploads, loadLibraryActivityBatches,
@@ -12,11 +13,24 @@ const host = process.env.LIBRARY_PROJECTION_TEST_PGHOST;
 const port = Number(process.env.LIBRARY_PROJECTION_TEST_PGPORT || "5432");
 const DB = "aoe2hd_db";
 const me = "aoe_product_runner";
-const read = name => readFileSync(new URL("./fixtures/"+name,import.meta.url),"utf8");
-const install = read("we3-library-we1-public-projection-20261119.sql")
+const verifiedFixture = (key, expectedSha256) => {
+  const filename = process.env[key];
+  if (!filename) throw Error("EXPLICIT_WE1_PRIVATE_SQL_FIXTURE_REQUIRED");
+  const bytes = readFileSync(filename);
+  assert.equal(createHash("sha256").update(bytes).digest("hex"),expectedSha256,
+    "Do not execute unpinned SQL fixture");
+  return bytes.toString("utf8");
+};
+// PRODUCT never checks in or installs SQL: WE1 owns the protected source.
+// The opt-in fixture files live only in UID650 private scratch.
+const install = host ? verifiedFixture(
+  "LIBRARY_PROJECTION_TEST_WE1_INSTALL_FILE",
+  "c5d841708b8423cd1f6c4287836bd8486fd2d849f6d67db621fcd8351f514110")
   .replaceAll("__ACTIVITY_NONFINANCIAL_OWNER__","we3_event_activity_owner")
-  .replaceAll("__WATCHER_NONFINANCIAL_OWNER__","we3_event_watcher_owner");
-const inverse = read("we3-library-we1-public-projection-inverse-20261119.sql");
+  .replaceAll("__WATCHER_NONFINANCIAL_OWNER__","we3_event_watcher_owner") : null;
+const inverse = host ? verifiedFixture(
+  "LIBRARY_PROJECTION_TEST_WE1_INVERSE_FILE",
+  "3a25744c02dce756493652fcc1f16e184ff62c198cded6855e8aab284f38903c") : null;
 const acl = `
  SELECT c.relname,c.relacl::text AS acl FROM pg_class c
  WHERE c.relnamespace='public'::regnamespace
