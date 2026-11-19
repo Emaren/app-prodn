@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "60bcea5ec5f6d1353bfe651b8ffcad745484079e03578571be4bde7d8ea73314",
+      "sha256": "6187db055b8a5a5475200524e9cfeeacc150f1e6ad8e2ca0f4a44d358f2330a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2625,13 +2625,35 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "f7f41251f1bf468545ac9c4c75dbb4c742850357e824ca6314848dfad21f9913",
+      "sha256": "b0d9a22ffe9d8d259733c5be565060726ab3fa69bd126326c340d3068c94edce",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
         "app-prodn"
       ],
       "title": "WE3 Additive Social Gateway V1: Source and Exact Inverse",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-restricted-db-handoff",
+      "id": "aoe2war.app-prodn.we3-social-hd-v2-source-contract-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "4212cac0d2bc810fa0952db5daedf21f1a07e9f3232d35f96866cdcafc0f26f1",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 HD-Only Restricted Social Gateway V2 Source Contract",
       "type": "working"
     },
     {
@@ -3461,7 +3483,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-p0-social-text-send-20261118",
-    "commit": "ad70c7b58c0bcb097634ea4a77fac814c6667493"
+    "commit": "565c98aafaa7e60006634d3525e8d243f25d6938"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

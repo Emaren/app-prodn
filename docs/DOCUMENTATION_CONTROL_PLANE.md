@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `ad70c7b58c0bcb097634ea4a77fac814c6667493`
+Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `565c98aafaa7e60006634d3525e8d243f25d6938`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **152**
+- Authoritative repository documents: **153**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 81
 - `runbook`: 50
-- `working`: 3
+- `working`: 4
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 45
+- `draft`: 46
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -166,6 +166,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WE3 Additive Social Gateway V1: Source and Exact Inverse](WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md) | `working` | `draft` | `unapproved-source-review-proposal` |
+| [WE3 HD-Only Restricted Social Gateway V2 Source Contract](WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md) | `working` | `draft` | `source-only-restricted-db-handoff` |
 | [WE3 Social Writer SQL Privilege and Inverse Proposal](WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md) | `working` | `draft` | `unapproved-source-review-proposal` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
