@@ -15,6 +15,20 @@ sensitivity: "restricted"
 
 # WE3 Additive Social Gateway V1: Source and Exact Inverse
 
+**REJECTED — DO NOT INSTALL.** WE1's owner-present HD catalog and independent
+PG16 test proved that this previous full `social_gateway_v1` proposal
+can leave elevated SECURITY DEFINER/view ownership and exposes unrestricted
+Direct-message SELECT to a stolen raw writer credential. The correct,
+independently source-qualified successor is WE1's **HD-only restricted
+NOLOGIN executor V2** (51/51 PostgreSQL 16 test PASS), with only tiny
+fixed-purpose broad-owned legacy DML leaves, never legacy table/sequence
+GRANTs. See `docs/WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md`.
+The SQL examples below are **historical negative evidence only**, not
+an approved installer, candidate or rollback permit. The original 12 HD
+raw ACLs (eight explicit tables and four NULL sequences) and column
+ACLs are never to be changed by PRODUCT.
+
+
 **NOT AN INSTALLER. NOT SQL ACCEPTED. NOT A ROOT OR FINANCIAL PERMIT.**
 Supersedes the direct legacy GRANT/REVOKE proposal in the older WE3 review packet
 ONLY after WE1 accepts exact physical HD/DE witnesses and independently proves
