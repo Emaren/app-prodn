@@ -26,6 +26,77 @@ class BoundaryTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(policy.authorize_source(value), value)
 
+    def test_we2_factory_exact_protected_controller_source_admission(self):
+        import hashlib
+        source=GUARD.parent.parent
+        self.assertEqual(policy.EXACT_WE2_FACTORY_BRANCH,
+                         "we2/factory-v3-incident-recovery-20261119")
+        self.assertEqual(policy.EXACT_WE2_FACTORY_BASE,
+                         "81640c7d834c252fb1680190b3f431bd4beb3e58")
+        self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_WE2_FACTORY_BRANCH))
+        self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-future-root"))
+        names=set(policy.EXACT_WE2_FACTORY_SHA256)
+        self.assertEqual(names,{
+          "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
+          "tests/test_product_controller_recovery.py"})
+        self.assertEqual(set(policy.EXACT_WE2_FACTORY_CHANGED),names|{
+          "scripts/product_boundary_guard.py",
+          "tests/test_product_boundary_guard.py"})
+        for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
+            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
+                             expected)
+        ordered=sorted(policy.EXACT_WE2_FACTORY_CHANGED)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for relative in policy.EXACT_WE2_FACTORY_SHA256:
+                out=root/relative
+                out.parent.mkdir(parents=True,exist_ok=True)
+                out.write_bytes((source/relative).read_bytes())
+            def check(repo="Emaren/app-prodn",
+                      branch=policy.EXACT_WE2_FACTORY_BRANCH,
+                      base=policy.EXACT_WE2_FACTORY_BASE,changes=ordered):
+                return policy.check_exact_we2_factory_source(
+                    root,repo,branch,base,changes)
+            self.assertIsNone(check())
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_BASE_OR_REPO"):
+                check(repo="Emaren/kingdom-traders")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_BASE_OR_REPO"):
+                check(base="0"*40)
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered[:-1])
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered+["scripts/another_controller.py"])
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SCOPE"):
+                check(changes=ordered+[ordered[0]])
+            path=root/"tests/test_product_controller_recovery.py"
+            original=path.read_bytes()
+            path.write_bytes(original+b"\n# unreviewed future change\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT"):
+                check()
+            path.write_bytes(original)
+            alias=root/"hardlink"
+            os.link(path,alias)
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_PROTECTED_SOURCE_CUSTODY"):
+                check()
+            alias.unlink()
+            path.unlink()
+            path.symlink_to(source/"tests/test_product_controller_recovery.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_FACTORY_SYMLINK_ANCESTOR"):
+                check()
+            path.unlink()
+            path.write_bytes(original)
+            # Do not allow non-exact branch fallback to an arbitrary Factory
+            # source: the generic branch grammar remains closed.
+            self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
+
     def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
         name = policy.EXACT_REVIEWED_B_EMBER_GUARD
         source = GUARD.parent / "r25_b_guard_production_v1.cjs"
