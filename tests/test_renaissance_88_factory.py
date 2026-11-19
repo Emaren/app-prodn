@@ -22,8 +22,9 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
         self.assertEqual(p["actual_templates"],161)
-        # The approved-source static Clan text POST adds one more API handler; keep the census honest.
-        self.assertEqual(p["actual_handlers"],288)
+        # Both source additions survive: Clan text POST and Chronicle admin press-pack.
+        # Measure source_paths(), do not preserve either branch's stale 288 count.
+        self.assertEqual(p["actual_handlers"],289)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])

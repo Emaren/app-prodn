@@ -1067,6 +1067,11 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/admin/chronicle-press-pack/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/admin/clans/crests/route.ts",
       "scope": "api",
       "ownership": "unassigned"

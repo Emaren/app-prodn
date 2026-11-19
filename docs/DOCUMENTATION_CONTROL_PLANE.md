@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `565c98aafaa7e60006634d3525e8d243f25d6938`
+Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `af11f207671bd79180b6c60091611cc0aa7de2e9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

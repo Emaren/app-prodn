@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6187db055b8a5a5475200524e9cfeeacc150f1e6ad8e2ca0f4a44d358f2330a9",
+      "sha256": "0ccade40262ecfd4dd1c85fca5b1c0d77b783bba9b508ac830de8d2fd4d970f3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -893,7 +893,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "bc119c323235a2481e52689c448ef1aad4e1b93043bc2472f89b9190391ef516",
+      "sha256": "a9991af776f3e854b4fb68ca96cae14ae3e7be881481c2653d603b6a16cf14f1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3483,7 +3483,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-p0-social-text-send-20261118",
-    "commit": "565c98aafaa7e60006634d3525e8d243f25d6938"
+    "commit": "af11f207671bd79180b6c60091611cc0aa7de2e9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

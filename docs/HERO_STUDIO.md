@@ -220,6 +220,75 @@ The additive migration
 visibility state. Hero language identity itself remains inside the validated
 screen config and therefore remains part of immutable publication snapshots.
 
+## Chronicle Press Desk — one-click original-image archive
+
+The existing **Hero Studio** header exposes **Download Chronicle ZIP**. It is a
+read-only, authenticated admin operation, not another editor, upload, publisher
+or financial controller. This first milestone answers the owner's immediate
+operating need: one file containing every **currently displayed** original hero
+image on the homepage/lobby, even when the carousel exceeds the ChatGPT
+per-message attachment count.
+
+- The download endpoint is `GET /api/admin/chronicle-press-pack`.
+  It reads the same **published, hydrated Hero playlist** as the public
+  homepage (including live Featured Event) rather than silently using draft
+  ordering. If the separately managed legacy image takeover is currently live,
+  it takes precedence because that is what viewers actually see.
+- The ZIP contains `images/001-...` etc. in current editorial order and
+  `chronicle-manifest.json`: export timestamp, source surface, publication
+  revision/time, each slide position/schedule/language, linked forum thread,
+  title-belt and contender metadata where provided, image role, original
+  source URL, ZIP filename, SHA-256 and original byte length.
+- Each download resolves existing **local allowlisted managed-media paths**.
+  It never follows remote URLs, reads unrelated server files, fetches URL
+  parameters into the server, writes a database, republishes a slide or
+  changes an editorial position. The original PNG/JPEG/WEBP/GIF bytes are
+  stored untransformed, ZIP-STORE streamed, not screen-captured.
+- Export fails closed with a no-store 409 when any required original is missing
+  or outside the verified source roots; it does not present a partial ZIP as
+  a complete archive. Current bounded contract: 160 images, 16 MiB per image,
+  512 MiB aggregate, admin login required.
+- A newly published weekly issue appears in the next download automatically;
+  there is no hand-maintained image list. The initial manifest covers the
+  **currently published composition**, not unpublished drafts, removed
+  original files, or an independently reconstructed lifetime of every
+  historical edition. Those historical sources remain separate until a
+  purpose-built immutable edition ledger passes review.
+
+### Chronicle newsroom evolution
+
+The wider **AoE2WAR Chronicle Press OS** is a dedicated, reviewable PRODUCT
+feature and should grow without changing the trusted public hero renderer.
+
+1. **Edition ledger:** immutable edition ID, print date, 1920s broadsheet
+   series/style version, active hero slots, canonical image hashes, source
+   events and explicit supersession. Build incremental exports and all-history
+   bundles with clear incomplete-source annotations, avoiding deletion of
+   original art.
+2. **Evidence desk:** source-backed championship belts and custody changes,
+   kingdom citizen count, new feature release receipts, tournaments,
+   marketplace snapshots, date/time/weather when genuinely observed, and
+   community rumors explicitly marked as unverified. No made-up winners,
+   prices, weather or account populations.
+3. **Art-direction bible:** aged sepia, weathered paper stock, textured black
+   letterpress ink, period typesetting, controlled contrast and print
+   registration. Carry consistent masthead and historic callbacks while
+   changing front-page composition. Cinematic foreshadowing and pop-culture
+   references should be original, never trace protected artwork.
+4. **Press agent workflow:** gather verified source receipts, compare previous
+   editions visually, propose headlines and art direction, record uncertainties
+   and unresolved events, then prepare a draft for **owner editorial approval**.
+   A confidence score is not an authority to fabricate events or publish.
+5. **Release:** owner approves final creative edition, uploads it through
+   existing Media Armory/Hero Studio, chooses precise carousel order, enablement,
+   time window and language variations, and publishes via the existing
+   source-owned Hero chain. Archive and hash the resulting original image
+   immediately.
+
+**Scope boundary:** this is nonfinancial PRODUCT editorial memory. Neither
+Kingdom Traders funded orders nor WOLO custody are authorized by Chronicle
+exports or editorial publication.
+
 ## Verification
 
 ```bash
