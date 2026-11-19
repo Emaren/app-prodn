@@ -117,9 +117,28 @@ EXACT_WE2_FACTORY_SHA256 = {
     "tests/test_product_controller_recovery.py":
         "6eda90f9e39646657916b02d07993567c694f6f49e0906afb00b400e8aebdaaf",
 }
+# The original 2026-11-19 DocsV2 expiry/implementation repair belongs to
+# this exact Factory source review. These are precisely enumerated documentation
+# paths; the registry independently SHA-pins every changed document. No new
+# executable scripts, migrations, financial modules or arbitrary documents.
+EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
+    "docs/GENERAL_INSPECTIONS.md",
+    "docs/KINGDOM_TRANSPARENT_MACHINERY.md",
+    "docs/RELEASE_RECOVERY_OS.md",
+    "docs/RENAISSANCE_OS.md",
+    "docs/UNIVERSAL_TRANSLATOR.md",
+    "docs/WORKSHOP_ARCHITECTURE.md",
+    "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
+    "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
+    "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
+    "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
+    "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
-}
+} | EXACT_WE2_FACTORY_DOCS_REVIEW
 BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")

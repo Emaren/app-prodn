@@ -39,9 +39,17 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(names,{
           "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
           "tests/test_product_controller_recovery.py"})
+        doc_paths=policy.EXACT_WE2_FACTORY_DOCS_REVIEW
+        self.assertEqual(len(doc_paths),13)
         self.assertEqual(set(policy.EXACT_WE2_FACTORY_CHANGED),names|{
           "scripts/product_boundary_guard.py",
-          "tests/test_product_boundary_guard.py"})
+          "tests/test_product_boundary_guard.py"}|set(doc_paths))
+        for path in doc_paths:
+            self.assertTrue(path.startswith("docs/"))
+            self.assertIn(path,
+                {"docs/DOCUMENTATION_CONTROL_PLANE.md",
+                 "docs/document-registry.json"} |
+                {x for x in doc_paths if x.endswith(".md")})
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
             self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
                              expected)
