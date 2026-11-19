@@ -16,6 +16,8 @@ sensitivity: "restricted"
 # WE3 Social Writer SQL Privilege and Inverse Proposal
 **2026-11-19 · REJECTED DIRECT-GRANT SQL BELOW · HISTORICAL NEGATIVE ONLY · NOT AN INSTALLER OR WE1/WE2 PERMIT**
 
+**HISTORICAL / REJECTED SQL INSTALLATION** — the old direct legacy GRANT/REVOKE blocks are preserved only as evidence of failed exact inverse; no authorized installer may execute them.
+
 **Replacement direction:** WE1's PR #248 disposable PostgreSQL 16 additive-schema fixed-purpose function gateway passed 27/27 on Ubuntu while preserving five original raw NULL ACLs during writes and after rollback. That synthetic fixture is NOT a drop-in WE3 contract. It does not yet implement or prove the full application semantics (users clan audience, admin policy, direct reply-to/participant update, transactional cooldown and dedupe, human-identity constraints, or actual HD/DE catalog graph). The old direct legacy table/sequence GRANT/inverse blocks below are retained ONLY to explain the independently reproduced five-object inverse failure. DO NOT RUN THEM. WE3 must adapt business operations to an exact WE1-accepted gateway contract; WE1 alone owns DB and financial acceptance, WE2 alone owns protected HEL1/root/Factory/T10.
 
 

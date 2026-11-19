@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ca635c895141cd705fdd2dbd39994005b6d2716278f4b84bfacdf80fa246107",
+      "sha256": "8efdfd98406120b656f569f8640b404a9307283e4c7a1fa24acbcc5074b32183",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2619,13 +2619,35 @@
         "ai-agents"
       ],
       "authority": "unapproved-source-review-proposal",
+      "id": "aoe2war.app-prodn.we3-social-gateway-v1-review-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "f7f41251f1bf468545ac9c4c75dbb4c742850357e824ca6314848dfad21f9913",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Additive Social Gateway V1: Source and Exact Inverse",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "unapproved-source-review-proposal",
       "id": "aoe2war.app-prodn.we3-social-text-sql-review-20261118",
       "owner": "aoe2war-web",
       "path": "docs/WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md",
       "review_interval_days": 30,
       "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "a735d82ddc731d211d4ffd229207f4b7025f9d1cd78d7d295c2cc0131173425a",
+      "sha256": "d1f3a21793b1e8b97aac5afd1c7a9dd97b6fc34cb54e24dc82a780d0698d5dbd",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3439,7 +3461,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-p0-social-text-send-20261118",
-    "commit": "b2872e7ed0edac3ab185677829851ea72b737792"
+    "commit": "550319cedd60ec7e352b0a622c34c5719d42cc27"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
