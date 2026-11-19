@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "611897bba39bdd7f7a71003b700df395fc5d905f417d0d390d855a69b0047900",
+      "sha256": "0ca635c895141cd705fdd2dbd39994005b6d2716278f4b84bfacdf80fa246107",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-18",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "907b49d7ce2512702b6f2d30ccf830e662c6ef9158dbf3b555c290a4aeb15de7",
+      "sha256": "f801c42fab951f89040d906ad44b500abf5ee6a4b4328731d8735944064bb18f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1076,9 +1076,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_TRANSPARENT_MACHINERY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-19",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "6f413c553ab9c92b96afae9ad08efd93baba611b28b7d2ed1fc6afec8d09c5e5",
+      "sha256": "ab07292a91f518543bdd3a7c6efefdb4204b1f9a45f2c8edf920fe858cb5428c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1693,9 +1693,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-18",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "b8a3f5cd65153db0f842330cf2ac17b9cb6df52026f204f30539e9e232e39baf",
+      "sha256": "c0783b96ebca532cc09e217407d732a65065a2a5535d5daf615c97f46db0346b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1759,9 +1759,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RENAISSANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-19",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "dc5e02c5d735c7ecbe5963eb64a5276b0cdf80ba524ed9de50c38b4f63f31487",
+      "sha256": "6ed8a19ca66609a1ca6982ff13c85ea6c981e7f687ec5e2fa7fc067a9f42f0cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2438,9 +2438,9 @@
       "owner": "aoe2war-web",
       "path": "docs/UNIVERSAL_TRANSLATOR.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-20",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "7337c42a4db61512c6266cab44befcbdf227b7f6cd9e1b308c094da0d225ef06",
+      "sha256": "b3825092195ad41ee217658b3195a4bfba7f28c9adafed1d6c79b951104b50ef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "unapproved-source-review-proposal",
+      "id": "aoe2war.app-prodn.we3-social-text-sql-review-20261118",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "restricted",
+      "sha256": "a735d82ddc731d211d4ffd229207f4b7025f9d1cd78d7d295c2cc0131173425a",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Social Writer SQL Privilege and Inverse Proposal",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -2713,9 +2735,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WORKSHOP_ARCHITECTURE.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-20",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "internal",
-      "sha256": "078c3b81bb5cb5283cffaf4bd4cf556c90c2eb77b9344755fd631eaf14fa6a2a",
+      "sha256": "a413935ad9b2fedfb5605d321e7a3fb18913363efb24cbfd042b89983a5ae76d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2912,9 +2934,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "b0cb6e4a7c4f0fc9aae6568e353a29fb56135205c66336c06ad5554652fa6eac",
+      "sha256": "80b169800b8086d2a2e7e33774c0de41f374c66ddd921b9cd159a87abe0e1976",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2957,9 +2979,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "9ff8272806f60d2a24f0754af9e665c2c1ca6ae3ac43fa30a19a2d023cb64480",
+      "sha256": "ade1b016d44ff068d28e9b156fe713b5bf788c627f03e8f47e7e55e8d921c8a7",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3181,9 +3203,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "254c23d7b256763a2402d0971636e9c9bfd11501a8779b151c3626db3e509163",
+      "sha256": "43f994021406c24415fbe2d40fbe5bc2836014548ce7190f121e26886fa40153",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3203,9 +3225,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "3301cfed779ae39745afa535569fd1a4f986297e8c59553836407295f6ab452f",
+      "sha256": "715616d5ce74a25ae84186c9d12182c28a1dab2836dfa75d8840316bb4b6b47f",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3336,9 +3358,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-19",
       "sensitivity": "restricted",
-      "sha256": "dcfac1e0417fee3406be9ec812371e06b91d63215df56972134749cd6122e39f",
+      "sha256": "baa03bccead0a054a4a9e24c889f62e8c2af97925a2381a5f2a25ab68decc091",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3416,8 +3438,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we2-storage-premium-uid650-20261117",
-    "commit": "699495f5f12dae4a956ae3aa745a0580086ced1c"
+    "branch": "session-c/we3-p0-social-text-send-20261118",
+    "commit": "b2872e7ed0edac3ab185677829851ea72b737792"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

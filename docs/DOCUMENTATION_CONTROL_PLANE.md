@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we2-storage-premium-uid650-20261117` at `699495f5f12dae4a956ae3aa745a0580086ced1c`
+Implementation baseline: `session-c/we3-p0-social-text-send-20261118` at `b2872e7ed0edac3ab185677829851ea72b737792`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **150**
+- Authoritative repository documents: **151**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 81
 - `runbook`: 50
-- `working`: 1
+- `working`: 2
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 43
+- `draft`: 44
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -165,6 +165,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
+| [WE3 Social Writer SQL Privilege and Inverse Proposal](WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md) | `working` | `draft` | `unapproved-source-review-proposal` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |

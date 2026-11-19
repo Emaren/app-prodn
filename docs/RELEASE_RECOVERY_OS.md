@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-recovery-contract"
-reviewed_at: "2026-10-18"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Release Recovery OS
+
+> **Source-only re-review, November 19, 2026:** Verified existing finish/update/readiness/recovery source, 12/12 isolated release-recovery Python tests. No root executor, HEL1 filesystem, real T10 or current boot tested. Historical observations remain historical; external settlement JSON not asserted present.
+
 
 ## Purpose
 

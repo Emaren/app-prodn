@@ -8,12 +8,15 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-10-18"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR General Inspections
+
+> **Source-only re-review, November 19, 2026:** Reconciled existing general inspection/Index/rubric/notice source, passing focused general inspections tests in 65/65 Node contract suite. All October scores and owner evidence remain historical, not certified anew. External AoE2WAR-docs governance paths are not app-prodn source.
+
 
 ## October 26, 2026 — historical Index numbers retain their original date and source
 

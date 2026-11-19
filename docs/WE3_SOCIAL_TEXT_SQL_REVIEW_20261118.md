@@ -8,13 +8,16 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "unapproved-source-review-proposal"
-reviewed_at: "2026-11-18"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
-# WE3 P0 social text writer — SQL authority, dependencies and inverse
-**2026-11-18 · REVIEW-ONLY PROPOSAL · NOT AN INSTALLER · NOT A WE1 OR WE2 PERMIT**
+# WE3 Social Writer SQL Privilege and Inverse Proposal
+**2026-11-19 · REJECTED DIRECT-GRANT SQL BELOW · HISTORICAL NEGATIVE ONLY · NOT AN INSTALLER OR WE1/WE2 PERMIT**
+
+**Replacement direction:** WE1's PR #248 disposable PostgreSQL 16 additive-schema fixed-purpose function gateway passed 27/27 on Ubuntu while preserving five original raw NULL ACLs during writes and after rollback. That synthetic fixture is NOT a drop-in WE3 contract. It does not yet implement or prove the full application semantics (users clan audience, admin policy, direct reply-to/participant update, transactional cooldown and dedupe, human-identity constraints, or actual HD/DE catalog graph). The old direct legacy table/sequence GRANT/inverse blocks below are retained ONLY to explain the independently reproduced five-object inverse failure. DO NOT RUN THEM. WE3 must adapt business operations to an exact WE1-accepted gateway contract; WE1 alone owns DB and financial acceptance, WE2 alone owns protected HEL1/root/Factory/T10.
+
 
 Source: Emaren/app-prodn PR #1418. Initial GitHub source tree `0127a217ec157f6df7c70332d7ee83354f9fa8e2`; UID650 local tree identical. Exact text writer `lib/socialWriterCore.mjs`, local Unix daemon `bin/social-writer.mjs`, signed-session verifier `lib/socialWriterSession.mjs`, Next transport `lib/socialWriterClient.ts`, static Clan route plus original Direct route, 147 focused tests. The PRODUCT guard prohibits changing *.sql, systemd, infra, scripts or protected runtime. This document deliberately does not install or grant anything. WE1 owns a source/physical database authorization and inverse; WE2 owns root/Factory/guard.
 
