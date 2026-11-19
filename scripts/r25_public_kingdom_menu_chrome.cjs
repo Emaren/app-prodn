@@ -2,7 +2,7 @@
 "use strict";
 /** Session B nonfinancial browser acceptance: read-only GET and menu click.
  * Never claims full production or financial release. Three viewport parity
- * must match the source-reviewed 39-route Kingdom catalog in order.
+ * must match the source-reviewed 40-route Kingdom catalog (39 historical + one PAPER gateway) in order.
  */
 const fs=require("node:fs"), path=require("node:path"), os=require("node:os");
 const assert=require("node:assert/strict");
@@ -12,7 +12,11 @@ const src=fs.readFileSync(path.resolve(__dirname,"../app/AppShell.tsx"),"utf8");
 const match=src.match(/const KINGDOM_LINKS = \[([\s\S]*?)\] as const;/);
 if(!match)throw new Error("MENU_CATALOG_MISSING");
 const expected=[...match[1].matchAll(/href: "([^"]+)"/g)].map(m=>m[1]);
-if(expected.length!==39)throw new Error("EXPECTED_39_CANONICAL_LINKS");
+const marketIndex=expected.indexOf("/market");
+const traderIndex=expected.indexOf("/kingdom-traders");
+if(expected.length!==40||marketIndex<0||traderIndex!==marketIndex+1||
+   expected.filter(href=>href==="/kingdom-traders").length!==1)
+  throw new Error("EXPECTED_40_CANONICAL_LINKS_WITH_PAPER_TRADERS");
 function validateOrigin(raw){
  const u=new URL(raw);
  if(u.href==="https://aoe2war.com/")return "https://aoe2war.com";
@@ -32,6 +36,7 @@ if(process.argv.includes("--selftest")){
  assert.equal(acceptMenu(snap,expected),true);
  assert.equal(acceptMenu({...snap,hrefs:expected.slice(0,4),collapsed:true},expected),false);
  assert.equal(acceptMenu({...snap,hrefs:[...expected].reverse()},expected),false);
+ assert.equal(acceptMenu({...snap,hrefs:expected.filter(x=>x!=="/kingdom-traders")},expected),false);
  assert.equal(acceptMenu({...snap,open:"false"},expected),false);
  assert.equal(validateOrigin("https://aoe2war.com"),"https://aoe2war.com");
  assert.equal(validateOrigin("http://127.0.0.1:3032"),"http://127.0.0.1:3032");

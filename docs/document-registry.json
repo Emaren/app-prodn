@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c5de8e88afa5da0541b775caa69bc8b944c8f53b38b9b3b1dba20101bf6eca8",
+      "sha256": "a2fb202b9dffab445a44a2cf3351060049c96213a373e1844d24353940adc838",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-independent-review-request",
+      "id": "aoe2war.app-prodn.we3-kingdom-menu-exact-script-admission-20261119",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-19",
+      "sensitivity": "internal",
+      "sha256": "c3d80bde7c0a05a0fa22b040e8bfddb9af26d3655bdbb8351dce11e62ff24f06",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Q09 Kingdom Menu Exact Script Admission Review",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "unapproved-source-review-proposal",
       "id": "aoe2war.app-prodn.we3-social-gateway-v1-review-20261119",
       "owner": "aoe2war-web",
@@ -3483,7 +3505,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-p0-social-text-send-20261118",
-    "commit": "29d5b46b9d948333581cc27a5225f3a636392d9a"
+    "commit": "b50da1ac66f19d03b54f9ecd5c00702f88b269cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
