@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-kingdom-traders-menu-visibility-20261118` at `6c190b0db0d52f76d8ce2771cb5090d21ce6efa7`
+Implementation baseline: `session-c/we3-kingdom-traders-menu-visibility-20261118` at `d3fd9ea426813ad84736b8c45e4aa2f016239ba4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
