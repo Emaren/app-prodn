@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority"
-reviewed_at: "2026-11-11"
+reviewed_at: "2026-11-19"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine
+
+> **Source-only re-review, November 19, 2026:** Verified UID650-only source/WE2-only root boundary and existing release and 12/12 recovery tests. Old V22 signer and host prerequisite statements are historical, NOT current approvals or deployment authorization.
+
 
 **Control:** B exclusively owns HEL1 source install, 3032 production replacement, authenticated acceptance and restricted same-slot rollback. C owns PRODUCT development/build under future UID650. A owns FINANCIAL and the C03 mutation authority. No new root/worktree architecture.
 

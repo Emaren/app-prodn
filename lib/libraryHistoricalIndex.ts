@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { loadLibraryPackageReceipts, loadLibraryBatchProvenance } from "@/lib/libraryPublicProjection";
 import { publicReplayWinnerTruth } from "@/lib/publicReplayTruth";
 import type { LibraryOrigin } from "@/lib/libraryLedger";
 import {
@@ -43,6 +44,8 @@ export type LibraryHistoricalSnapshot = {
   byId: Map<number, LibraryHistoricalEntry>;
   profiles: LibraryPlayerCensus[];
   totalByOrigin: Record<LibraryOrigin, LibraryPlayerOriginCounts>;
+  provenanceComplete: boolean;
+  missingProvenanceSources: Array<"package-receipts" | "watcher-batch-receipts">;
 };
 
 const ORIGINS = [
@@ -90,8 +93,15 @@ export function selectLibraryHistoryPage(
   };
 }
 
+export function isLibraryProvenanceAccessDenied(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const value = error as { code?: unknown; meta?: { code?: unknown } };
+  return value.code === "42501" || value.code === "P1010" ||
+    (value.code === "P2010" && value.meta?.code === "42501");
+}
+
 async function buildSnapshot(prisma: PrismaClient): Promise<LibraryHistoricalSnapshot> {
-  const [games, users, packages, batchReceipts] = await Promise.all([
+  const [games, users, provenance] = await Promise.all([
     prisma.gameStats.findMany({
       where: { is_final: true },
       orderBy: { id: "desc" },
@@ -114,35 +124,43 @@ async function buildSnapshot(prisma: PrismaClient): Promise<LibraryHistoricalSna
     }),
     prisma.user.findMany({
       select: {
+        id: true,
         uid: true,
         inGameName: true,
         steamPersonaName: true,
         steamId: true,
       },
     }),
-    prisma.userActivityEvent.findMany({
-      where: {
-        type: "replay_upload",
-        metadata: { path: ["packageUpload"], equals: true },
-      },
-      select: {
-        createdAt: true,
-        metadata: true,
-        user: { select: { uid: true } },
-      },
-    }),
-    prisma.watcherClientEvent.findMany({
-      where: {
-        eventType: "batch_upload_file_succeeded",
-        replayHash: { not: null },
-      },
-      select: {
-        createdAt: true,
-        userUid: true,
-        replayHash: true,
-      },
-    }),
+    Promise.allSettled([
+      loadLibraryPackageReceipts(prisma),
+      loadLibraryBatchProvenance(prisma),
+    ]),
   ]);
+  const [packageResult, batchResult] = provenance;
+  for (const result of provenance) {
+    if (result.status === "rejected" && !isLibraryProvenanceAccessDenied(result.reason)) {
+      throw result.reason;
+    }
+  }
+  const uidById = new Map(users.map(user => [user.id, user.uid]));
+  const packages = packageResult.status === "fulfilled"
+    ? packageResult.value.map(receipt => ({
+        createdAt: receipt.created_at,
+        metadata: receipt.metadata,
+        user: {uid: uidById.get(receipt.user_id) ?? null},
+      }))
+    : [];
+  const batchReceipts = batchResult.status === "fulfilled"
+    ? batchResult.value.map(receipt => ({
+        createdAt: receipt.created_at,
+        userUid: receipt.user_uid,
+        replayHash: receipt.replay_hash,
+      }))
+    : [];
+  const missingProvenanceSources: LibraryHistoricalSnapshot["missingProvenanceSources"] = [];
+  if (packageResult.status === "rejected") missingProvenanceSources.push("package-receipts");
+  if (batchResult.status === "rejected") missingProvenanceSources.push("watcher-batch-receipts");
+  const provenanceComplete = missingProvenanceSources.length === 0;
 
   const historyRows: LibraryHistoryRow[] = games.map(game => ({
     id: game.id,
@@ -241,6 +259,8 @@ async function buildSnapshot(prisma: PrismaClient): Promise<LibraryHistoricalSna
     profiles: [...profilesByUid.values()]
       .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
     totalByOrigin,
+    provenanceComplete,
+    missingProvenanceSources,
   };
 }
 

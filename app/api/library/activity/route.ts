@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { loadLibraryActivityUploads, loadLibraryActivityBatches } from "@/lib/libraryPublicProjection";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,66 +131,46 @@ function collapseManualBursts<T extends {
 }
 
 export async function GET() {
-  const prisma = getPrisma();
+  try {
+    const prisma = getPrisma();
   const now = new Date();
   const batchCutoff = new Date(now.getTime() - BATCH_LOOKBACK_MS);
   const dayCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const [uploadEvents, batchEvents] = await Promise.all([
-    prisma.userActivityEvent.findMany({
-      where: {
-        type: "replay_upload",
-      },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
-      take: ACTIVITY_LIMIT,
-      select: {
-        id: true,
-        label: true,
-        metadata: true,
-        createdAt: true,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-          },
-        },
-      },
-    }),
-    prisma.watcherClientEvent.findMany({
-      where: {
-        eventType: {
-          in: [...BATCH_EVENT_TYPES],
-        },
-        createdAt: {
-          gte: batchCutoff,
-        },
-      },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
-      take: 512,
-      select: {
-        id: true,
-        createdAt: true,
-        eventType: true,
-        userUid: true,
-        watcherId: true,
-        sessionId: true,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-          },
-        },
-      },
-    }),
+  // Source-bound projection only. The raw event tables contain private
+  // metadata and are not readable by the ordinary website role.
+  const [publicUploads, publicBatches] = await Promise.all([
+    loadLibraryActivityUploads(prisma),
+    loadLibraryActivityBatches(prisma, batchCutoff),
   ]);
+  // Existing public player display identities only: never select private
+  // user fields or return raw receipt JSON to an API consumer.
+  const userIds = [...new Set([...publicUploads.map(e => e.user_id),
+    ...publicBatches.map(e => e.user_id)].filter(
+      (value): value is number => typeof value === "number"))];
+  const userUids = [...new Set(publicBatches.map(e => e.user_uid)
+    .filter((value): value is string => typeof value === "string"))];
+  const profiles = userIds.length || userUids.length
+    ? await prisma.user.findMany({
+        where: { OR: [
+          { id: { in: userIds } }, { uid: { in: userUids } },
+        ] },
+        select: { id: true, uid: true, inGameName: true, steamPersonaName: true },
+      })
+    : [];
+  const byId = new Map(profiles.map(user => [user.id, user]));
+  const byUid = new Map(profiles.map(user => [user.uid, user]));
+  const uploadEvents = publicUploads.map(event => ({
+    id: event.id, label: event.label, metadata: event.metadata,
+    createdAt: event.created_at, user: byId.get(event.user_id) ?? null,
+  }));
+  const batchEvents = publicBatches.map(event => ({
+    id: event.id, eventType: event.event_type, createdAt: event.created_at,
+    userUid: event.user_uid, watcherId: event.watcher_id,
+    sessionId: event.session_id,
+    user: (event.user_id !== null ? byId.get(event.user_id) : null)
+      ?? (event.user_uid ? byUid.get(event.user_uid) : null) ?? null,
+  }));
 
   const uploads = uploadEvents.map((event) => {
     const metadata = record(event.metadata);
@@ -201,7 +182,7 @@ export async function GET() {
       state: "complete" as const,
       occurredAt: event.createdAt.toISOString(),
       warrior: displayName(event.user),
-      uid: event.user.uid,
+      uid: event.user?.uid ?? null,
       count: activityCount(metadata, kind),
       uploadedCount: numberField(metadata, "uploadedCount"),
       parsedCount: numberField(metadata, "parsedCount"),
@@ -392,5 +373,14 @@ export async function GET() {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       },
     }
-  );
+  );  } catch (error) {
+    // Preserve source archive truth: never turn missing PG SELECT into zero.
+    const sqlstate = error && typeof error === "object" && "code" in error
+      ? String(error.code).slice(0, 12) : "unavailable";
+    console.error("Library activity read unavailable (SQLSTATE):", sqlstate);
+    return NextResponse.json(
+      { ok: false, detail: "Library activity temporarily unavailable." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

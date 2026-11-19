@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority"
-reviewed_at: "2026-11-11"
+reviewed_at: "2026-11-19"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026
+
+> **Source-only re-review, November 19, 2026:** Re-read dated source/branch ledger and no-blind-cherry-pick rule. Its November 11 SHA and 417-branch/316-PR snapshots are historical, not a freshly recounted inventory. Current PR #1418 separately reconciled at HEAD b2872e7.
+
 
 **Read-only analysis of App refs, not permission to merge, delete, deploy, alter A's financial domain, or operate HEL1.** The associated machine-readable ledger is at [SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json](evidence/SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json) and records all exact SHAs plus 107 per-commit source effects.
 
