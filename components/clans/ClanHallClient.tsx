@@ -1172,10 +1172,11 @@ export default function ClanHallClient({
             remoteMediaUrls.forEach((url) => formData.append("remoteMediaUrls", url));
             return fetch(endpoint, { method: "POST", body: formData });
           })()
-        : await fetch(endpoint, {
+        : await fetch("/api/social/clan-text", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              slug: snapshot.clan.slug,
               message: draft,
               audience: draftAudience,
               scribe: requestScribe,
@@ -1186,6 +1187,13 @@ export default function ClanHallClient({
         | { detail?: string }
         | null;
 
+      if (response.ok && payload && "persisted" in payload && payload.persisted === true) {
+        setMessage("");
+        if (pendingId) setPendingMessages((current) =>
+          current.filter((entry) => entry.id !== pendingId));
+        setNotice("Message saved. Hall readback is unavailable; check history before retrying.");
+        return;
+      }
       if (!response.ok || !payload || !("clan" in payload)) {
         throw new Error(
           payload && "detail" in payload && payload.detail

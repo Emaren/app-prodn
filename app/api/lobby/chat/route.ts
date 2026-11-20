@@ -17,9 +17,17 @@ import { readGuestReactionSessionIdFromRequest } from "@/lib/guestReactionSessio
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
+import { getSessionUid } from "@/lib/session";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import {
+  callSocialWriter, readBoundedSocialJson, signedSocialCookie,
+  validateSocialWriteOrigin,
+} from "@/lib/socialWriterClient";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const LOBBY_NO_STORE = { "Cache-Control": "no-store, max-age=0" };
+const LOBBY_REQUEST_KEY = /^[0-9a-f]{32}$/;
 
 type LobbyMutationPayload = Record<string, unknown> & {
   action?: string;
@@ -111,6 +119,85 @@ function canManageLobbyMessage(
 }
 
 export async function POST(request: NextRequest) {
+  // R25's web reader has no legacy chat_messages INSERT or sequence grant.
+  // The only production mutation is a separately admitted, signed-session
+  // AF_UNIX high-level Lobby V1 function. No client UID reaches this writer.
+  if (usesNonfinancialProductionAuth()) {
+    const uid = await getSessionUid(request);
+    if (!uid) return NextResponse.json(
+      { detail: "Sign in with Steam to chat." },
+      { status: 401, headers: LOBBY_NO_STORE },
+    );
+    if (!validateSocialWriteOrigin(request)) return NextResponse.json(
+      { detail: "Same-origin request required." },
+      { status: 403, headers: LOBBY_NO_STORE },
+    );
+    const token = signedSocialCookie(request);
+    if (!token) return NextResponse.json(
+      { detail: "Signed session required." },
+      { status: 401, headers: LOBBY_NO_STORE },
+    );
+    let raw: unknown;
+    try { raw = await readBoundedSocialJson(request); }
+    catch { return NextResponse.json(
+      { detail: "Bounded plain-text JSON required." },
+      { status: 400, headers: LOBBY_NO_STORE },
+    ); }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      return NextResponse.json(
+        { detail: "Invalid Lobby message request." },
+        { status: 400, headers: LOBBY_NO_STORE },
+      );
+    const input = raw as Record<string, unknown>;
+    const permitted = [
+      "message", "roomSlug", "idempotencyKey", "aiEnabled",
+      "aiVisibility", "aiScribeEnabled", "aiGrimerEnabled",
+    ];
+    const message = normalizeChatBody(input.message);
+    const key = input.idempotencyKey;
+    if (Object.keys(input).some((name) => !permitted.includes(name)) ||
+        input.roomSlug !== LOBBY_ROOM_SLUG ||
+        !message || message.length > 280 ||
+        Buffer.byteLength(message, "utf8") > 1120 ||
+        typeof key !== "string" || !LOBBY_REQUEST_KEY.test(key))
+      return NextResponse.json(
+        { detail: "Invalid Lobby message or request key." },
+        { status: 400, headers: LOBBY_NO_STORE },
+      );
+    const reply = await callSocialWriter("lobby", token, {
+      message, requestKey: key,
+    });
+    if (reply.status !== 201) return NextResponse.json(reply.body,
+      { status: reply.status, headers: LOBBY_NO_STORE });
+    const messageId = reply.body.messageId;
+    if (!Number.isSafeInteger(messageId) || (messageId as number) < 1)
+      return NextResponse.json({
+        persisted: true,
+        detail: "Check Lobby history before retrying.",
+      }, { status: 202, headers: LOBBY_NO_STORE });
+    // A committed write stays committed even when the web reader fails.
+    const aiWarning = input.aiEnabled !== false
+      ? "AI voices are unavailable on the restricted Lobby writer; human messages only."
+      : null;
+    try {
+      const messages = await getLobbyMessages(getPrisma(), LOBBY_ROOM_SLUG, 30, {
+        uid, guestSessionId: null,
+      });
+      return NextResponse.json({
+        ok: true, persisted: true, messageId,
+        replayed: reply.body.replayed === true, messages, aiWarning,
+      }, { status: 201, headers: LOBBY_NO_STORE });
+    } catch {
+      return NextResponse.json({
+        persisted: true, messageId,
+        replayed: reply.body.replayed === true,
+        detail: "Message saved; Lobby history is temporarily unavailable.",
+        aiWarning,
+      }, { status: 202, headers: LOBBY_NO_STORE });
+    }
+  }
+
+  // Unrestricted local development retains its original behaviour only.
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const uid = await resolveRequestUid(request, body);
 

@@ -1,5 +1,7 @@
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { loadPublicBattleArchivePage } from "@/lib/publicBattleArchive";
 import {
   hydrateLobbyHumanEvidenceMarkers,
 } from "@/lib/lobbyHumanEvidence";
@@ -29,6 +31,20 @@ export async function loadLobbyRecentMatches({
   try {
     const safeOffset = Math.max(0, Math.floor(offset));
     const safeLimit = Math.max(1, Math.min(160, Math.floor(limit)));
+
+    // R25 restricted production cannot use the legacy upstream game-stats
+    // route: its guarded 3331 endpoint rejects this path by design. Use the
+    // SAME already-published, sanitizer-backed logical battle archive as
+    // /api/game_stats?archive=1, which is independently live on 3032.
+    // No URL/port bypass, no raw financial tables, no synthetic matches.
+    if (isNonfinancialPublicReadProfile()) {
+      const page = await loadPublicBattleArchivePage(getPrisma(), {
+        offset: safeOffset,
+        limit: safeLimit,
+      });
+      return page.rows as unknown as LobbyMatchRow[];
+    }
+
     const upstreamLimit = Math.min(
       500,
       Math.max(160, safeOffset + safeLimit + 96),

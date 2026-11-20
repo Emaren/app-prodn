@@ -608,6 +608,10 @@ export function LobbyHero({
             <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
               <Image
                 src={avatarUrlForUser(featuredEntry?.uid, featuredName)}
+                // The managed avatar route legitimately redirects to a WebP.
+                // Next image optimization returns 400 on that redirect chain
+                // in the isolated runtime, while the direct GET returns 200.
+                unoptimized
                 alt=""
                 fill
                 quality={95}

@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "revision": "2026-11-20",
+  "description": "Read-only Player Surface Contract: observable truth outranks HTTP status and build identity",
+  "releaseRequired": {
+    "exactSourceHeader": "x-aoe2war-source",
+    "exactBuildHeader": "x-aoe2war-build-id",
+    "requireTwoExistingAccounts": true,
+    "requireRealPersistence": true,
+    "requireAnonymousProbes": true,
+    "requiredWidths": [
+      375,
+      768,
+      1440
+    ],
+    "acceptedLibraryHistoricalFloor": 7151,
+    "neverTreatUnverifiedEmptyAsPass": true
+  },
+  "surfaces": [
+    {
+      "id": "community-lobby",
+      "visiblePurpose": "Present the genuine community hub and its evidence-backed subtiles",
+      "page": "/lobby",
+      "component": "components/lobby/LobbyHero.tsx",
+      "readApis": [
+        "/api/lobby"
+      ],
+      "authoritativeDataset": "Lobby projection: featured entries, live presence, replay generation and community content",
+      "minimumTruth": "Non-2xx or missing required fields is unavailable, not an empty successful lobby",
+      "permissions": "Anonymous read; signed session required for mutations",
+      "fallbackBehavior": "Explicit unavailable, never a success badge on missing data",
+      "expectedErrors": "401/403 on protected actions; 5xx is a failed read, not empty",
+      "emptyEvidence": "Each subdataset requires an independent authoritative zero observation"
+    },
+    {
+      "id": "featured-contender",
+      "visiblePurpose": "Show the featured human warrior and a loaded portrait",
+      "page": "/lobby",
+      "component": "components/lobby/LobbyHero.tsx",
+      "readApis": [
+        "/api/lobby"
+      ],
+      "authoritativeDataset": "Featured leaderboard entries and managed /api/avatar redirect bytes",
+      "minimumTruth": "For an actual featured entry img.complete and naturalWidth > 0; identity matches source record",
+      "permissions": "Public contender/avatar reads only",
+      "fallbackBehavior": "Verified placeholder only if genuinely no eligible contender or no portrait bytes; broken optimizer is failure",
+      "expectedErrors": "Avatar HTTP non-2xx or naturalWidth=0 is a display failure",
+      "emptyEvidence": "Prove leaderboard has zero eligible contenders before empty"
+    },
+    {
+      "id": "recent-parsed-games",
+      "visiblePurpose": "Render current real parsed battles and replay navigation",
+      "page": "/lobby",
+      "component": "components/lobby/RecentMatchesPanel.tsx",
+      "readApis": [
+        "/api/lobby/recent-matches?limit=24",
+        "/api/game_stats?archive=1&limit=1"
+      ],
+      "authoritativeDataset": "Logical public battle archive sanitized/deduplicated from finalized replay records",
+      "minimumTruth": "If public archive total > 0, recent match response must contain at least one real identifiable match; no synthetic records",
+      "permissions": "Anonymous safe read of approved public projection; no guarded 3331 direct bypass",
+      "fallbackBehavior": "Unavailable when reader errors; empty only if independently certified archive total=0",
+      "expectedErrors": "Non-2xx, malformed rows, or empty feed against archive > 0 is FAILURE",
+      "emptyEvidence": "Public battle archive total=0 on same source/generation"
+    },
+    {
+      "id": "lobby-chat",
+      "visiblePurpose": "Display persisted room history and enable signed human chat only when writer admitted",
+      "page": "/lobby",
+      "component": "app/api/lobby/chat/route.ts",
+      "readApis": [
+        "/api/lobby/chat?limit=40"
+      ],
+      "writeApi": "/api/lobby/chat",
+      "authoritativeDataset": "Public lobby chatMessage history, restricted reaction aggregates and separately admitted lobby writer",
+      "minimumTruth": "GET HTTP 200 must reflect persisted permitted messages where present; real POST needs numeric committed ID and read-after-reload",
+      "permissions": "Public permitted history; signed actor for posts; no guest-session/reaction raw table grants",
+      "fallbackBehavior": "History unavailable (not empty) if restricted SQL denies; chat send disabled until independently admitted writer",
+      "expectedErrors": "401 anonymous POST; 403 invalid identity; SQLSTATE 42501/HTTP 500 fails; disabled writer is HOLD, not mock success",
+      "emptyEvidence": "Independent message-table read with zero permitted records for room"
+    },
+    {
+      "id": "online-players",
+      "visiblePurpose": "Show genuinely present players with verified links",
+      "page": "/lobby",
+      "component": "components/lobby/OnlinePlayersPanel.tsx",
+      "readApis": [
+        "/api/lobby"
+      ],
+      "authoritativeDataset": "Bounded server presence/active sessions, not historical registered users",
+      "minimumTruth": "If live authoritative presence > 0, show matching active rows; historical signup is not presence",
+      "permissions": "Public projection only; no session secrets or private activity",
+      "fallbackBehavior": "Presence unavailable when telemetry broken; zero only with independent current-presence census",
+      "expectedErrors": "Missing/invalid presence data is FAILURE, not zero active",
+      "emptyEvidence": "Independent current active-presence census = 0"
+    },
+    {
+      "id": "library",
+      "visiblePurpose": "Provide durable searchable replay history, paging and verifiable provenance",
+      "page": "/library",
+      "component": "components/library/LibraryActivityBoard.tsx",
+      "readApis": [
+        "/api/library/games?origin=all&limit=2",
+        "/api/library/activity"
+      ],
+      "authoritativeDataset": "Approved public replay/history and Library Activity SQL projections",
+      "minimumTruth": "Count >= accepted historical floor 7151 unless explicitly reviewed legitimate deletion; provenanceComplete=true; load older advances without duplicate record IDs",
+      "permissions": "Public read-only sanitized history; deny raw/private replay metadata",
+      "fallbackBehavior": "Show unavailable and preserve last certified count, never fabricated zero",
+      "expectedErrors": "503 on unavailable projection, 401/403 on private metadata; never silent zero",
+      "emptyEvidence": "Authoritative independently accepted empty replay corpus (not currently possible under accepted baseline)"
+    },
+    {
+      "id": "clan",
+      "visiblePurpose": "Show clan history and allow member-scoped signed Clan messages",
+      "page": "/clans",
+      "component": "app/api/social/clan-text/route.ts",
+      "readApis": [
+        "/api/clans/[slug]"
+      ],
+      "writeApi": "/api/social/clan-text",
+      "authoritativeDataset": "Clan membership, authorized clan_messages persistence from HD Social V2 writer",
+      "minimumTruth": "Same sender UID as signed session; numeric committed message ID, member history after reload and appropriate audience filtering",
+      "permissions": "Approved membership/audience; anon and nonmember denied for private room; no financial writes",
+      "fallbackBehavior": "No pretend send when writer not admitted; explicit unavailable",
+      "expectedErrors": "401 anonymous; 403 nonmember/policy; 404 missing clan; 503 unavailable writer",
+      "emptyEvidence": "Independent permitted clan-message census=0 for authorized clan and viewer"
+    },
+    {
+      "id": "direct",
+      "visiblePurpose": "Provide private person-to-person inbox history and signed Direct sends",
+      "page": "/contact-emaren",
+      "component": "app/api/contact-emaren/route.ts",
+      "readApis": [
+        "/api/contact-emaren?summary=1"
+      ],
+      "writeApi": "/api/contact-emaren",
+      "authoritativeDataset": "HD Social V2 direct_conversations and direct_messages with participant-filtered projection",
+      "minimumTruth": "Verified signed sender equals persisted sender UID; numeric committed ID; reciprocal recipient sees the same persisted ID after reload",
+      "permissions": "Only authorized participants may read; anonymous, self-send and unauthorized recipient denied",
+      "fallbackBehavior": "Unavailable when writer offline; never claim successful send from 200 inbox alone",
+      "expectedErrors": "401 anon; 403 forbidden reader; 404 unknown recipient; 503 unavailable writer",
+      "emptyEvidence": "Independent participant-filtered conversation census=0"
+    }
+  ]
+}

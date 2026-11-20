@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-library-projections-20261119` at `8c81c4e1bd84a554e47b5a2a17039907947419b0`
+Implementation baseline: `session-c/we3-lobby-restore-20261119` at `899a08977846d22a858089bd87bb61c130757f89`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **152**
+- Authoritative repository documents: **155**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -35,17 +35,17 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 5
 - `generated`: 1
-- `historical`: 12
+- `historical`: 13
 - `reference`: 81
-- `runbook`: 50
-- `working`: 3
+- `runbook`: 49
+- `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 45
+- `draft`: 47
 - `generated`: 1
-- `historical`: 12
+- `historical`: 13
 - `superseded`: 3
 
 ## Documents
@@ -167,6 +167,9 @@ This page is generated from the validated front matter in this repository. Cross
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WE3 Library Public Read Projection Contract](WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md) | `working` | `draft` | `source-only-library-review` |
 | [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
+| [WE3 Additive Social Gateway V1: Source and Exact Inverse](WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md) | `working` | `draft` | `unapproved-source-review-proposal` |
+| [WE3 HD-Only Restricted Social Gateway V2 Source Contract](WE3_SOCIAL_HD_V2_SOURCE_CONTRACT_20261119.md) | `working` | `draft` | `source-only-restricted-db-handoff` |
+| [WE3 Social Writer SQL Privilege and Inverse Proposal](WE3_SOCIAL_TEXT_SQL_REVIEW_20261118.md) | `working` | `draft` | `unapproved-source-review-proposal` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
@@ -191,7 +194,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
-| [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `runbook` | `draft` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
+| [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `historical` | `historical` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
 | [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
 | [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |
