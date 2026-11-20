@@ -184,4 +184,55 @@ console.log('PASS:actual_preloader_transport_and_http_boundaries');
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn("PASS:actual_preloader",result.stdout)
 
+
+    def test_native_node22_social_socket_envelope(self):
+        """Prove native Node 22 HTTP AF_UNIX options, not only VM transport doubles."""
+        script = r'''
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),http=require('node:http'),net=require('node:net'),os=require('node:os'),path=require('node:path');
+if(process.versions.node.split('.')[0]!=='22'){
+ console.log('SKIP_NATIVE_NODE22_ONLY');process.exit(0);
+}
+const socket=path.join(os.tmpdir(),'aoe2-social-node22-'+process.pid+'.sock');
+const expected={'Content-Type':'application/json','Content-Length':7,
+ 'x-social-signed-session':'S'.repeat(64),'Connection':'close'};
+const original=net.Socket.prototype.connect;let witnessed=0;
+net.Socket.prototype.connect=function(...args){
+ const opts=Array.isArray(args[0])?args[0][0]:args[0];
+ if(opts?.path===socket){
+  witnessed++;
+  assert.equal(Array.isArray(args[0]),true);
+  assert.equal(opts.socketPath,socket);
+  assert.equal(opts.host,'localhost');
+  assert.equal(opts.port,80);
+  assert.equal(opts.method,'POST');
+  assert.equal(opts.timeout,2300);
+  assert.deepEqual(opts.headers,expected);
+ }
+ return original.apply(this,args);
+};
+const server=http.createServer((req,res)=>{
+ assert.equal(req.url,'/v1/lobby/text');
+ req.resume();req.on('end',()=>{res.writeHead(201);res.end('{}')});
+});
+server.listen(socket,()=>{
+ const req=http.request({socketPath:socket,path:'/v1/lobby/text',
+  method:'POST',timeout:2300,headers:expected},res=>{
+  res.resume();res.on('end',()=>{
+   assert.equal(res.statusCode,201);
+   assert.equal(witnessed,1);
+   server.close(()=>{fs.rmSync(socket,{force:true});console.log('PASS_NATIVE_NODE22_SOCIAL_SOCKET')});
+  });
+ });
+ req.on('error',err=>{console.error(err);process.exitCode=2;server.close(()=>fs.rmSync(socket,{force:true}))});
+ req.end('{"x":1}');
+});
+setTimeout(()=>{if(witnessed!==1){process.exitCode=3;server.close(()=>fs.rmSync(socket,{force:true}))}},3500).unref();
+'''
+        result = subprocess.run(["node","-e",script],capture_output=True,text=True,timeout=12)
+        self.assertEqual(result.returncode,0,result.stderr)
+        if "SKIP_NATIVE_NODE22_ONLY" in result.stdout:
+            self.skipTest("Native Node 22 runtime required")
+        self.assertIn("PASS_NATIVE_NODE22_SOCIAL_SOCKET",result.stdout)
+
 if __name__ == '__main__': unittest.main()
