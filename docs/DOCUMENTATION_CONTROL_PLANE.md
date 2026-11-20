@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/production-reconciliation-gate-v1-20261120` at `d16f702e102f554c82e6977147edb0db7be353fa`
+Implementation baseline: `we2/production-reconciliation-gate-v1-20261120` at `a8ad85f8b70248a7f75d56fec4fb2695c1e22a5a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
