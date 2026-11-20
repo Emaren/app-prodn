@@ -102,3 +102,38 @@ test("protected level, unresolved paths, unsigned identity or stale source are a
     assert.equal(r.status,"HOLD");assert.equal(r.deletionAuthorized,false);
   }
 });
+
+test("adversarial L4 → L2 → L2 cannot wash out stronger owner protection",()=>{
+  const old=ownerEvent(-180,{requestedLevel:4,effectiveLevel:4,note:"Owner protect"});
+  const notes=[ownerEvent(-120),ownerEvent(-90)];
+  const r=recommendLevel2Category([old,...notes],scope(),OWNER,NOW);
+  assert.equal(r.finding,"PROTECTED");
+  assert.equal(r.confidence,"NONE");
+  assert.equal(r.deletionAuthorized,false);
+});
+test("signed inherited L3 floor remains sticky after subsequent L2 source observations",()=>{
+  const legacy=ownerEvent(-160,{sourceFloor:3,effectiveLevel:3,requestedLevel:2});
+  const r=recommendLevel2Category([legacy,ownerEvent(-120),ownerEvent(-90)],
+    scope(),OWNER,NOW);
+  assert.equal(r.finding,"PROTECTED");
+  assert.equal(r.uniqueReclaimableBytes,null);
+});
+test("L3 or L4 denial remains sticky even across changed overlaps, owners and observations",()=>{
+  for(const strong of [3,4,5] as const){
+    const events=[ownerEvent(-240,{requestedLevel:strong,effectiveLevel:strong,ownerBinding:other}),
+      ownerEvent(-180,{overlaps:true}),ownerEvent(-120),ownerEvent(-90)];
+    const x=recommendLevel2Category(events,scope(),OWNER,NOW);
+    assert.equal(x.finding,"PROTECTED");
+    assert.equal(x.deletionAuthorized,false);
+  }
+});
+test("repeated feedback from one observation is not two independent source examples",()=>{
+  const history=[ownerEvent(-120),ownerEvent(-120),ownerEvent(-90,{note:""})];
+  const r=recommendLevel2Category(history,scope(),OWNER,NOW);
+  assert.notEqual(r.finding,"REVIEW_SUGGESTED");
+});
+test("a higher later source floor blocks L2 even when earlier owner examples match",()=>{
+  const r=recommendLevel2Category([ownerEvent(-120),ownerEvent(-90)],
+    {...scope(),sourceFloor:4},OWNER,NOW);
+  assert.equal(r.finding,"PROTECTED");
+});
