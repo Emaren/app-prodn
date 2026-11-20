@@ -62,7 +62,73 @@ assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/auth/sess
 assert.equal(new http.Server().emit('request',{method:'DELETE',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/user/ping'},response),'passed');
 
-// Ember cosmetic writer is the ONLY new HTTP POST authority.
+// WE2 STORAGE ONLY: exact trusted proxy shape, never a general write bypass.
+const storageOnly={
+ method:'POST',url:'/api/internal/aoe2war-os/bridge',
+ socket:{remoteAddress:'127.0.0.1'},
+ headers:{host:'aoe2war.com','x-forwarded-proto':'https',
+  'x-aoe2war-bridge-scope':'storage_visual','x-aoe2war-os-key':'t'.repeat(64),
+  'content-type':'application/json','content-length':'258'}
+};
+assert.equal(new http.Server().emit('request',storageOnly,response),'passed');
+for(const changes of [
+ {url:'/api/internal/aoe2war-os/bridge?op=queue_finish'},
+ {url:'/api/internal/aoe2war-os/bridge/claim'},
+ {url:'/api/admin/storage-os/teaching'},
+ {url:'/api/wolo/settle'},
+ {method:'PUT'},
+ {socket:{remoteAddress:'10.0.0.7'}},
+ {headers:{...storageOnly.headers,'x-aoe2war-bridge-scope':'queue_finish'}},
+ {headers:{...storageOnly.headers,'x-aoe2war-os-key':''}},
+ {headers:{...storageOnly.headers,'content-type':'text/plain'}},
+ {headers:{...storageOnly.headers,'content-length':'49153'}},
+ {headers:{...storageOnly.headers,'content-length':'NaN'}},
+ {headers:{...storageOnly.headers,'transfer-encoding':'chunked'}},
+ {headers:{...storageOnly.headers,host:'other.example'}},
+ {headers:{...storageOnly.headers,'x-forwarded-proto':'http'}},
+]) {
+ assert.equal(new http.Server().emit('request',{...storageOnly,...changes},response),true);
+ assert.equal(status,405);
+}
+// The live #1424 Social guard MUST survive the scoped Storage addition.
+for (const path of ['/api/social/clan-text','/api/contact-emaren','/api/lobby/chat']) {
+ assert.equal(new http.Server().emit('request',{
+  method:'POST',url:path,headers:{'content-type':'application/json'}
+ },response),'passed');
+ for (const bad of [
+  {method:'POST',url:path+'?op=complete',headers:{'content-type':'text/plain'}},
+  {method:'POST',url:path+'/unapproved',headers:{'content-type':'application/json'}},
+  {method:'PUT',url:path,headers:{'content-type':'application/json'}}
+ ]) {
+  assert.equal(new http.Server().emit('request',bad,response),true);
+  assert.equal(status,405);
+ }
+}
+const socialSocket='/run/aoe2war-social-writer/social.sock';
+const socialHeaders={
+ 'Content-Type':'application/json','Content-Length':23,
+ 'x-social-signed-session':'S'.repeat(64),'Connection':'close'
+};
+assert.equal(typeof http.request({
+ socketPath:socialSocket,path:'/v1/lobby/text',method:'POST',
+ timeout:2300,headers:socialHeaders
+}).end,'function');
+assert.equal(typeof http.request({
+ socketPath:socialSocket,path:'/v1/direct/text',method:'POST',
+ timeout:2300,headers:socialHeaders
+}).end,'function');
+assert.throws(()=>http.request({
+ socketPath:socialSocket,path:'/v1/custody',method:'POST',
+ timeout:2300,headers:socialHeaders
+}),/AOE2WAR_PRODUCTION_HOLD/);
+// Owner teaching POST requires separate independent tip-anchor admission.
+assert.equal(new http.Server().emit('request',{
+ method:'POST',url:'/api/admin/storage-os/teaching',
+ headers:{'content-type':'application/json'}
+},response),true);
+assert.equal(status,405);
+
+// Ember appearance writer remains separately constrained.
 for (const url of ['/api/admin/site-theme-campaign','/api/user/theme-campaign-override']) {
  assert.equal(new http.Server().emit('request',{method:'POST',url,
    headers:{'content-type':'application/json'}},response),'passed');
@@ -128,6 +194,31 @@ assert.throws(()=>setup({AOE2WAR_R25_ISOLATED_WEB:undefined}),/ENV_AOE2WAR_R25_I
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:undefined}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:'/mnt/private'}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({WOLO_SIGNER_KEY:'never-imported'}),/UNREVIEWED_ENVIRONMENT/);
+// Storage source signer material is accepted only as a complete, isolated,
+// exact root enrollment. Never add teaching/custody/delete privileges.
+const storageVars={
+ AOE2WAR_OS_STORE_DIR:'/var/lib/aoe2war-storage-visual-web-v1',
+ AOE2WAR_OS_BRIDGE_TOKEN:'B'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'a'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY:'b'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_HMAC_KEY:'c'.repeat(64),
+ AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY:'d'.repeat(64)
+};
+assert.equal(typeof setup(storageVars).http.Server,'function');
+for(const changes of [
+ {AOE2WAR_OS_STORE_DIR:undefined},
+ {AOE2WAR_OS_STORE_DIR:'/tmp/alternate'},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:undefined},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'SHORT'},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'b'.repeat(64)},
+ {AOE2WAR_STORAGE_VISUAL_HMAC_KEY:'d'.repeat(64)},
+ {AOE2WAR_OS_BRIDGE_TOKEN:'a'.repeat(64)},
+ {AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY:'f'.repeat(64)},
+ {FINANCIAL_SIGNER_KEY:'f'.repeat(64)}
+])assert.throws(()=>setup({...storageVars,...changes}),/AOE2WAR_PRODUCTION_HOLD/);
+assert.throws(()=>setup({
+ AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'a'.repeat(64)
+}),/STORAGE_PARTIAL_ENROLLMENT_DENIED/);
 console.log('PASS:actual_preloader_transport_and_http_boundaries');
 '''
         result=subprocess.run(["node","-e",script,str(ROOT/"scripts/r25_b_guard_production_v1.cjs")],capture_output=True,text=True,timeout=15)

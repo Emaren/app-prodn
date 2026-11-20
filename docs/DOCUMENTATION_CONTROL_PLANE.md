@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-four-plane-owner-teaching-20261120` at `f960c1d92bbd538f3228839d945d7f76102ff66f`
+Implementation baseline: `we2/storage-protected-ingress-20261120` at `3a66cf9eec49c0f71756eacde5fafe29ac07c319`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -36,8 +36,8 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 13
-- `reference`: 82
-- `runbook`: 49
+- `reference`: 81
+- `runbook`: 50
 - `working`: 6
 
 ### Lifecycle
@@ -165,7 +165,6 @@ This page is generated from the validated front matter in this repository. Cross
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
-| [WE3 Four-Plane Storage Explorer and Owner Review Release Contract](WE3_FOUR_PLANE_STORAGE_REVIEW_20261120.md) | `reference` | `draft` | `nonfinancial-product-source-only-not-production-admission` |
 | [WE3 Library Public Read Projection Contract](WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md) | `working` | `draft` | `source-only-library-review` |
 | [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
 | [WE3 Additive Social Gateway V1: Source and Exact Inverse](WE3_SOCIAL_GATEWAY_V1_REVIEW_20261119.md) | `working` | `draft` | `unapproved-source-review-proposal` |
@@ -204,6 +203,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
 | [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
+| [Protected Storage OS ingress admission for deployed Explorer](release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md) | `runbook` | `draft` | `nonfinancial-source-review-only` |
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
 | [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
