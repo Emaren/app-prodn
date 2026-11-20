@@ -8,6 +8,7 @@ import {
   type LobbyTournament,
 } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { toLobbyEntrant, toLobbyTournamentMatch } from "@/lib/tournamentMatchView";
 
 const TOURNAMENT_INCLUDE = {
@@ -333,6 +334,7 @@ export async function getLobbyMessages(
       ? Math.floor(options.beforeId)
       : null;
 
+  const restrictedPublicProfile = isNonfinancialPublicReadProfile();
   const messages = await prisma.chatMessage.findMany({
     where: {
       roomId: room.id,
@@ -363,13 +365,20 @@ export async function getLobbyMessages(
           },
         },
       },
-      guestReactions: {
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: {
-          emoji: true,
-          guestSessionId: true,
+      // The restricted web reader is intentionally denied raw access to
+      // guest reaction session IDs. Never expand its DB privileges simply
+      // to render public chat history. Preserve the legacy relation outside
+      // the isolated production profile; render no guest reaction details
+      // in the restricted reader until a reviewed aggregate is published.
+      ...(restrictedPublicProfile ? {} : {
+        guestReactions: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            emoji: true,
+            guestSessionId: true,
+          },
         },
-      },
+      }),
     },
   });
 
@@ -382,7 +391,9 @@ export async function getLobbyMessages(
       createdAt: message.createdAt.toISOString(),
       reactions: buildLobbyMessageReactions(
         message.reactions,
-        message.guestReactions,
+        "guestReactions" in message && Array.isArray(message.guestReactions)
+          ? message.guestReactions
+          : [],
         viewer?.uid ?? null,
         viewer?.guestSessionId ?? null
       ),
