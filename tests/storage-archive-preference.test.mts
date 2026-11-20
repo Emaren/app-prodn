@@ -94,6 +94,17 @@ test("YES then NO are two durable owner events; stale replay, duplicate and tamp
     assert.equal(history[0].choice,"YES");
     await assert.rejects(()=>appendArchiveChoice({object,choice:"YES",
       previousChoiceId:a.id,ownerBinding}),/ARCHIVE_STALE_CHOICE/);
+    const uppercase={...object,filesystemUuid:object.filesystemUuid.toUpperCase()};
+    uppercase.objectId=exactObjectId({machine:uppercase.machine,
+      filesystemUuid:uppercase.filesystemUuid,deviceId:uppercase.deviceId,
+      inode:uppercase.inode,sourceDigest:uppercase.sourceDigest});
+    const upperChoice=await appendArchiveChoice({object:uppercase,choice:"YES",
+      previousChoiceId:null,ownerBinding});
+    assert.equal((await readArchiveEvents()).length,3);
+    assert.equal(upperChoice.filesystemUuid,fsid.toUpperCase());
+    await assert.rejects(()=>appendArchiveChoice({object:uppercase,choice:"NO",
+      previousChoiceId:upperChoice.id,ownerBinding:"22".repeat(32)}),
+      /ARCHIVE_OWNER_LINEAGE_HOLD/);
     const dir=path.join(tmp,"state","storage-archive-preferences.v1");
     const names=await readdir(dir);
     const first=names.find(n=>n.startsWith("archive-choice-"))!;

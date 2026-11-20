@@ -31,6 +31,8 @@ export async function GET(request:NextRequest){
   try{
     const [source,events,intelOnline]=await Promise.all([
       readExactItems(),readArchiveEvents(),intelAvailable()]);
+    if(events.some(e=>e.ownerBinding!==access.owner.ownerBinding))
+      return reject(409,"ARCHIVE_OWNER_LINEAGE_HOLD");
     return NextResponse.json({
       schema:"aoe2war.storage-archive-preferences.read.v1",
       source,events,ownerBinding:access.owner.ownerBinding,intelOnline,

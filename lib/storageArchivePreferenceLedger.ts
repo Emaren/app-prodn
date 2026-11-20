@@ -7,7 +7,7 @@ import type {ExactItem} from "./storageExactItemSource.ts";
 export const ARCHIVE_SCHEMA="aoe2war.storage-archive-preference.v1" as const;
 const DOMAIN="AOE2WAR:STORAGE-ARCHIVE-PREFERENCE:V1\0";
 const SHA=/^[a-f0-9]{64}$/;
-const UUID=/^[a-f0-9-]{36}$/;
+const UUID=/^[A-Fa-f0-9-]{36}$/;
 const FILENAME=/^archive-choice-[0-9]{13}-[a-f0-9-]{36}\.json$/;
 export type ArchiveChoice="YES"|"NO";
 export type ArchiveEvent={
@@ -138,6 +138,8 @@ export async function appendArchiveChoice(input:{
   catch{throw Error("ARCHIVE_WRITE_BUSY");}
   try{
     const history=await readArchiveEvents();
+    if(history.some(e=>e.ownerBinding!==input.ownerBinding))
+      throw Error("ARCHIVE_OWNER_LINEAGE_HOLD");
     if(history.length>=2048)throw Error("ARCHIVE_LOG_FULL");
     const last=latestArchiveChoice(history,input.object.objectId);
     if((last?.id??null)!==input.previousChoiceId)
