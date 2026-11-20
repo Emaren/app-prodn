@@ -5,6 +5,7 @@
  * Never browse browser-supplied paths or infer individual files from hog buckets.
  */
 import {useMemo,useState} from "react";
+import StorageArchivePreference from "./StorageArchivePreference";
 import {Archive,ChevronRight,Clock3,FileSearch,HardDrive,LockKeyhole,ShieldAlert,ShieldCheck} from "lucide-react";
 import {INDIVIDUAL_TRANSPORT_ADOPTED} from "@/lib/storageReviewTransportPolicy";
 import type {PlaneId,VisualReviewItem,VisualCapacitySample} from "@/lib/storageVisualPrivate";
@@ -173,6 +174,7 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
           "Classification is owner feedback, not an execution permit. Every future individual file must preserve its original identity.":
           "L1 certification requires complete accepted coverage, nondependency and retention evidence. Current count is zero."}</p>
       </div>
+      <StorageArchivePreference plane={activeId}/>
       <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h3 className="font-bold text-white">Exact-manifest dry-run rail</h3><p className="mt-1 text-xs text-slate-400">Source-bound inspection only; never an execution shortcut</p></div>
