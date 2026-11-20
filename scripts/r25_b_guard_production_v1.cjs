@@ -222,10 +222,32 @@ http.Server.prototype.emit = function (event, ...args) {
       APPEARANCE_ROUTES.has(path) &&
       typeof request.headers?.["content-type"] === "string" &&
       request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
+    // Storage ingest is the ONLY additionally permitted nonfinancial write.
+    // Nginx MUST replace an external x-aoe2war-bridge-scope header with its
+    // own storage_visual scope in an exact-route, POST-only proxy location.
+    // This guard is not the signer: the route still authenticates the bridge
+    // bearer and per-plane HMAC receipts, then emits a signed durable ACK.
+    const bridgeLength = request.headers?.["content-length"];
+    const bridgeToken = request.headers?.["x-aoe2war-os-key"];
+    const storageVisualOnlyWrite =
+      request.method === "POST" &&
+      request.url === "/api/internal/aoe2war-os/bridge" &&
+      request.socket?.remoteAddress === "127.0.0.1" &&
+      request.headers?.host === "aoe2war.com" &&
+      request.headers?.["x-forwarded-proto"] === "https" &&
+      request.headers?.["x-aoe2war-bridge-scope"] === "storage_visual" &&
+      typeof bridgeToken === "string" &&
+      bridgeToken.length >= 32 && bridgeToken.length <= 256 &&
+      typeof bridgeLength === "string" &&
+      /^[1-9][0-9]{0,4}$/.test(bridgeLength) &&
+      Number(bridgeLength) <= 49152 &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      request.headers?.["content-type"] === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
-      appearanceWrite;
+      appearanceWrite ||
+      storageVisualOnlyWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;

@@ -62,7 +62,42 @@ assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/auth/sess
 assert.equal(new http.Server().emit('request',{method:'DELETE',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/user/ping'},response),'passed');
 
-// Ember cosmetic writer is the ONLY new HTTP POST authority.
+// WE2 STORAGE ONLY: exact trusted proxy shape, never a general write bypass.
+const storageOnly={
+ method:'POST',url:'/api/internal/aoe2war-os/bridge',
+ socket:{remoteAddress:'127.0.0.1'},
+ headers:{host:'aoe2war.com','x-forwarded-proto':'https',
+  'x-aoe2war-bridge-scope':'storage_visual','x-aoe2war-os-key':'t'.repeat(64),
+  'content-type':'application/json','content-length':'258'}
+};
+assert.equal(new http.Server().emit('request',storageOnly,response),'passed');
+for(const changes of [
+ {url:'/api/internal/aoe2war-os/bridge?op=queue_finish'},
+ {url:'/api/internal/aoe2war-os/bridge/claim'},
+ {url:'/api/admin/storage-os/teaching'},
+ {url:'/api/wolo/settle'},
+ {method:'PUT'},
+ {socket:{remoteAddress:'10.0.0.7'}},
+ {headers:{...storageOnly.headers,'x-aoe2war-bridge-scope':'queue_finish'}},
+ {headers:{...storageOnly.headers,'x-aoe2war-os-key':''}},
+ {headers:{...storageOnly.headers,'content-type':'text/plain'}},
+ {headers:{...storageOnly.headers,'content-length':'49153'}},
+ {headers:{...storageOnly.headers,'content-length':'NaN'}},
+ {headers:{...storageOnly.headers,'transfer-encoding':'chunked'}},
+ {headers:{...storageOnly.headers,host:'other.example'}},
+ {headers:{...storageOnly.headers,'x-forwarded-proto':'http'}},
+]) {
+ assert.equal(new http.Server().emit('request',{...storageOnly,...changes},response),true);
+ assert.equal(status,405);
+}
+// Owner teaching POST requires separate independent tip-anchor admission.
+assert.equal(new http.Server().emit('request',{
+ method:'POST',url:'/api/admin/storage-os/teaching',
+ headers:{'content-type':'application/json'}
+},response),true);
+assert.equal(status,405);
+
+// Ember appearance writer remains separately constrained.
 for (const url of ['/api/admin/site-theme-campaign','/api/user/theme-campaign-override']) {
  assert.equal(new http.Server().emit('request',{method:'POST',url,
    headers:{'content-type':'application/json'}},response),'passed');
