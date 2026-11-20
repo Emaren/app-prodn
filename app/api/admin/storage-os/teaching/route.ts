@@ -68,6 +68,7 @@ export async function POST(request:NextRequest){
      typeof obj.sourceFloor!=="number"||typeof obj.overlaps!=="boolean"||
      !(obj.previousId===null||(typeof obj.previousId==="string"&&/^[a-f0-9-]{36}$/.test(obj.previousId)))||
      typeof obj.note!=="string"||obj.note.length>160||
+     (obj.level===2&&!obj.note.trim())||
      (obj.level===5&&obj.confirmPermanent!==true))
     return rejection(400,"TEACHING_FIELDS_OR_CONFIRMATION_HOLD");
   try{
