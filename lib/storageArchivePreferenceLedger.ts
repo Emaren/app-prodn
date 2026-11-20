@@ -3,6 +3,7 @@ import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import {constants,promises as fs} from "node:fs";
 import path from "node:path";
 import type {ExactItem} from "./storageExactItemSource.ts";
+import {assertIndependentTip,enrolledOwnerBinding,witnessIndependentTip} from "./storageIndependentLedgerTip.ts";
 
 export const ARCHIVE_SCHEMA="aoe2war.storage-archive-preference.v1" as const;
 const DOMAIN="AOE2WAR:STORAGE-ARCHIVE-PREFERENCE:V1\0";
@@ -93,7 +94,9 @@ function valid(event:unknown,secret:Buffer):event is ArchiveEvent{
 export async function readArchiveEvents():Promise<ArchiveEvent[]>{
   const secret=key();let dir:string;
   try{dir=await getDir(false);}
-  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return [];throw e;}
+  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT"){
+    await assertIndependentTip("archive",[],enrolledOwnerBinding());return [];
+  }throw e;}
   const names=(await fs.readdir(dir)).filter(n=>n!==".write-lock").sort();
   if(names.length>2048||names.some(n=>!FILENAME.test(n)))throw Error("ARCHIVE_EVENT_NAMES_HOLD");
   const events:ArchiveEvent[]=[];let prior:ArchiveEvent|null=null;
@@ -120,6 +123,7 @@ export async function readArchiveEvents():Promise<ArchiveEvent[]>{
       events.push(event);prior=event;
     }finally{await fh.close();}
   }
+  await assertIndependentTip("archive",events,enrolledOwnerBinding());
   return events;
 }
 export function latestArchiveChoice(events:readonly ArchiveEvent[],objectId:string){
@@ -133,6 +137,14 @@ export async function appendArchiveChoice(input:{
      !SHA.test(input.object.objectId)||!SHA.test(input.object.fingerprint)||
      !SHA.test(input.object.sourceDigest))
     throw Error("ARCHIVE_CHOICE_FIELDS_INVALID");
+  // Refuse to write before WE2 has installed an external root-only witness.
+  if(!process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET||
+     (process.env.NODE_ENV!=="test"&&
+      process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET!==
+      "/run/aoe2war-storage-independent-tip/witness.sock"))
+    throw Error("ARCHIVE_INDEPENDENT_WITNESS_REQUIRED");
+  if(input.ownerBinding!==enrolledOwnerBinding())
+    throw Error("ARCHIVE_OWNER_BINDING_HOLD");
   const dir=await getDir(true),lock=path.join(dir,".write-lock");
   try{await fs.mkdir(lock,{mode:0o700});}
   catch{throw Error("ARCHIVE_WRITE_BUSY");}
@@ -166,6 +178,8 @@ export async function appendArchiveChoice(input:{
     finally{await fh.close();}
     const df=await fs.open(dir,constants.O_RDONLY);
     try{await df.sync();}finally{await df.close();}
+    // Success is impossible until independent root signer commits the new tip.
+    await witnessIndependentTip("archive",[...history,event],input.ownerBinding);
     return event;
   }finally{await fs.rmdir(lock);}
 }

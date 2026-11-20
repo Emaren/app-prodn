@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   COLD_SCHEMA,COLD_SIGNED_SCHEMA,EMPTY_INTEL_COLD,
-  signColdForTests,verifyIntelColdEvidence,
+  signColdForTests,verifyLegacyIntelHmacFixture,
 } from "../lib/intelColdStorageEvidence.ts";
 
 const NOW=new Date("2026-11-17T19:00:00Z");
@@ -39,7 +39,7 @@ function signed(payload:ReturnType<typeof source>,key=KEY){
   return {schema:COLD_SIGNED_SCHEMA,payload,hmac_sha256:signColdForTests(payload,key)};
 }
 test("owner signed Intel identity, capacity and WE2 restore are admitted but cleanup stays locked",()=>{
-  const out=verifyIntelColdEvidence(signed(source()),KEY,NOW);
+  const out=verifyLegacyIntelHmacFixture(signed(source()),KEY,NOW);
   assert.equal(out.source,"SIGNED_PRIVATE_RECEIPT");
   assert.equal(out.health,"ONLINE");
   assert.equal(out.hardware.fileVault,true);
@@ -55,7 +55,7 @@ test("owner signed Intel identity, capacity and WE2 restore are admitted but cle
   assert.equal(out.incident.status,"NOT_RECOVERABLE_NO_RECLAIM");
 });
 test("signed but stale Intel is NEVER presented online",()=>{
-  const out=verifyIntelColdEvidence(signed(source("2026-11-17T18:40:00Z")),KEY,NOW);
+  const out=verifyLegacyIntelHmacFixture(signed(source("2026-11-17T18:40:00Z")),KEY,NOW);
   assert.equal(out.health,"STALE");
   assert.equal(out.tenants[0].cleanup,"LOCKED");
 });
@@ -73,7 +73,7 @@ test("public fingerprint drift, wrong hardware or wrong host never passes",()=>{
     {reserve_bytes:1024},
     {v1_incomplete_incident_acknowledged:false},
   ]){
-    assert.throws(()=>verifyIntelColdEvidence(signed({...source(),...change}),KEY,NOW),
+    assert.throws(()=>verifyLegacyIntelHmacFixture(signed({...source(),...change}),KEY,NOW),
       /INTEL_HOST_IDENTITY_OR_POLICY_HOLD/);
   }
 });
@@ -82,13 +82,13 @@ test("FileVault off, missing port22, missing dedicated 2222 or low reserve degra
     {filevault_on:false},{port22_listening:false},{port2222_listening:false},
     {available_bytes:60*1024**3-1},
   ]){
-    assert.equal(verifyIntelColdEvidence(signed({...source(),...change}),KEY,NOW).health,"DEGRADED");
+    assert.equal(verifyLegacyIntelHmacFixture(signed({...source(),...change}),KEY,NOW).health,"DEGRADED");
   }
 });
 test("invalid signature, wrong signing key or unsigned payload fail closed",()=>{
-  assert.throws(()=>verifyIntelColdEvidence(signed(source()),"de".repeat(32),NOW),/INTEL_EVIDENCE_SIGNATURE_INVALID/);
-  assert.throws(()=>verifyIntelColdEvidence({...signed(source()),hmac_sha256:"f".repeat(64)},KEY,NOW),/INTEL_EVIDENCE_SIGNATURE_INVALID/);
-  assert.throws(()=>verifyIntelColdEvidence({schema:COLD_SIGNED_SCHEMA,payload:source()},KEY,NOW),/INTEL_UNSIGNED_HOLD/);
+  assert.throws(()=>verifyLegacyIntelHmacFixture(signed(source()),"de".repeat(32),NOW),/INTEL_EVIDENCE_SIGNATURE_INVALID/);
+  assert.throws(()=>verifyLegacyIntelHmacFixture({...signed(source()),hmac_sha256:"f".repeat(64)},KEY,NOW),/INTEL_EVIDENCE_SIGNATURE_INVALID/);
+  assert.throws(()=>verifyLegacyIntelHmacFixture({schema:COLD_SIGNED_SCHEMA,payload:source()},KEY,NOW),/INTEL_UNSIGNED_HOLD/);
 });
 test("cross-tenant WE2 namespace or unverified WE4 enrollment are rejected",()=>{
   for(const tamper of [
@@ -98,20 +98,20 @@ test("cross-tenant WE2 namespace or unverified WE4 enrollment are rejected",()=>
   ]){
     const payload=source();
     payload.tenants[1]={...payload.tenants[1],...tamper} as typeof payload.tenants[1];
-    assert.throws(()=>verifyIntelColdEvidence(signed(payload),KEY,NOW),
+    assert.throws(()=>verifyLegacyIntelHmacFixture(signed(payload),KEY,NOW),
       /INTEL_TENANT_NAMESPACE_OR_QUOTA_HOLD|INTEL_TENANT_INVENTORY_INCOMPLETE/);
   }
 });
 test("an invalid independent restore hash is rejected even if the HMAC is valid",()=>{
   const payload=source();
   payload.tenants[0].last_restore!.restored_sha256="f".repeat(64);
-  assert.throws(()=>verifyIntelColdEvidence(signed(payload),KEY,NOW),
+  assert.throws(()=>verifyLegacyIntelHmacFixture(signed(payload),KEY,NOW),
     /INTEL_RESTORE_PROOF_INVALID/);
 });
 test("future observations and invalid freshness never claim alive",()=>{
-  assert.throws(()=>verifyIntelColdEvidence(signed(source("2026-11-17T19:05:00Z")),KEY,NOW),
+  assert.throws(()=>verifyLegacyIntelHmacFixture(signed(source("2026-11-17T19:05:00Z")),KEY,NOW),
     /INTEL_SOURCE_CLOCK_OR_RETENTION_HOLD/);
-  assert.throws(()=>verifyIntelColdEvidence(signed(source("2026-11-15T10:00:00Z")),KEY,NOW),
+  assert.throws(()=>verifyLegacyIntelHmacFixture(signed(source("2026-11-15T10:00:00Z")),KEY,NOW),
     /INTEL_SOURCE_CLOCK_OR_RETENTION_HOLD/);
 });
 test("website source requires admin; has no live SSH, key, cleanup or filesystem executor",()=>{

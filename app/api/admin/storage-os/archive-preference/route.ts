@@ -19,7 +19,7 @@ async function enrolled(request:NextRequest){
   return {owner};
 }
 async function intelAvailable(){
-  if(process.env.AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED!=="WE4_SIGNED_V1")return false;
+  if(process.env.AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED!=="WE2_ED25519_DERIVED_V1")return false;
   try{
     const view=await readIntelColdEvidence();
     return view.source==="SIGNED_PRIVATE_RECEIPT"&&view.health==="ONLINE";

@@ -4,9 +4,7 @@
  * in the Next.js runtime. Unknown/unsigned/stale snapshots never read ONLINE.
  */
 import {createHmac,timingSafeEqual} from "node:crypto";
-import {constants} from "node:fs";
-import {promises as fs} from "node:fs";
-import path from "node:path";
+import {readIntelEdDerived} from "./intelColdEd25519Bridge.ts";
 
 export const COLD_SCHEMA="aoe2war.intel-cold.status.v1";
 export const COLD_SIGNED_SCHEMA="aoe2war.intel-cold.signed.v1";
@@ -98,7 +96,7 @@ function restore(v:unknown,at:number):RestoreProof|null{
   return {campaign:x.campaign,sourceSha256:x.source_sha256,
     restoredSha256:x.restored_sha256,observedAt:x.observed_at};
 }
-export function verifyIntelColdEvidence(
+export function verifyLegacyIntelHmacFixture(
   envelope:unknown,keyHex:string,clock:Date=new Date()
 ):IntelColdView{
   if(!/^[0-9a-f]{64}$/.test(keyHex))throw Error("INTEL_HMAC_NOT_ENROLLED");
@@ -109,7 +107,11 @@ export function verifyIntelColdEvidence(
   const expected=Buffer.from(signColdForTests(payload,keyHex),"hex");
   if(!timingSafeEqual(expected,Buffer.from(signed.hmac_sha256,"hex")))
     throw Error("INTEL_EVIDENCE_SIGNATURE_INVALID");
-  const x=payload;
+  return verifyIntelColdProjection(payload,clock);
+}
+export function verifyIntelColdProjection(input:unknown,clock:Date=new Date()):IntelColdView{
+  const x=object(input);
+  if(x.schema!==COLD_SCHEMA)throw Error("INTEL_PROJECTION_SCHEMA_HOLD");
   if(!timestamp(x.observed_at))throw Error("INTEL_OBSERVED_TIME_INVALID");
   const age=clock.getTime()-Date.parse(x.observed_at);
   if(!Number.isFinite(age)||age < -60_000||age > MAX_AGE_MS)
@@ -175,36 +177,12 @@ export function verifyIntelColdEvidence(
     reason:health==="ONLINE"?"FRESH_SIGNED_SOURCE":health==="STALE"
       ?"SIGNED_SOURCE_STALE":"RECEIVER_HEALTH_OR_RESERVE_HOLD"};
 }
+/** Production accepts only WE2-root Ed25519-signed derived receipts from a
+ * genuine source-key-verified Intel Ed25519 envelope and replay ledger.
+ * Historical HMAC v1 is retained ONLY as a pure negative/source fixture;
+ * it can never activate the fourth plane in the live web runtime. */
 export async function readIntelColdEvidence(clock:Date=new Date()):Promise<IntelColdView>{
-  const key=process.env.AOE2WAR_INTEL_COLD_HMAC_KEY?.trim();
-  if(!key)return EMPTY_INTEL_COLD;
-  if(!/^[0-9a-f]{64}$/.test(key)
-    ||key.toLowerCase()===process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY?.toLowerCase()
-    ||key.toLowerCase()===process.env.AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY?.toLowerCase())
-    throw Error("INTEL_ISOLATED_SIGNER_KEY_REQUIRED");
-  const root=process.env.AOE2WAR_OS_STORE_DIR?.trim()
-    ||(process.env.NODE_ENV==="production"
-      ?"/mnt/HC_Volume_105319120/aoe2war/os-control"
-      :path.join(process.cwd(),"storage","aoe2war-os"));
-  const dir=path.join(root,"state");
-  const file=path.join(dir,"intel-cold-status.v1.json");
-  let fh:Awaited<ReturnType<typeof fs.open>>|null=null;
-  try{
-    const d=await fs.lstat(dir);
-    if(!d.isDirectory()||d.isSymbolicLink()||(d.mode&0o022))
-      throw Error("INTEL_RECEIPT_DIRECTORY_UNSAFE");
-    fh=await fs.open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
-    const before=await fh.stat();
-    if(!before.isFile()||before.nlink!==1||before.size<=0||before.size>MAX_FILE
-      ||(before.mode&0o022))throw Error("INTEL_RECEIPT_FILE_IDENTITY");
-    const bytes=await fh.readFile({encoding:"utf8"});
-    const after=await fh.stat();
-    if(before.ino!==after.ino||before.size!==after.size
-      ||before.mtimeMs!==after.mtimeMs)throw Error("INTEL_RECEIPT_RACE");
-    return verifyIntelColdEvidence(JSON.parse(bytes),key,clock);
-  }catch(e){
-    if(["ENOENT","ENOTDIR","EACCES","EPERM"].includes(
-      (e as NodeJS.ErrnoException).code??""))return unknown("NO_ADMITTED_SIGNED_INTEL_STATUS");
-    throw e;
-  }finally{await fh?.close();}
+  const derived=await readIntelEdDerived(clock);
+  if(!derived)return unknown("INTEL_ED25519_WE2_DERIVED_SOURCE_NOT_ADMITTED");
+  return verifyIntelColdProjection(derived.projection,clock);
 }
