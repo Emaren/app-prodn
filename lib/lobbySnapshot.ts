@@ -14,6 +14,7 @@ import {
   type LobbySnapshot,
 } from "@/lib/lobby";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
@@ -91,6 +92,8 @@ async function loadLobbySnapshotFresh(
   // Only chain-sensitive Wolo snapshots remain fail-closed. Financial-claim
   // tables are not part of the public content reader's authority; a missing
   // earners rail must NOT erase safe, independent tournament/warrior/presence.
+  // The admitted production writer accepts only main-lobby, never a featured tournament room.
+  const restrictedProductionRoom = usesNonfinancialProductionAuth();
   const woloPromise = loadWoloDevSnapshot();
   const woloMarketPromise = loadWoloMarketSnapshot();
   const tournamentPromise = optionalRead(
@@ -118,7 +121,8 @@ async function loadLobbySnapshotFresh(
   );
   const featuredWarriorHonorsPromise = loadFeaturedWarriorHonors(prisma);
   const tournamentMessagesPromise = tournamentPromise.then((tournament) =>
-    optionalRead("tournament messages", getLobbyMessages(prisma, tournament.roomSlug, 24, {
+    optionalRead("tournament messages", getLobbyMessages(prisma,
+      restrictedProductionRoom ? LOBBY_ROOM_SLUG : tournament.roomSlug, 24, {
       uid: viewerUid,
       guestSessionId: guestReactionSessionId,
     }), [])
@@ -189,7 +193,9 @@ async function loadLobbySnapshotFresh(
     }), getFallbackLiveTickerSnapshot());
 
     const messages =
-      tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
+      restrictedProductionRoom
+        ? tournamentMessages
+        : tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
         ? tournamentMessages
         : await optionalRead("lobby messages", getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 24, {
             uid: viewerUid,
@@ -197,7 +203,11 @@ async function loadLobbySnapshotFresh(
           }), []);
 
     return {
-      tournament,
+      // Keep tournament metadata, but present the actual authorized chat room
+      // so the existing client GET, POST, pagination and retry agree.
+      tournament: restrictedProductionRoom
+        ? { ...tournament, roomSlug: LOBBY_ROOM_SLUG }
+        : tournament,
       messages,
       onlineUsers: presence.onlineUsers,
       recentMatches: recentMatches.map(projectLobbyMatchRow),
