@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/lobby-main-room-ui-20261120` at `048b1186ce3ab1686a2b88299973cf91d3b5e72d`
+Implementation baseline: `session-c/appside-combined-lobby-terminal-20261120` at `d1a2e113d975b6d3223b87ffcbaff58929f5ec41`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
