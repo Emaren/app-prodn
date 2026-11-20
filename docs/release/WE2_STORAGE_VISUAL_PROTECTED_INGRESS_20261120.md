@@ -35,6 +35,39 @@ This PR does not grant installation or permit a new Next.js runtime.
 The current R25 production preloader and the generic Nginx /api/ route
 independently block the existing source-owned bridge POST with HTTP 405.
 
+## Mandatory actual HEL1 filesystem sandbox correction
+
+Physical inspection at 2026-11-20 23:20 UTC showed the existing
+`aoe2hdbets-web-prod.service` has `ProtectSystem=strict` **and**
+`InaccessiblePaths=/mnt/HC_Volume_105319120`. The original proposed
+`AOE2WAR_OS_STORE_DIR=/mnt/HC_Volume_105319120/aoe2war/os-control`
+would therefore be inaccessible to UID 990 even after POST guard and
+NGINX admission. The legacy `os-control/state` directory is also UID
+1000/mode 0755, while the receiver requires UID 990/mode 0700. Do
+not remove the data-volume deny or recursively chown the legacy state.
+
+This reviewed proposal instead pins the *one durable*, non-cache,
+source-independent receiver storage root
+`/var/lib/aoe2war-storage-visual-web-v1` and installs exactly
+`docs/release/artifacts/aoe2war_storage_visual_web_store_v1.conf`
+as an independent, reversible service drop-in containing **only**
+`ReadWritePaths=/var/lib/aoe2war-storage-visual-web-v1`. Under an
+owner-signed, post-qualifications root ceremony, create this one
+root filesystem directory (and `state` and `state/storage-visual-bridge-acks.v1`)
+as UID 990/GID 984 with mode 0700. Verify systemd's *effective*
+`InaccessiblePaths` and `ReadWritePaths` after reload. No general
+write authorization, no mount exposure, no third Next.js process,
+no existing OS controller permission changes.
+
+**Read-only capacity is not release admission.** At 23:20 UTC
+`findmnt` independently saw root `/dev/sda1` ext4 UUID
+`64f6fb02-4fed-4836-a33b-86e8993afdfa`, mounted data
+`/dev/sdb` ext4 UUID `a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42`,
+and M1 APFS Data UUID `2B7670BF-6C76-4EC1-B874-31E1CE660EB4`.
+These are genuine observed source identities but **not** a signed
+approved C/G v2 website receipt. Keep the existing capacity thresholds
+and report below-threshold values as HOLD rather than changing them.
+
 ## Proposed exact protected admission
 
 - The *existing* 3032 preloader admits only the exact nonfinancial
@@ -62,19 +95,21 @@ any of these names (values were not read): `AOE2WAR_OS_BRIDGE_TOKEN`,
 `AOE2WAR_STORAGE_VISUAL_HMAC_KEY`, or
 `AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY`.
 
-The default mounted OS state directory is currently owned by the legacy
-`tony` user with mode 0755, not by UID 990
-`aoe2war-web-prod`, while the strict receiver demands a private 0700
-web-owned directory. The bridge ACK directory and signed visual receipt
-are absent. Do **not** chown the whole existing OS state directory or
-widen permissions: that could break the existing nonfinancial controller.
-A separately reviewed scoped store migration is required.
+The legacy mounted OS state belongs to UID 1000 and cannot become
+the UID 990 receiver state through permission relaxation; use the
+separately reviewed **root-local non-cache** store described above.
+The bridge ACK directory and production accepted visual receipt are
+absent. Never chown legacy controller state or weaken its protection.
 
-The Mac Pulse latest receipt is real and fresh, but its optional
-source-HMAC key at `~/.config/vpssentry/storage-visual-mac.key` and
-`visual-mac.v1.json` are absent. The HEL1 observer has no installed timer,
-dynamic-user-owned signer credential or source-transport ACK. Do not
-generate a substitute owner key, post fake samples or claim natural cycles.
+Mac Pulse source key UID501 mode0600 was physically enrolled on
+2026-11-20, and genuine earlier Mac Pulse observation was signed
+locally (source evidence SHA
+`779d57d415e2be9e1749740be32ff2314e7c71967858d7eb99f556cc48ba2af6`).
+Its claimed mount identity is still `UNVERIFIED_APFS_VOLUME_UUID` and
+no production ACK exists; this is **not** a signed v2 capacity result
+or proof of a naturally scheduled signer run. HEL1 observer has no
+installed timer or source-signing key, and has no ACK. No synthetic
+signing or owner browser session may substitute for actual admission.
 
 Further, the current signed visual v1 path explicitly identifies the Mac
 APFS volume and HEL1 mounts with *unverified placeholder* identities and

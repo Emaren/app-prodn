@@ -137,7 +137,7 @@ class BoundaryTests(unittest.TestCase):
                          "815d66ef94900d29bb50b7241dc47927a4343955")
         self.assertIsNotNone(p.BRANCH.fullmatch(p.EXACT_WE2_STORAGE_BRANCH))
         self.assertIsNone(p.BRANCH.fullmatch("we2/unsafe-root-wildcard"))
-        self.assertEqual(len(p.EXACT_WE2_STORAGE_CHANGED), 9)
+        self.assertEqual(len(p.EXACT_WE2_STORAGE_CHANGED), 10)
         self.assertEqual(set(p.EXACT_WE2_STORAGE_CHANGED),
                          set(p.EXACT_WE2_STORAGE_PINS) |
                          {"scripts/product_boundary_guard.py",

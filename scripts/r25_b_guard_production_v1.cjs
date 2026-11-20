@@ -91,7 +91,7 @@ const storagePresent = storageEnv.filter(k => Object.prototype.hasOwnProperty.ca
 if (storagePresent.length) {
   need(storagePresent.length === storageEnv.length, "STORAGE_PARTIAL_ENROLLMENT_DENIED");
   need(process.env.AOE2WAR_OS_STORE_DIR ===
-    "/mnt/HC_Volume_105319120/aoe2war/os-control",
+    "/var/lib/aoe2war-storage-visual-web-v1",
     "STORAGE_STORE_EXACT_ROOT_REQUIRED");
   const token = process.env.AOE2WAR_OS_BRIDGE_TOKEN;
   need(typeof token === "string" && /^[A-Za-z0-9_+=/-]{32,256}$/.test(token),

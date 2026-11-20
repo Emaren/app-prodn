@@ -197,7 +197,7 @@ assert.throws(()=>setup({WOLO_SIGNER_KEY:'never-imported'}),/UNREVIEWED_ENVIRONM
 // Storage source signer material is accepted only as a complete, isolated,
 // exact root enrollment. Never add teaching/custody/delete privileges.
 const storageVars={
- AOE2WAR_OS_STORE_DIR:'/mnt/HC_Volume_105319120/aoe2war/os-control',
+ AOE2WAR_OS_STORE_DIR:'/var/lib/aoe2war-storage-visual-web-v1',
  AOE2WAR_OS_BRIDGE_TOKEN:'B'.repeat(64),
  AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'a'.repeat(64),
  AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY:'b'.repeat(64),
