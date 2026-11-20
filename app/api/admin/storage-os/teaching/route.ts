@@ -15,11 +15,17 @@ const rejection=(code:number,detail:string)=>
 export async function GET(request:NextRequest){
   const admin=await requireAdmin(request);
   if("error" in admin)return admin.error;
+  // A site administrator is not automatically the enrolled storage owner.
+  // Apply exactly the same account fence to GET as POST *before* loading
+  // historical owner decisions. No broad admin-read exception is installed.
+  const owner=teachingOwnerAccess(admin.user.uid);
+  if(!owner.ownerBinding)return rejection(503,"TEACHING_OWNER_NOT_ENROLLED");
+  if(!owner.mayRecord)return rejection(403,"TEACHING_OWNER_REQUIRED");
   try{
     return NextResponse.json({
       schema:"aoe2war.storage-teaching-history.v1",
       events:await readTeachingEvents(),
-      ...teachingOwnerAccess(admin.user.uid),
+      ...owner,
       authority:"OWNER_FEEDBACK_ONLY_NO_DELETE",
     },{headers:HEADERS});
   }catch{return rejection(503,"TEACHING_LEDGER_NOT_ENROLLED_OR_UNAVAILABLE");}
