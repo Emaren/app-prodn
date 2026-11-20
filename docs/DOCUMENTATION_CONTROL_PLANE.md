@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-library-projections-20261119` at `8c81c4e1bd84a554e47b5a2a17039907947419b0`
+Implementation baseline: `we2/production-reconciliation-gate-v1-20261120` at `4c0cb04411f158405998702cd4a3a335160596b1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -35,17 +35,17 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 5
 - `generated`: 1
-- `historical`: 12
+- `historical`: 13
 - `reference`: 81
-- `runbook`: 50
+- `runbook`: 49
 - `working`: 3
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 45
+- `draft`: 44
 - `generated`: 1
-- `historical`: 12
+- `historical`: 13
 - `superseded`: 3
 
 ## Documents
@@ -191,7 +191,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
-| [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `runbook` | `draft` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
+| [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `historical` | `historical` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
 | [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
 | [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |

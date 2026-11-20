@@ -8,14 +8,33 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-11-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Live Final-Proof Visibility
 
-Implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.
+Historical implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.
+
+## November 20, 2026 — bounded source and finality review
+
+Current PRODUCT source was rechecked against lib/liveSessionSnapshot.ts
+(the 15-minute linger constant and parse-source separation of active
+watcher_live versus final watcher_final pending parse), lib/bets.ts
+(proof deadline transition and persistence), and the
+tests/bets-realtime-finality-regression.test.mts source contracts.
+Unresolved finality placeholders must not increment genuine liveCount,
+reopen betting or gain settlement authority through timestamp refresh.
+
+The documented original implementation baseline is historical, not
+the live website HEAD. Observed public website source is the accepted
+Library 5339a981acbf15ea8d3c4393cb1fc75bc300ea45, BUILD_ID
+sn6eybJdBu7mluOQByc4M, whereas combined Lobby/Chat candidate
+a78964f4bbc32515243f56f1c0a1fb623047af72 is not publicly live.
+This document covers source contract semantics only. It does not
+certify active financial writers, release root custody, funding,
+betting-market reactivation or settlement. Those remain separately gated.
 
 ## Problem
 
