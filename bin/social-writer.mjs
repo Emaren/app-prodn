@@ -62,7 +62,7 @@ const server = http.createServer(async(req,res)=>{
   res.setHeader("Content-Type","application/json; charset=utf-8");
   res.setHeader("X-Content-Type-Options","nosniff");
   const finish=(status,body)=>{if(!res.writableEnded){res.writeHead(status);res.end(JSON.stringify(body));}};
-  const scope=req.url==="/v1/clan/text"?"clan":req.url==="/v1/direct/text"?"direct":null;
+  const scope=req.url==="/v1/clan/text"?"clan":req.url==="/v1/direct/text"?"direct":req.url==="/v1/lobby/text"?"lobby":null;
   if(req.method!=="POST"||!scope){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
   if(req.headers["content-type"]!=="application/json"){finish(415,{detail:"JSON_ONLY"});return;}
   const token=req.headers["x-social-signed-session"];

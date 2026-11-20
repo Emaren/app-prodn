@@ -1595,6 +1595,9 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   const [chatNotice, setChatNotice] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
+  // Stable per-send key survives an unknown socket outcome and manual retry.
+  // A changed body generates a new key; no actor UID is ever client-supplied.
+  const lobbyPendingRequestRef = useRef<{ body: string; key: string } | null>(null);
   const [aiThinkingStartedAt, setAiThinkingStartedAt] = useState<number | null>(null);
   const [lastAiThoughtMs, setLastAiThoughtMs] = useState<number | null>(null);
   const [joinPending, setJoinPending] = useState(false);
@@ -2281,6 +2284,10 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
 
     try {
       setChatPending(true);
+      const previous = lobbyPendingRequestRef.current;
+      const idempotencyKey = previous?.body === trimmed
+        ? previous.key : crypto.randomUUID().replaceAll("-", "");
+      lobbyPendingRequestRef.current = { body: trimmed, key: idempotencyKey };
       const aiWillAnswer = aiEnabled && (aiScribeEnabled || aiGrimerEnabled);
       const requestStartedAt = Date.now();
       if (aiWillAnswer) {
@@ -2295,6 +2302,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
         body: JSON.stringify({
           message: trimmed,
           roomSlug: tournament.roomSlug,
+          idempotencyKey,
           aiEnabled,
           aiVisibility,
           aiScribeEnabled,
@@ -2310,6 +2318,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
         throw new Error(typeof payload.detail === "string" ? payload.detail : h("Message failed."));
       }
 
+      lobbyPendingRequestRef.current = null;
       setMessageBody("");
       setChatNotice(typeof payload.aiWarning === "string" ? payload.aiWarning : null);
       setLobby((current) =>

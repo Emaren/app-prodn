@@ -5,7 +5,7 @@ import { PRODUCTION_WEB_ORIGIN } from "@/lib/productionAuth";
 
 // Nonfinancial text only. Never pass database credentials, SQL, or client sender IDs.
 export const SOCIAL_WRITER_SOCKET = "/run/aoe2war-social-writer/social.sock";
-export type SocialScope = "clan" | "direct";
+export type SocialScope = "clan" | "direct" | "lobby";
 const MAX_BYTES = 4096;
 const TIMEOUT = 2300;
 export function validateSocialWriteOrigin(request: NextRequest): boolean {
@@ -67,7 +67,7 @@ export async function callSocialWriter(
     };
     const req=http.request({
       socketPath:SOCIAL_WRITER_SOCKET,
-      path:scope==="clan"?"/v1/clan/text":"/v1/direct/text",
+      path:scope==="clan"?"/v1/clan/text":scope==="direct"?"/v1/direct/text":"/v1/lobby/text",
       method:"POST",timeout:TIMEOUT,
       headers:{
         "Content-Type":"application/json",
