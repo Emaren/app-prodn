@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "119ff224dd66b084d4970414b998529861a853cb0356946e43ee5a09aff8de02",
+      "sha256": "b89ba899435537dbd2b94cf17252a2318f6de822402424f73d5292a887fbbfb8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3527,7 +3527,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/storage-os-level2-owner-learning-20261120",
-    "commit": "d5c356fd51543f76a6c4d910138d0e73c3704267"
+    "commit": "9f6214a45c4af454c79196a9bdea3ca9a2ee70e6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
