@@ -127,22 +127,93 @@ class BoundaryTests(unittest.TestCase):
             # source: the generic branch grammar remains closed.
             self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
 
+    def test_we2_storage_exact_root_source_admission_and_negative_cases(self):
+        import hashlib
+        root = GUARD.parent.parent
+        p = policy
+        self.assertEqual(p.EXACT_WE2_STORAGE_BRANCH,
+                         "we2/storage-protected-ingress-20261120")
+        self.assertEqual(p.EXACT_WE2_STORAGE_BASE,
+                         "815d66ef94900d29bb50b7241dc47927a4343955")
+        self.assertIsNotNone(p.BRANCH.fullmatch(p.EXACT_WE2_STORAGE_BRANCH))
+        self.assertIsNone(p.BRANCH.fullmatch("we2/unsafe-root-wildcard"))
+        self.assertEqual(len(p.EXACT_WE2_STORAGE_CHANGED), 10)
+        self.assertEqual(set(p.EXACT_WE2_STORAGE_CHANGED),
+                         set(p.EXACT_WE2_STORAGE_PINS) |
+                         {"scripts/product_boundary_guard.py",
+                          "tests/test_product_boundary_guard.py",
+                          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                          "docs/document-registry.json"})
+        for name, digest in p.EXACT_WE2_STORAGE_PINS.items():
+            self.assertEqual(hashlib.sha256((root / name).read_bytes()).hexdigest(),
+                             digest, name)
+        p.check_exact_we2_storage_source(
+            root, "Emaren/app-prodn", p.EXACT_WE2_STORAGE_BRANCH,
+            p.EXACT_WE2_STORAGE_BASE, sorted(p.EXACT_WE2_STORAGE_CHANGED))
+        cases = [
+            ("Emaren/other-repo", p.EXACT_WE2_STORAGE_BASE,
+             sorted(p.EXACT_WE2_STORAGE_CHANGED)),
+            ("Emaren/app-prodn", "f" * 40,
+             sorted(p.EXACT_WE2_STORAGE_CHANGED)),
+            ("Emaren/app-prodn", p.EXACT_WE2_STORAGE_BASE,
+             sorted(set(p.EXACT_WE2_STORAGE_CHANGED) -
+                    {"docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf"})),
+            ("Emaren/app-prodn", p.EXACT_WE2_STORAGE_BASE,
+             sorted(set(p.EXACT_WE2_STORAGE_CHANGED) | {"scripts/unreviewed-root.py"})),
+        ]
+        for repo, base, changes in cases:
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_STORAGE_"):
+                p.check_exact_we2_storage_source(
+                    root, repo, p.EXACT_WE2_STORAGE_BRANCH, base, changes)
+        name = "scripts/r25_b_guard_production_v1.cjs"
+        with mock.patch.dict(os.environ, {"BOUNDARY_BRANCH": p.EXACT_WE2_STORAGE_BRANCH}):
+            self.assertEqual(p.authorize_changed_source(root,
+                             p.EXACT_WE2_STORAGE_BASE, name), name)
+            with self.assertRaisesRegex(p.BoundaryHold, "WRONG_BASE"):
+                p.authorize_changed_source(root, "e" * 40, name)
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp)
+            (scratch / "scripts").mkdir()
+            target = scratch / name
+            original = (root / name).read_bytes()
+            target.write_bytes(original)
+            self.assertEqual(p.exact_we2_storage_blob(scratch, name), name)
+            target.write_bytes(original + b"malicious")
+            with self.assertRaisesRegex(p.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                p.exact_we2_storage_blob(scratch, name)
+            target.unlink()
+            target.symlink_to(root / name)
+            with self.assertRaisesRegex(p.BoundaryHold, "SYMLINK_ANCESTOR"):
+                p.exact_we2_storage_blob(scratch, name)
+            target.unlink()
+            target.write_bytes(original)
+            alias = scratch / "hardlink"
+            os.link(target, alias)
+            with self.assertRaisesRegex(p.BoundaryHold, "SINGLE_REGULAR_FILE"):
+                p.exact_we2_storage_blob(scratch, name)
+
     def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
         name = policy.EXACT_REVIEWED_B_EMBER_GUARD
         source = GUARD.parent / "r25_b_guard_production_v1.cjs"
         import hashlib
+        # Historical Ember source is verified at the *immutable prior main*
+        # commit, not silently rebound to the newly reviewed WE2 guard bytes.
+        historical = subprocess.check_output([
+            "git", "-C", str(GUARD.parent.parent), "show",
+            policy.EXACT_WE2_STORAGE_BASE + ":scripts/r25_b_guard_production_v1.cjs",
+        ], timeout=15)
         self.assertEqual(policy.EXACT_REVIEWED_B_EMBER_BRANCH,
                          "session-b/ember-november-polish-20261116")
         self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_REVIEWED_B_EMBER_BRANCH))
         self.assertIsNone(policy.BRANCH.fullmatch("session-b/another-os-release"))
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
+        self.assertEqual(hashlib.sha256(historical).hexdigest(),
                          policy.EXACT_REVIEWED_B_EMBER_SHA256)
         self.denied_source(name)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "scripts").mkdir()
             p = root / name
-            blob = source.read_bytes()
+            blob = historical
             p.write_bytes(blob)
             self.assertEqual(policy.authorize_changed_source(
                 root, policy.EXACT_REVIEWED_B_EMBER_BASE, name), name)

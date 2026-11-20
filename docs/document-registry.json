@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b89ba899435537dbd2b94cf17252a2318f6de822402424f73d5292a887fbbfb8",
+      "sha256": "7ce0d57d4862bf34ad6eeab060e0ab08cea594032dea38a067269f1b02f4a3c2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3459,6 +3459,30 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-source-review-only",
+      "id": "aoe2war.we2.storage-visual-protected-ingress-20261120",
+      "owner": "aoe2war-web",
+      "path": "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-20",
+      "sensitivity": "internal",
+      "sha256": "a45ddc319b26ef5390f2d8a36eb8febac8d208c9f5df8022e321d980d0386b20",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "hel1"
+      ],
+      "title": "Protected Storage OS ingress admission for deployed Explorer",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3526,8 +3550,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/storage-os-level2-owner-learning-20261120",
-    "commit": "9f6214a45c4af454c79196a9bdea3ca9a2ee70e6"
+    "branch": "we2/storage-protected-ingress-20261120",
+    "commit": "3a66cf9eec49c0f71756eacde5fafe29ac07c319"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

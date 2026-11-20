@@ -140,7 +140,33 @@ EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
 } | EXACT_WE2_FACTORY_DOCS_REVIEW
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
+# WE2 root-security source review: one branch/base with immutable candidate
+# guard/proxy bytes. This is *not* a scripts/ or WE2 wildcard.
+EXACT_WE2_STORAGE_BRANCH = "we2/storage-protected-ingress-20261120"
+EXACT_WE2_STORAGE_BASE = "815d66ef94900d29bb50b7241dc47927a4343955"
+EXACT_WE2_STORAGE_PINS = {
+    "scripts/r25_b_guard_production_v1.cjs":
+      "8e066dbb57c935f18b9198a40290e5efa717b6f21c892fcc077400d986ff4930",
+    "docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf":
+      "463d7b269418d28663171a7b91d923146ca807f955ba5e217e9dbc47eefeaf10",
+    "docs/release/artifacts/aoe2war_storage_visual_web_store_v1.conf":
+      "7ee7e39536841eff01bcf85eccb9d28edcf7411532e1a5e8952edabdc2cf5705",
+    "tests/test_r25_production_node_guard.py":
+      "034758434e1c51b2f1165bac9f4116317d332f8b139c48c48899c8a485c16b44",
+    "tests/test_we2_storage_visual_exact_ingress.py":
+      "7d4f5daa73cdd2e73e20b9745bd9c01cf59f2e2628f06aea453a59e0dbed18b3",
+    "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md":
+      "a45ddc319b26ef5390f2d8a36eb8febac8d208c9f5df8022e321d980d0386b20",
+}
+EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    # DocsV2 implementation index is a source-owned *documentation-only*
+    # commit after the exact executable implementation baseline.
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -180,6 +206,35 @@ def authorize_source(raw: str) -> str:
     return str(path)
 
 
+def exact_we2_storage_blob(checkout: Path, raw: str) -> str:
+    """One immutable reviewed file, held to base/branch/source elsewhere."""
+    expected = EXACT_WE2_STORAGE_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_STORAGE_UNPINNED_FILE")
+    path = checkout
+    for component in relative_path(raw).parts:
+        path = path / component
+        if path.is_symlink():
+            raise BoundaryHold("WE2_STORAGE_SYMLINK_ANCESTOR")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+        st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000 or
+        stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("WE2_STORAGE_SINGLE_REGULAR_FILE")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) != (
+            st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_STORAGE_FILE_CHANGED")
+        blob = os.read(fd, 100001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("WE2_STORAGE_EXACT_SHA_MISMATCH")
+    return raw
+
+
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
@@ -208,6 +263,10 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_KINGDOM_MENU_SHA256):
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_EXACT_SHA_MISMATCH")
         return raw
+    if raw == EXACT_REVIEWED_B_EMBER_GUARD and base == EXACT_WE2_STORAGE_BASE:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_STORAGE_BRANCH:
+            raise BoundaryHold("WE2_STORAGE_WRONG_BRANCH")
+        return exact_we2_storage_blob(checkout, raw)
     if raw == EXACT_REVIEWED_B_EMBER_GUARD:
         if base != EXACT_REVIEWED_B_EMBER_BASE:
             raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
@@ -518,6 +577,20 @@ def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
         if len(raw)!=st.st_size or hashlib.sha256(raw).hexdigest()!=expected:
             raise BoundaryHold("WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT")
 
+def check_exact_we2_storage_source(checkout: Path, repo: str, branch: str,
+                                   base: str, changes: list[str]) -> None:
+    """No blanket branch, arbitrary changed script or later source revision."""
+    if branch != EXACT_WE2_STORAGE_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_STORAGE_BASE:
+        raise BoundaryHold("WE2_STORAGE_EXACT_BASE_OR_REPO")
+    if len(changes) != len(EXACT_WE2_STORAGE_CHANGED) or (
+        frozenset(changes) != EXACT_WE2_STORAGE_CHANGED):
+        raise BoundaryHold("WE2_STORAGE_EXACT_CHANGED_SET")
+    for name in EXACT_WE2_STORAGE_PINS:
+        exact_we2_storage_blob(checkout, name)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -533,6 +606,8 @@ def main() -> int:
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
         receipt["changed_files"] = changed_source(checkout, base)
         check_exact_we2_factory_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_storage_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
