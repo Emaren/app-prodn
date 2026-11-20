@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0da05b668184343f1bd3d1dabeb4450c43f5b3b9f80252173e7e0563041bb4b7",
+      "sha256": "6b3185a7c4f22f267b346809e78ecde917fa598b1b83147f8cde9b9377d6c824",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3526,8 +3526,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/lobby-main-room-ui-20261120",
-    "commit": "048b1186ce3ab1686a2b88299973cf91d3b5e72d"
+    "branch": "session-c/appside-combined-lobby-terminal-20261120",
+    "commit": "6781eb3936e3570c3a546025f6fd9268e7f409ca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
