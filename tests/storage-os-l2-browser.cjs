@@ -79,6 +79,10 @@ async function main(){
        assert.equal(await cards.getByRole("button",{name}).count(),1,"missing storage drive "+name);
      }
      await explorer.getByText(/No current signed hog inventory for this drive/).waitFor({state:"visible",timeout:15000});
+     assert.equal(await explorer.getByText("Category inventory unknown",{exact:true}).count(),3);
+     await explorer.getByRole("button",{name:/HEL1 · Data volume/}).click();
+     await explorer.getByText("HEL1 / Data volume 105319120",{exact:true}).first().waitFor({state:"visible"});
+     assert.equal(await explorer.getByText(/UUID.verified/i).count(),0);
      assert.equal(await explorer.getByRole("button",{name:/Record classification/i}).isDisabled(),true);
      assert.equal(await explorer.getByText(/Individual file coverage: NOT ADMITTED/).count(),1);
      assert.equal(await explorer.getByText(/No automated deletes/).count(),1);
