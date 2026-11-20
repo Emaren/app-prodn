@@ -13,6 +13,14 @@ const STEAM = "steamcommunity.com";
 // The approved appearance writer is a separate nonfinancial SCRAM-only
 // daemon on one group-gated Unix socket. Never accept an arbitrary socket path.
 const APPEARANCE_SOCKET = "/run/aoe2war-appearance-writer/appearance.sock";
+// Separate, source-pinned nonfinancial signed-session text writer.
+const SOCIAL_SOCKET = "/run/aoe2war-social-writer/social.sock";
+const SOCIAL_ROUTES = new Set([
+  "/api/social/clan-text", "/api/contact-emaren", "/api/lobby/chat",
+]);
+const SOCIAL_SERVICE_PATHS = new Set([
+  "/v1/clan/text", "/v1/direct/text", "/v1/lobby/text",
+]);
 const APPEARANCE_ROUTES = new Set([
   "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
 ]);
@@ -32,6 +40,22 @@ function approvedAppearanceRequest(opts) {
     APPEARANCE_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
     opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
     !opts.protocol && !opts.auth && approvedAppearanceHeaders(opts.headers);
+}
+function approvedSocialHeaders(h) {
+  return h && typeof h === "object" && Object.keys(h).length === 4 &&
+    h["Content-Type"] === "application/json" && h.Connection === "close" &&
+    Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
+    h["Content-Length"] <= 4096 &&
+    typeof h["x-social-signed-session"] === "string" &&
+    h["x-social-signed-session"].length >= 32 &&
+    h["x-social-signed-session"].length <= 4096;
+}
+function approvedSocialRequest(opts) {
+  if (!opts || typeof opts !== "object") return false;
+  return opts.socketPath === SOCIAL_SOCKET &&
+    SOCIAL_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
+    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
+    !opts.protocol && !opts.auth && approvedSocialHeaders(opts.headers);
 }
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
@@ -152,8 +176,16 @@ net.Socket.prototype.connect = function (...args) {
     opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
     !opts.protocol && !opts.auth && opts.method === "POST" &&
     opts.timeout === 2300 && approvedAppearanceHeaders(opts.headers);
+  const nodeSocialConnect = opts.path === SOCIAL_SOCKET &&
+    opts.socketPath === SOCIAL_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === "POST" &&
+    opts.timeout === 2300 && approvedSocialHeaders(opts.headers);
   const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
-    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect;
+    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect ||
+    nodeSocialConnect;
+  // Deliberately do not permit a bare {path:SOCIAL_SOCKET} connect:
+  // the new Social lane requires the exact signed-session Node22 envelope.
   need(exactWriterSocket || (!opts.path &&
     ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
      (host === STEAM && port === 443 && this instanceof tls.TLSSocket))),
@@ -180,10 +212,11 @@ for (const api of [http, https]) {
         hostname: new URL(first).hostname, port: new URL(first).port,
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
     const exactAppearance = api === http && approvedAppearanceRequest(opts);
-    need(opts && (!opts.socketPath || exactAppearance) &&
+    const exactSocial = api === http && approvedSocialRequest(opts);
+    need(opts && (!opts.socketPath || exactAppearance || exactSocial) &&
       !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
-    if (exactAppearance) return original.apply(this, args);
+    if (exactAppearance || exactSocial) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -222,10 +255,14 @@ http.Server.prototype.emit = function (event, ...args) {
       APPEARANCE_ROUTES.has(path) &&
       typeof request.headers?.["content-type"] === "string" &&
       request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
+    const socialWrite = request.method === "POST" &&
+      SOCIAL_ROUTES.has(path) &&
+      typeof request.headers?.["content-type"] === "string" &&
+      request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
-      appearanceWrite;
+      appearanceWrite || socialWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;
