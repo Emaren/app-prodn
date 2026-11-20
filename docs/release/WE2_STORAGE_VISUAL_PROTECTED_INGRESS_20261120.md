@@ -11,6 +11,20 @@ reviewed_at: 2026-11-20
 
 # WE2 Storage OS — one scoped protected ingress, no website rebuild
 
+## Exact live R25 Social guard preimage preserved
+
+The real HEL1 installed R25 source has SHA-256
+`e3ba88ce8fb4e699e3c8509e9024bee2c0d8ceaff57b5c0038b15e767aad201f`,
+matching app-prodn PR #1424 source
+`3c27ebe7eee7d92d6892857a687fd81bb3f8754c`. The earlier draft
+accidentally used the *older* main branch guard, which would have removed
+genuine Clan/Direct/Lobby Chat POST routes and the protected Social writer
+socket. This corrected WE2 candidate starts with **all exact live PR #1424
+guard bytes** and adds only a narrow bounded `storage_visual` request branch.
+The Social socket, its signed-session header policy, existing appearance
+and auth flows, and prohibited egress are unchanged. Tests assert positive
+real Social routes and negative unauthorized paths after the new branch.
+
 The public Next.js source `dbceb5df20f98ff783a2af1a83d79cf17abae035`,
 BUILD_ID `RHE-s_XmtI5heC0JuZP7r` and T10 seal are **unchanged**.
 This PR does not grant installation or permit a new Next.js runtime.

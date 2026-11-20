@@ -146,15 +146,15 @@ EXACT_WE2_STORAGE_BRANCH = "we2/storage-protected-ingress-20261120"
 EXACT_WE2_STORAGE_BASE = "815d66ef94900d29bb50b7241dc47927a4343955"
 EXACT_WE2_STORAGE_PINS = {
     "scripts/r25_b_guard_production_v1.cjs":
-      "e4e9a477105eabfe6c32b6f8edbf24d6c9d58f0286f12556c6aa3d40bf85834a",
+      "4dc72a3b15675c480d52c7d1644c6786ffe82dea2b8708bb8b213bdc3e4e1e26",
     "docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf":
       "463d7b269418d28663171a7b91d923146ca807f955ba5e217e9dbc47eefeaf10",
     "tests/test_r25_production_node_guard.py":
-      "0ac8e2e7cc406b1f9d8595c46e7509dc34358ce25bb1caa6f413efdf5c1cc7c8",
+      "f1c2d19a2e41ce352271133edceb39cb10ac689b1ad42552a28783c994ebeab9",
     "tests/test_we2_storage_visual_exact_ingress.py":
       "72013ff895b25562c856c1bacc48946337331a0a1b26851a33e6dfdfd53b6e22",
     "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md":
-      "883cca4f29d002d79963237034b26471f486af734e2aacf0b9312b23a90902ab",
+      "6343c400ec07347f621e5adbec09a8e7e673cc51a081630a1710a4cc13ca08fd",
 }
 EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
     "scripts/product_boundary_guard.py",

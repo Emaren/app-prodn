@@ -90,6 +90,37 @@ for(const changes of [
  assert.equal(new http.Server().emit('request',{...storageOnly,...changes},response),true);
  assert.equal(status,405);
 }
+// The live #1424 Social guard MUST survive the scoped Storage addition.
+for (const path of ['/api/social/clan-text','/api/contact-emaren','/api/lobby/chat']) {
+ assert.equal(new http.Server().emit('request',{
+  method:'POST',url:path,headers:{'content-type':'application/json'}
+ },response),'passed');
+ for (const bad of [
+  {method:'POST',url:path+'?op=complete',headers:{'content-type':'text/plain'}},
+  {method:'POST',url:path+'/unapproved',headers:{'content-type':'application/json'}},
+  {method:'PUT',url:path,headers:{'content-type':'application/json'}}
+ ]) {
+  assert.equal(new http.Server().emit('request',bad,response),true);
+  assert.equal(status,405);
+ }
+}
+const socialSocket='/run/aoe2war-social-writer/social.sock';
+const socialHeaders={
+ 'Content-Type':'application/json','Content-Length':23,
+ 'x-social-signed-session':'S'.repeat(64),'Connection':'close'
+};
+assert.equal(typeof http.request({
+ socketPath:socialSocket,path:'/v1/lobby/text',method:'POST',
+ timeout:2300,headers:socialHeaders
+}).end,'function');
+assert.equal(typeof http.request({
+ socketPath:socialSocket,path:'/v1/direct/text',method:'POST',
+ timeout:2300,headers:socialHeaders
+}).end,'function');
+assert.throws(()=>http.request({
+ socketPath:socialSocket,path:'/v1/custody',method:'POST',
+ timeout:2300,headers:socialHeaders
+}),/AOE2WAR_PRODUCTION_HOLD/);
 // Owner teaching POST requires separate independent tip-anchor admission.
 assert.equal(new http.Server().emit('request',{
  method:'POST',url:'/api/admin/storage-os/teaching',
