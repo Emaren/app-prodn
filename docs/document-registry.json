@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5eba750e04fc6836ba8fafaed1148c50e4951d05402d0ea6ccb351cd482710d2",
+      "sha256": "47106acf828f49fca160d950633cce3b1ae0fd8903745c8d5daf692ab0cff735",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -749,9 +749,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-11-05",
+      "reviewed_at": "2026-11-20",
       "sensitivity": "internal",
-      "sha256": "87bd030d9408f1097cd59fa8fddbce80323042c9042f7b5dbf3347c3245b2f1f",
+      "sha256": "37a1caf0ce38239f902a93de0d9213a70b456ecec84f20a67e281878ff8264c0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1145,9 +1145,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-11-20",
       "sensitivity": "internal",
-      "sha256": "4a55afd67c99fc069845db74a053cb9a511c26bec46cd69de17ea382c3557da2",
+      "sha256": "6a9c2dafabe9d1ba82ce4ed606b6b7909bfa429df9579305794a6313c248cbb6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2553,9 +2553,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-20",
+      "reviewed_at": "2026-11-20",
       "sensitivity": "internal",
-      "sha256": "66b99b7a2f6eb6205a9a8363fa5c224ce595e9492c4561857873c047a924dbba",
+      "sha256": "49f04dab46d2d5b68e92c539f7b5be12455d9507af760061b3d4b69cea44a61a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3202,17 +3202,17 @@
       "id": "aoe2war.app-prodn.session-b-hel1-absent-v22-signing-approval-20261112",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-12",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-20",
       "sensitivity": "restricted",
-      "sha256": "3bda1b24cfa0adfc31fa68fccb3337c386ff62ef86393ac0d51c5880e3f33da1",
+      "sha256": "d2ebc29e6f8a4f51ce685c368bfa6c22695f240d944cd4dab885a9c1d7c27312",
       "source_of_truth": "git",
-      "status": "draft",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "Session B HEL1 real absent-preimage recovery and owner-root signer approval packet",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3460,8 +3460,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-library-projections-20261119",
-    "commit": "8c81c4e1bd84a554e47b5a2a17039907947419b0"
+    "branch": "we2/chat-social-static-guard-v1-20261120",
+    "commit": "729febcd5f2ec7baed60768554aabff070e9ba73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
