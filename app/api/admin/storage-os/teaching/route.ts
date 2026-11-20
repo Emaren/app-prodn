@@ -1,12 +1,13 @@
 import {NextRequest,NextResponse} from "next/server";
 import {requireAdmin} from "@/lib/adminSession";
 import {readPrivateStorageVisual} from "@/lib/storageVisualPrivate";
-import {appendTeachingEvent,observedHogFingerprint,readTeachingEvents} from "@/lib/storageHogTeachingLedger";
+import {appendTeachingEvent,observedHogFingerprint,readTeachingEvents,teachingOwnerAccess} from "@/lib/storageHogTeachingLedger";
 import {isTeachingLevel,isTeachingPlane,sourceMatchesRequest} from "@/lib/storageHogTeachingPolicy";
+import {teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
-const HEADERS={"Cache-Control":"private, no-store, max-age=0"};
+const HEADERS={"Cache-Control":"private, no-store, max-age=0","Vary":"Cookie"};
 const rejection=(code:number,detail:string)=>
   NextResponse.json({detail,authority:"NO_DELETE"}, {status:code,headers:HEADERS});
 
@@ -18,6 +19,7 @@ export async function GET(request:NextRequest){
     return NextResponse.json({
       schema:"aoe2war.storage-teaching-history.v1",
       events:await readTeachingEvents(),
+      ...teachingOwnerAccess(admin.user.uid),
       authority:"OWNER_FEEDBACK_ONLY_NO_DELETE",
     },{headers:HEADERS});
   }catch{return rejection(503,"TEACHING_LEDGER_NOT_ENROLLED_OR_UNAVAILABLE");}
@@ -27,6 +29,9 @@ export async function GET(request:NextRequest){
 export async function POST(request:NextRequest){
   const admin=await requireAdmin(request);
   if("error" in admin)return admin.error;
+  const owner=teachingOwnerAccess(admin.user.uid);
+  if(!owner.ownerBinding)return rejection(503,"TEACHING_OWNER_NOT_ENROLLED");
+  if(!owner.mayRecord)return rejection(403,"TEACHING_OWNER_REQUIRED");
   const origin=request.headers.get("origin");
   if(!origin||origin!==new URL(request.url).origin||
      request.headers.get("sec-fetch-site")==="cross-site")
@@ -66,10 +71,7 @@ export async function POST(request:NextRequest){
     const plane=visual.planes.find(p=>p.id===obj.plane);
     if(!plane||plane.status!=="RECEIPT"||plane.observedAt!==obj.observedAt)
       return rejection(409,"TEACHING_SOURCE_STALE");
-    const age=Date.now()-Date.parse(plane.observedAt);
-    // L2 asks for a fresh view; protection may be taught from the existing
-    // valid signed 36-hour envelope. Neither mode permits actual cleanup.
-    if(!Number.isFinite(age)||age< -60_000||age>(obj.level===2?3600_000:36*3600_000))
+    if(teachingSourceDeadline(plane.observedAt,obj.level)===null)
       return rejection(409,"TEACHING_SOURCE_EXPIRED");
     const hog=plane.hogs.find(h=>h.key===obj.category);
     if(!hog||!sourceMatchesRequest({
@@ -81,6 +83,7 @@ export async function POST(request:NextRequest){
       bytes:hog.grossBytes,level:hog.level,overlaps:hog.overlaps,
     });
     const event=await appendTeachingEvent({
+      ownerBinding:owner.ownerBinding,
       plane:plane.id,category:hog.key,sourceObservedAt:plane.observedAt,
       sourceFingerprint,grossBytes:hog.grossBytes,sourceFloor:hog.level,
       overlaps:hog.overlaps,requestedLevel:obj.level,
