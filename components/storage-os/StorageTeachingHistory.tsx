@@ -1,6 +1,7 @@
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
 import {CATEGORY_REVIEW_VERSION,categoryReviewEvidence,type TeachingPlane} from "@/lib/storageHogTeachingPolicy";
 import type {VisualHog} from "@/lib/storageVisualPrivate";
+import {recommendLevel2Category} from "@/lib/storageLevel2CandidateEngine";
 
 export default function StorageTeachingHistory({events,plane,item,observedAt,ownerBinding,now}:{
   events:TeachingEvent[]; plane:TeachingPlane; item:VisualHog;
@@ -10,6 +11,10 @@ export default function StorageTeachingHistory({events,plane,item,observedAt,own
   const review = categoryReviewEvidence(history, {
     plane,category:item.key,observedAt,sourceFloor:item.level,overlaps:item.overlaps,
   },ownerBinding,now);
+  const suggestion = recommendLevel2Category(events, {
+    plane, category: item.key, observedAt, sourceFloor: item.level,
+    overlaps: item.overlaps, sourceSigned: true,
+  }, ownerBinding, now);
   const findings = {
     PROTECTED:"The source level or an existing protection excludes this category from L2 suggestions.",
     EXPIRED:"A new signed observation is required for an L2 suggestion.",
@@ -19,6 +24,17 @@ export default function StorageTeachingHistory({events,plane,item,observedAt,own
   };
   return <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
     <h3 className="font-semibold text-slate-100">Review history for {item.label}</h3>
+    <div className="mt-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[.025] p-3 text-xs leading-5 text-slate-200">
+      <p className="font-semibold text-cyan-200">Level 2 recommendation · {suggestion.finding.replaceAll("_", " ")}</p>
+      <p className="mt-1">{suggestion.explanation}</p>
+      <p className="mt-2 text-slate-400">Policy {suggestion.policyVersion} · Confidence {suggestion.confidence}
+        {" · "}Prior owner examples {suggestion.exampleCount}
+        {" · "}Evidence expires {suggestion.validUntilUtc ?? "UNKNOWN"}</p>
+      <ul className="mt-2 list-inside list-disc text-amber-100">
+        {suggestion.exceptions.map(reason => <li key={reason}>{reason}</li>)}
+      </ul>
+      <p className="mt-2 font-bold text-amber-100">Category recommendation only. Exact item, physical reclaim and deletion authority: NOT ESTABLISHED.</p>
+    </div>
     <p className="mt-2 text-sm text-slate-300">{findings[review.finding]}</p>
     {review.finding === "REVIEW_SUGGESTED" && <p className="mt-2 text-xs text-slate-400">
       {CATEGORY_REVIEW_VERSION} · Category-level evidence. Review individual file identity, dependencies and restore evidence separately.
