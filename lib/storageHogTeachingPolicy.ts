@@ -1,9 +1,13 @@
+import type {TeachingEvent} from "./storageHogTeachingLedger.ts";
+import {teachingSourceDeadline} from "./storageSignedFreshness.ts";
+
 /**
  * Storage OS owner-teaching semantics. This module never produces a deletion permit.
  * Signed source policy sets a minimum protection level; owner may only strengthen it.
  * A requested L2 on an L3/L4 item is recorded as feedback, not a downgrade.
  */
 export const STORAGE_TEACHING_SCHEMA = "aoe2war.storage-owner-teaching.v1" as const;
+export const CATEGORY_REVIEW_VERSION = "category-review-v1" as const;
 export const TEACHING_LEVELS = [2, 3, 4, 5] as const;
 export type TeachingLevel = typeof TEACHING_LEVELS[number];
 export type ProtectionLevel = 1 | TeachingLevel;
@@ -43,4 +47,39 @@ export function sourceMatchesRequest(
     typeof requested.grossBytes==="number" && Number.isSafeInteger(requested.grossBytes) &&
     requested.grossBytes===observed.grossBytes &&
     requested.sourceFloor===observed.level && requested.overlaps===observed.overlaps;
+}
+
+type ReviewScope = {
+  plane:TeachingPlane; category:string; observedAt:string;
+  sourceFloor:ProtectionLevel; overlaps:boolean;
+};
+type ReviewFinding = "PROTECTED" | "ALREADY_REVIEWED" | "NEEDS_EXAMPLES" | "REVIEW_SUGGESTED" | "EXPIRED";
+
+/** The input ledger is in verified append order. Comparable past category
+ * observations can prioritize a manual review, never an individual file. */
+export function categoryReviewEvidence(events:readonly TeachingEvent[], scope:ReviewScope,
+  ownerBinding:string|null, now=Date.now()):{finding:ReviewFinding; examples:TeachingEvent[]} {
+  const history = events.filter(e => e.plane === scope.plane && e.category === scope.category);
+  if (scope.sourceFloor !== 2 || history.some(e => e.effectiveLevel === 5))
+    return {finding:"PROTECTED", examples:[]};
+  if (teachingSourceDeadline(scope.observedAt,2,now) === null)
+    return {finding:"EXPIRED", examples:[]};
+  const examples:TeachingEvent[] = [];
+  const observed = new Set<number>();
+  const current = Date.parse(scope.observedAt);
+  for (const event of history.reverse()) {
+    // Changed provenance, overlap, floor or owner intent ends the streak.
+    if (!ownerBinding || event.ownerBinding !== ownerBinding ||
+        event.reviewVersion !== CATEGORY_REVIEW_VERSION || event.sourceFloor !== scope.sourceFloor ||
+        event.overlaps !== scope.overlaps) break;
+    const at = Date.parse(event.sourceObservedAt);
+    if (at === current) return {finding:"ALREADY_REVIEWED", examples:[]};
+    if (!Number.isFinite(at) || at > current || event.effectiveLevel !== 2 ||
+        event.requestedLevel !== 2 || !event.note.trim()) break;
+    if (!observed.has(at)) {
+      examples.push(event);
+      observed.add(at);
+    }
+  }
+  return {finding:examples.length >= 2 ? "REVIEW_SUGGESTED" : "NEEDS_EXAMPLES", examples};
 }
