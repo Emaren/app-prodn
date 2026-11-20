@@ -75,6 +75,23 @@ for (const url of ['/api/admin/site-theme-campaign','/api/user/theme-campaign-ov
   assert.equal(status,405);
  }
 }
+// Exact Chat POST admission. No dynamic prefixes, content-type widening,
+ // cookie bypass, or financial/wallet POST authority.
+for (const url of ['/api/social/clan-text','/api/contact-emaren','/api/lobby/chat']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+   headers:{'content-type':'application/json'}},response),'passed');
+ for (const bad of [
+  {method:'POST',url,headers:{'content-type':'text/plain'}},
+  {method:'PATCH',url,headers:{'content-type':'application/json'}},
+  {method:'DELETE',url,headers:{'content-type':'application/json'}},
+ ]) { assert.equal(new http.Server().emit('request',bad,response),true); assert.equal(status,405); }
+}
+for (const url of ['/api/social/clan-text/extra','/api/contact-emaren/other',
+ '/api/lobby/chat/extra','/api/bets','/api/wolo/transfer']) {
+ assert.equal(new http.Server().emit('request',{method:'POST',url,
+   headers:{'content-type':'application/json'}},response),true);
+ assert.equal(status,405);
+}
 for (const url of ['/api/admin/site-theme-campaign/extra','/api/bets','/api/wolo/transfer',
  '/api/admin/ai-agents','/api/user/theme-campaign-override/extra']) {
  assert.equal(new http.Server().emit('request',{method:'POST',url,
@@ -115,6 +132,39 @@ for (const changes of [
 ]) {
  assert.throws(()=>http.request({...valid,...changes}),/AOE2WAR_PRODUCTION_HOLD/);
 }
+// New Social text writer is NOT a general-purpose Unix transport: only the
+// Node22 internal array shape with exact signed-session headers is admitted.
+const social='/run/aoe2war-social-writer/social.sock';
+const socialValid={
+ socketPath:social,path:'/v1/clan/text',method:'POST',timeout:2300,
+ headers:{'Content-Type':'application/json','Content-Length':35,
+  'x-social-signed-session':'S'.repeat(64),'Connection':'close'}
+};
+assert.equal(typeof http.request(socialValid).end,'function');
+for(const path of ['/v1/direct/text','/v1/lobby/text'])
+ assert.equal(typeof http.request({...socialValid,path}).end,'function');
+assert.throws(()=>new net.Socket().connect({path:social}),/NODE_EGRESS_DENIED/);
+const node22Social={...socialValid,path:social,host:'localhost',port:80,
+ keepAlive:true,scheduling:'lifo',noDelay:true};
+assert.equal(new net.Socket().connect([node22Social,()=>{}]),'connected');
+for(const change of [
+ {path:'/tmp/attacker'}, {socketPath:'/tmp/attacker'},
+ {method:'GET'},{host:'evil.example'},{port:8092},
+ {timeout:0},{headers:{...socialValid.headers,'x-extra':'bypass'}},
+ {headers:{...socialValid.headers,'x-social-signed-session':''}},
+ {headers:{...socialValid.headers,'Content-Length':4097}}
+]) assert.throws(()=>new net.Socket().connect([{...node22Social,...change},()=>{}]),/NODE_EGRESS_DENIED/);
+for(const change of [
+ {path:'/v1/clan/text?x=1'},{path:'/v1/wallet/transfer'},
+ {socketPath:'/tmp/evil'}, {method:'GET'}, {timeout:3000},
+ {port:5432},{hostname:'127.0.0.1'},{agent:{}},{auth:'foo:bar'},
+ {headers:{...socialValid.headers,'x-extra':'bypass'}},
+ {headers:{...socialValid.headers,'Content-Length':0}},
+ {headers:{...socialValid.headers,'Content-Length':4097}},
+ {headers:{...socialValid.headers,'x-social-signed-session':''}},
+ {headers:{...socialValid.headers,'Content-Type':'text/plain'}},
+]) assert.throws(()=>http.request({...socialValid,...change}),/AOE2WAR_PRODUCTION_HOLD/);
+assert.throws(()=>https.request(socialValid),/CUSTOM_NETWORK_AGENT_DENIED/);
 for (const candidate of [
  {path:'/run/postgresql/.s.PGSQL.5432'}, {path:'/tmp/other'},
  {path:socket,port:5432},{path:socket,host:'localhost'},
@@ -133,5 +183,56 @@ console.log('PASS:actual_preloader_transport_and_http_boundaries');
         result=subprocess.run(["node","-e",script,str(ROOT/"scripts/r25_b_guard_production_v1.cjs")],capture_output=True,text=True,timeout=15)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn("PASS:actual_preloader",result.stdout)
+
+
+    def test_native_node22_social_socket_envelope(self):
+        """Prove native Node 22 HTTP AF_UNIX options, not only VM transport doubles."""
+        script = r'''
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),http=require('node:http'),net=require('node:net'),os=require('node:os'),path=require('node:path');
+if(process.versions.node.split('.')[0]!=='22'){
+ console.log('SKIP_NATIVE_NODE22_ONLY');process.exit(0);
+}
+const socket=path.join(os.tmpdir(),'aoe2-social-node22-'+process.pid+'.sock');
+const expected={'Content-Type':'application/json','Content-Length':7,
+ 'x-social-signed-session':'S'.repeat(64),'Connection':'close'};
+const original=net.Socket.prototype.connect;let witnessed=0;
+net.Socket.prototype.connect=function(...args){
+ const opts=Array.isArray(args[0])?args[0][0]:args[0];
+ if(opts?.path===socket){
+  witnessed++;
+  assert.equal(Array.isArray(args[0]),true);
+  assert.equal(opts.socketPath,socket);
+  assert.equal(opts.host,'localhost');
+  assert.equal(opts.port,80);
+  assert.equal(opts.method,'POST');
+  assert.equal(opts.timeout,2300);
+  assert.deepEqual(opts.headers,expected);
+ }
+ return original.apply(this,args);
+};
+const server=http.createServer((req,res)=>{
+ assert.equal(req.url,'/v1/lobby/text');
+ req.resume();req.on('end',()=>{res.writeHead(201);res.end('{}')});
+});
+server.listen(socket,()=>{
+ const req=http.request({socketPath:socket,path:'/v1/lobby/text',
+  method:'POST',timeout:2300,headers:expected},res=>{
+  res.resume();res.on('end',()=>{
+   assert.equal(res.statusCode,201);
+   assert.equal(witnessed,1);
+   server.close(()=>{fs.rmSync(socket,{force:true});console.log('PASS_NATIVE_NODE22_SOCIAL_SOCKET')});
+  });
+ });
+ req.on('error',err=>{console.error(err);process.exitCode=2;server.close(()=>fs.rmSync(socket,{force:true}))});
+ req.end('{"x":1}');
+});
+setTimeout(()=>{if(witnessed!==1){process.exitCode=3;server.close(()=>fs.rmSync(socket,{force:true}))}},3500).unref();
+'''
+        result = subprocess.run(["node","-e",script],capture_output=True,text=True,timeout=12)
+        self.assertEqual(result.returncode,0,result.stderr)
+        if "SKIP_NATIVE_NODE22_ONLY" in result.stdout:
+            self.skipTest("Native Node 22 runtime required")
+        self.assertIn("PASS_NATIVE_NODE22_SOCIAL_SOCKET",result.stdout)
 
 if __name__ == '__main__': unittest.main()

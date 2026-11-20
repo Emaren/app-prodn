@@ -89,6 +89,11 @@ EXACT_REVIEWED_B_EMBER_BRANCH = "session-b/ember-november-polish-20261116"
 EXACT_REVIEWED_B_EMBER_BASE = "d36e9f98e44b0a4de438c5cc623706873c333ca5"
 EXACT_REVIEWED_B_EMBER_GUARD = "scripts/r25_b_guard_production_v1.cjs"
 EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ecd91985355e181f6f1"
+# Independent WE2 Chat guard v2: exactly one frozen branch, canonical base and
+# one source-reviewed SHA. Does not replace/expand the older Ember authority.
+EXACT_REVIEWED_WE2_CHAT_GUARD_BRANCH = "we2/chat-social-static-guard-v1-20261120"
+EXACT_REVIEWED_WE2_CHAT_GUARD_BASE = "be935a2aac6c86cd4417dff4d3c12306b30e33b1"
+EXACT_REVIEWED_WE2_CHAT_GUARD_SHA256 = "e3ba88ce8fb4e699e3c8509e9024bee2c0d8ceaff57b5c0038b15e767aad201f"
 
 # WE3 Q09/Q17 40-link PAPER menu: one exact immutable Chrome acceptance
 # source, only for the original reviewed #1415 branch and canonical base.
@@ -140,7 +145,7 @@ EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
 } | EXACT_WE2_FACTORY_DOCS_REVIEW
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/chat-social-static-guard-v1-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -209,8 +214,16 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_EXACT_SHA_MISMATCH")
         return raw
     if raw == EXACT_REVIEWED_B_EMBER_GUARD:
-        if base != EXACT_REVIEWED_B_EMBER_BASE:
-            raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
+        # New one-purpose reviewed Chat guard has a distinct immutable
+        # branch/base/hash. The prior Ember authorization remains untouched.
+        if os.environ.get("BOUNDARY_BRANCH") == EXACT_REVIEWED_WE2_CHAT_GUARD_BRANCH:
+            if base != EXACT_REVIEWED_WE2_CHAT_GUARD_BASE:
+                raise BoundaryHold("B_CHAT_GUARD_WRONG_BASE")
+            expected_guard_sha = EXACT_REVIEWED_WE2_CHAT_GUARD_SHA256
+        else:
+            if base != EXACT_REVIEWED_B_EMBER_BASE:
+                raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
+            expected_guard_sha = EXACT_REVIEWED_B_EMBER_SHA256
         path = checkout / "scripts" / "r25_b_guard_production_v1.cjs"
         if (checkout / "scripts").is_symlink():
             raise BoundaryHold("B_EMBER_GUARD_SYMLINK_ANCESTOR")
@@ -227,7 +240,7 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             blob = os.read(fd, 25001)
         finally:
             os.close(fd)
-        if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_B_EMBER_SHA256:
+        if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected_guard_sha:
             raise BoundaryHold("B_EMBER_GUARD_EXACT_SHA_MISMATCH")
         return raw
     if raw == EXACT_REVIEWED_DYNAMIC_ROUTE:
