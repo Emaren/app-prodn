@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "727428a7107396b86100a5b46032c86eb64cae08e1add417c48a875115fb9205",
+      "sha256": "7ce0d57d4862bf34ad6eeab060e0ab08cea594032dea38a067269f1b02f4a3c2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3470,7 +3470,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-20",
       "sensitivity": "internal",
-      "sha256": "06895bb1e6b32fe265f9669fa81654066776d4dd841efb92bbdbdf00ea96575c",
+      "sha256": "a45ddc319b26ef5390f2d8a36eb8febac8d208c9f5df8022e321d980d0386b20",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3551,7 +3551,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we2/storage-protected-ingress-20261120",
-    "commit": "31dba6ded71e05312684f9324c6a95188d3536ee"
+    "commit": "3a66cf9eec49c0f71756eacde5fafe29ac07c319"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/storage-protected-ingress-20261120` at `31dba6ded71e05312684f9324c6a95188d3536ee`
+Implementation baseline: `we2/storage-protected-ingress-20261120` at `3a66cf9eec49c0f71756eacde5fafe29ac07c319`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
