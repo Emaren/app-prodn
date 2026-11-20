@@ -150,7 +150,7 @@ async function AcademyAdvisors() {
             fill
             unoptimized
             sizes="(max-width: 1024px) 100vw, 58vw"
-            className="object-contain object-top opacity-90 transition duration-700 scale-[0.88] translate-y-6 origin-top group-hover:scale-[0.91]" data-academy-advisor-portrait="true"
+            className="object-contain object-top opacity-95 transition duration-700 scale-[0.88] translate-y-6 origin-top group-hover:scale-[0.91] [mask-image:linear-gradient(to_bottom,black_0%,black_70%,transparent_100%)]" data-academy-advisor-portrait="true"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,18,0.03),rgba(3,7,18,0.16)_38%,rgba(3,7,18,0.97)_88%),linear-gradient(90deg,rgba(3,7,18,0.48),transparent_62%)]" />
           <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">

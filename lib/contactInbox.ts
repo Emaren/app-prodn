@@ -25,6 +25,7 @@ import {
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import { CHAMPIONSHIP_BELT_MIRROR_NOTES } from "@/lib/trophies/beltHonorMirror";
 
 export type InboxCounterpart = {
@@ -1906,26 +1907,34 @@ export async function loadInboxPayload(
 
   let activeTargetUser: ViewerUser | null = null;
   let unavailableReason: string | null = null;
+  const noDirectReadSideEffects = usesNonfinancialProductionAuth();
 
   if (viewer.isAdmin) {
     activeTargetUser = await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid);
   } else {
-    const { ensureAiConciergeUser } = await import("@/lib/aiConcierge");
-    const aiConcierge = await ensureAiConciergeUser(prisma);
-    await getOrCreateConversationByUsers(prisma, viewer.id, aiConcierge.id);
-
-    if (options?.targetUid === AI_CONCIERGE_UID) {
-      activeTargetUser = {
-        id: aiConcierge.id,
-        uid: aiConcierge.uid,
-        isAdmin: false,
-        inGameName: aiConcierge.inGameName,
-        steamPersonaName: aiConcierge.steamPersonaName,
-      };
-    } else {
+    if (noDirectReadSideEffects) {
+      // R25 GET must never create a system account or a conversation.
       activeTargetUser =
         (await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid)) ||
         (await resolvePrimaryAdminContact(prisma));
+    } else {
+      const { ensureAiConciergeUser } = await import("@/lib/aiConcierge");
+      const aiConcierge = await ensureAiConciergeUser(prisma);
+      await getOrCreateConversationByUsers(prisma, viewer.id, aiConcierge.id);
+
+      if (options?.targetUid === AI_CONCIERGE_UID) {
+        activeTargetUser = {
+          id: aiConcierge.id,
+          uid: aiConcierge.uid,
+          isAdmin: false,
+          inGameName: aiConcierge.inGameName,
+          steamPersonaName: aiConcierge.steamPersonaName,
+        };
+      } else {
+        activeTargetUser =
+          (await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid)) ||
+          (await resolvePrimaryAdminContact(prisma));
+      }
     }
 
     if (!activeTargetUser) {
@@ -1933,7 +1942,8 @@ export async function loadInboxPayload(
     }
   }
 
-  if (!options?.summaryOnly && activeTargetUser && activeTargetUser.id !== viewer.id) {
+  if (!noDirectReadSideEffects && !options?.summaryOnly &&
+      activeTargetUser && activeTargetUser.id !== viewer.id) {
     await markConversationRead(prisma, viewer.id, activeTargetUser.id);
     await recordUserActivity(prisma, {
       userId: viewer.id,
@@ -1945,7 +1955,8 @@ export async function loadInboxPayload(
     });
   }
 
-  await collapseChallengeNoticeMessagesForViewer(prisma, viewer.id);
+  if (!noDirectReadSideEffects)
+    await collapseChallengeNoticeMessagesForViewer(prisma, viewer.id);
 
   const summaries = await loadConversationSummaries(prisma, viewer.id);
   const totalUnreadCount = summaries.reduce((sum, summary) => sum + summary.unreadCount, 0);
@@ -1964,7 +1975,7 @@ export async function loadInboxPayload(
   }
 
   const activeChallenges =
-    !options?.summaryOnly &&
+    !noDirectReadSideEffects && !options?.summaryOnly &&
     activeTargetUser &&
     activeTargetUser.id !== viewer.id &&
     activeTargetUser.uid !== AI_CONCIERGE_UID
