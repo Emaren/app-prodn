@@ -61,6 +61,8 @@ probe={}
 for key,path,k in [
  ("root","/",None),("lobby","/lobby",None),
  ("archive","/api/game_stats?archive=1&limit=3","matches"),
+ ("lobbyRecent","/api/lobby/recent-matches?limit=12","matches"),
+ ("lobbySnapshot","/api/lobby","recentMatches"),
  ("lobbyChat","/api/lobby/chat?limit=3","messages"),
  ("libraryGames","/api/library/games?limit=3","items"),
  ("traffic","/api/traffic/public","points"),
@@ -71,6 +73,10 @@ for key,path,k in [
     if key=="archive" and d is not None:
         info["reportedTotal"]=d.get("total") or d.get("count")
         info["sampleBattleId"]=(d.get("matches") or [{}])[0].get("id")
+    if key in ("lobbyRecent","lobbySnapshot") and d is not None:
+        values=d.get("matches" if key=="lobbyRecent" else "recentMatches") or []
+        info["sampleBattleId"]=values[0].get("id") if values and isinstance(values[0],dict) else None
+        info["truthFlag"]=d.get("ok") if key=="lobbyRecent" else "snapshot"
     if key=="libraryGames" and d is not None:info["reportedTotal"]=d.get("total")
     if key=="traffic" and d is not None:
         info["latestDate"]=(d.get("points") or [{}])[-1].get("date")
@@ -114,9 +120,13 @@ def main():
     a.add_argument("--expect-source",required=True)
     a.add_argument("--expect-build",required=True)
     a.add_argument("--phase",choices=("pre","activate","rollback","reactivate","audit"),default="audit")
-    a.add_argument("--profile",choices=("lobby","player"),default="player")
+    a.add_argument("--profile",choices=("baseline","lobby","player","rollback"),default="player")
     a.add_argument("--out-dir",default=str(Path.home()/".aoe2war-product-releases"/"reconciliation-v1"))
     args=a.parse_args()
+    if args.profile=="rollback" and args.phase!="rollback":
+        a.error("rollback profile is only valid with rollback phase")
+    if args.profile=="baseline" and args.phase not in ("pre","audit"):
+        a.error("baseline cannot certify activated player source")
     assert re.fullmatch(r"[0-9a-f]{40}",args.expect_source)
     assert re.fullmatch(r"[A-Za-z0-9_-]{8,64}",args.expect_build)
     command=["/usr/bin/ssh","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8","hel1",
@@ -133,8 +143,23 @@ def main():
     root=h.get("root",{})
     need(wd.rstrip("/").endswith("/aoe2war-web-prod-"+args.expect_source[:12]),"deployed_source",checks,wd)
     need(root.get("http")==200 and root.get("buildHeader")==args.expect_build,"deployed_build",checks,root.get("buildHeader"))
-    need(h.get("archive",{}).get("http")==200 and (h.get("archive",{}).get("listCount") or 0)>0,
-         "real_nonempty_recent_battles",checks,h.get("archive",{}).get("reportedTotal"))
+    archive=h.get("archive",{})
+    recent=h.get("lobbyRecent",{})
+    snapshot=h.get("lobbySnapshot",{})
+    need(archive.get("http")==200 and (archive.get("listCount") or 0)>0
+         and (archive.get("reportedTotal") or 0)>0,
+         "real_nonempty_archive",checks,archive.get("reportedTotal"))
+    # The tile's rendered data source MUST be independently nonempty when
+    # the canonical public archive has thousands of fresh real battles.
+    # A successful HTTP 200 with [] is a hard fail, not "no games."
+    need(recent.get("http")==200 and recent.get("truthFlag") is True
+         and (recent.get("listCount") or 0)>0,
+         "lobby_recent_matches_not_false_empty",checks,
+         {"http":recent.get("http"),"count":recent.get("listCount"),
+          "archiveTotal":archive.get("reportedTotal"),"sampleId":recent.get("sampleBattleId")})
+    need(snapshot.get("http")==200 and (snapshot.get("listCount") or 0)>0,
+         "lobby_snapshot_recent_matches_not_false_empty",checks,
+         {"http":snapshot.get("http"),"count":snapshot.get("listCount")})
     need(h.get("libraryGames",{}).get("http")==200 and (h.get("libraryGames",{}).get("listCount") or 0)>0,
          "library_data_nonempty",checks,h.get("libraryGames",{}).get("reportedTotal"))
     need(h.get("lobbyChat",{}).get("http")==200,"lobby_chat_no_42501",checks,h.get("lobbyChat",{}).get("http"))
@@ -150,7 +175,12 @@ def main():
     need(all(pts.get(str(x)) is True for x in (3030,3032,3033,9447)) and
          all(pts.get(str(x)) is False for x in (8092,8093,8094,8095)),"runtime_ports_and_finance_isolation",checks,pts)
     need(actual.get("units",{}).get("aoe2hdbets-web-prod")=="active","single_live_web_service",checks,actual.get("units"))
-    need((actual.get("rootAvailableBytes") or 0)>=12*1024**3,"factory_root_headroom_12gib",checks,actual.get("rootAvailableBytes"))
+    # A new stage needs extraction headroom. After activation or rollback,
+    # requiring another complete 12GiB staging budget would reject a healthy
+    # already-installed runtime; keep a separate running floor instead.
+    min_root=(12 if args.phase=="pre" else 2)*1024**3
+    need((actual.get("rootAvailableBytes") or 0)>=min_root,"root_headroom_for_phase",checks,
+         {"availableBytes":actual.get("rootAvailableBytes"),"minimumBytes":min_root})
     traffic=h.get("traffic",{})
     need(traffic.get("http")==200 and (traffic.get("listCount") or 0)>0 and
          actual.get("units",{}).get("traffic-v2-forward-ledger-aoe2hdbets.timer")=="active",
@@ -168,18 +198,33 @@ def main():
              "Requires WE3 two genuine authenticated Chrome sessions and DB readback")
     # Traffic freshness remains visible as a HOLD, but is not allowed to
     # silently prevent a separately qualified, nonfinancial Lobby read repair.
-    lobby_required={"deployed_source","deployed_build","real_nonempty_recent_battles",
+    lobby_required={"deployed_source","deployed_build","real_nonempty_archive",
+       "lobby_recent_matches_not_false_empty",
+       "lobby_snapshot_recent_matches_not_false_empty",
        "library_data_nonempty","lobby_chat_no_42501","critical_lobby_image_http",
        "anonymous_auth_denied","runtime_ports_and_finance_isolation",
-       "single_live_web_service","factory_root_headroom_12gib"}
-    lobby_ok=all(x["state"]=="PASS" for x in checks if x["name"] in lobby_required)
+       "single_live_web_service","root_headroom_for_phase"}
+    base_required={"deployed_source","deployed_build","library_data_nonempty",
+                   "anonymous_auth_denied","runtime_ports_and_finance_isolation",
+                   "single_live_web_service","root_headroom_for_phase"}
+    check_by_name={x["name"]:x["state"] for x in checks}
+    def passed(required):
+        return all(check_by_name.get(name)=="PASS" for name in required)
+    lobby_ok=passed(lobby_required)
+    rollback_ok=passed(base_required)
+    baseline_ok=passed(base_required | {"real_nonempty_archive"})
     player_ok=all(x["state"]=="PASS" for x in checks) and args.profile=="player"
+    verdicts={"baseline":"PASS" if baseline_ok else "HOLD",
+              "lobby":"PASS" if lobby_ok else "HOLD",
+              "rollback":"PASS" if rollback_ok else "HOLD",
+              "player":"PASS" if player_ok else "HOLD"}
     result={"schema":"aoe2war.we2.production-reconciliation.v1","at":datetime.now(timezone.utc).isoformat(),
             "expected":{"sourceSha":args.expect_source,"buildId":args.expect_build,
                         "phase":args.phase,"profile":args.profile},
             "observed":actual,"checks":checks,
             "lobbyAcceptance":"PASS" if lobby_ok else "HOLD",
             "playerAcceptance":"PASS" if player_ok else "HOLD",
+            "acceptance":verdicts[args.profile],
             "scope":"M1 nonroot read-only HEL1 over existing SSH, no DB credential/cookie export"}
     raw=canon(result)
     digest=hashlib.sha256(raw).hexdigest()
@@ -195,10 +240,12 @@ def main():
         f.write("Phase: "+args.phase+" · Profile: "+args.profile+"\n\n")
         f.write("Expected: "+args.expect_source+" / "+args.expect_build+"\n\n")
         for row in checks:f.write("- **"+row["state"]+"** "+row["name"]+": "+str(row["detail"])+"\n")
-        f.write("\nAcceptance: **"+result["playerAcceptance"]+"**\n")
+        f.write("\nProfile acceptance: **"+result["acceptance"]+"**\n")
+        f.write("Lobby acceptance: **"+result["lobbyAcceptance"]+"**\n")
+        f.write("Full player acceptance: **"+result["playerAcceptance"]+"**\n")
         f.write("JSON SHA256: "+digest+"\n")
         f.flush();os.fsync(f.fileno())
-    gate=result["lobbyAcceptance"] if args.profile=="lobby" else result["playerAcceptance"]
+    gate=result["acceptance"]
     print(json.dumps({"status":gate,"lobbyAcceptance":result["lobbyAcceptance"],
                       "playerAcceptance":result["playerAcceptance"],"json":str(jsonpath),
                       "report":str(mdpath),"sha256":digest,

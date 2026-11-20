@@ -1,0 +1,142 @@
+"""Factory V1 reconciliation negative contracts. All fixtures synthetic/offline.
+
+Production truth requires separate live HEL1 observations and actual Chrome sessions.
+"""
+import contextlib
+import copy
+import importlib.util
+import io
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+SOURCE=Path(__file__).resolve().parents[1]/"scripts/aoe2_production_reconciliation_gate_v1.py"
+spec=importlib.util.spec_from_file_location("aoe2_prod_reconcile",SOURCE)
+m=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+SRC="5339a981acbf15ea8d3c4393cb1fc75bc300ea45"
+BUILD="sn6eybJdBu7mluOQByc4M"
+
+def fixture():
+    http={
+        "root":{"http":200,"buildHeader":BUILD},
+        "lobby":{"http":200,
+          "criticalImage":{"http":200,"contentType":"image/webp","bytesSampled":4096},
+          "portraitSamples":[{"http":200,"contentType":"image/webp"}]},
+        "archive":{"http":200,"listCount":3,"reportedTotal":6917,"sampleBattleId":64362},
+        "lobbyRecent":{"http":200,"listCount":12,"truthFlag":True,"sampleBattleId":64362},
+        "lobbySnapshot":{"http":200,"listCount":12,"truthFlag":"snapshot","sampleBattleId":64362},
+        "lobbyChat":{"http":200,"listCount":0},
+        "libraryGames":{"http":200,"listCount":48,"reportedTotal":7153},
+        "traffic":{"http":200,"listCount":131,"latestDate":"2026-10-19",
+                   "coverageEndedAt":"2026-10-19"},
+        "anonymousSession":{"http":401},
+        "socialChat":{"http":401}
+    }
+    ports={str(p):p in (3030,3032,3033,9447) for p in
+           (3030,3032,3033,9447,8092,8093,8094,8095)}
+    return {"workingDirectory":"/var/lib/aoe2war-web-prod-"+SRC[:12],
+            "http":http,"ports":ports,
+            "units":{"aoe2hdbets-web-prod":"active","aoe2war-social-writer":"inactive",
+                     "traffic-v2-forward-ledger-aoe2hdbets.timer":"active",
+                     "traffic-public-audience-aoe2hdbets.timer":"inactive"},
+            "rootAvailableBytes":15*1024**3,
+            "dataAvailableBytes":30*1024**3}
+
+def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD):
+    with tempfile.TemporaryDirectory() as td:
+        arguments=["reconcile","--expect-source",source,"--expect-build",build,
+                   "--phase",phase,"--profile",profile,"--out-dir",td]
+        completed=SimpleNamespace(returncode=0,stdout=json.dumps(observation),stderr="")
+        output=io.StringIO()
+        with patch.object(m.subprocess,"run",return_value=completed), \
+             patch.object(sys,"argv",arguments), contextlib.redirect_stdout(output):
+            code=m.main()
+        reports=list(Path(td).glob("*.json"))
+        assert len(reports)==1
+        raw=reports[0].read_bytes()
+        assert reports[0].stat().st_mode&0o777==0o600
+        report=json.loads(raw)
+        assert report["scope"].startswith("M1 nonroot")
+        assert len(list(Path(td).glob("*.md")))==1
+        return code,report,json.loads(output.getvalue())
+
+class FactoryReconciliationTests(unittest.TestCase):
+    def test_real_data_lobby_can_pass_even_if_traffic_publication_stale(self):
+        code,body,summary=checked(fixture())
+        self.assertEqual(code,0)
+        self.assertEqual(summary["status"],"PASS")
+        self.assertEqual(body["lobbyAcceptance"],"PASS")
+        self.assertEqual(body["playerAcceptance"],"HOLD")
+        self.assertEqual({x["state"] for x in body["checks"]
+            if x["name"]=="traffic_current_certified_publication"},{"HOLD"})
+
+    def test_true_archive_but_empty_recent_tiles_hard_fail(self):
+        f=fixture()
+        f["http"]["lobbyRecent"]["listCount"]=0
+        f["http"]["lobbySnapshot"]["listCount"]=0
+        code,body,_=checked(f)
+        self.assertEqual(code,2)
+        rejects={x["name"] for x in body["checks"] if x["state"]=="HOLD"}
+        self.assertIn("lobby_recent_matches_not_false_empty",rejects)
+        self.assertIn("lobby_snapshot_recent_matches_not_false_empty",rejects)
+        self.assertNotIn("real_nonempty_archive",rejects)
+
+    def test_wrong_build_and_source_fail(self):
+        code,body,_=checked(fixture(),source="0"*40,build="wrongBuild123")
+        self.assertEqual(code,2)
+        problems={x["name"] for x in body["checks"] if x["state"]=="HOLD"}
+        self.assertIn("deployed_build",problems)
+        self.assertIn("deployed_source",problems)
+
+    def test_broken_portrait_fails(self):
+        f=fixture()
+        f["http"]["lobby"]["portraitSamples"][0]["http"]=400
+        code,body,_=checked(f)
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="critical_lobby_image_http")["state"],"HOLD")
+
+    def test_rollback_checks_previous_source_without_inheriting_known_lobby_failure(self):
+        f=fixture()
+        f["http"]["lobbyChat"]["http"]=500
+        f["http"]["lobbyRecent"]["listCount"]=0
+        f["http"]["lobbySnapshot"]["listCount"]=0
+        f["rootAvailableBytes"]=3*1024**3
+        code,body,_=checked(f,profile="rollback",phase="rollback")
+        self.assertEqual(code,0)
+        self.assertEqual(body["acceptance"],"PASS")
+        self.assertEqual(body["lobbyAcceptance"],"HOLD")
+        code,_,_=checked(f,profile="baseline",phase="pre")
+        self.assertEqual(code,2)  # 12 GiB stage budget, not 2 GiB runtime floor
+
+    def test_player_never_self_certifies_browser_messages(self):
+        f=fixture()
+        f["units"]["aoe2war-social-writer"]="active"
+        f["units"]["traffic-public-audience-aoe2hdbets.timer"]="active"
+        f["http"]["traffic"]["coverageEndedAt"]="2026-11-20"
+        code,body,_=checked(f,profile="player",phase="reactivate")
+        self.assertEqual(code,2)
+        self.assertEqual(body["playerAcceptance"],"HOLD")
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="real_Emaren_Scribe_persisted_messages_not_yet_supplied")["state"],"HOLD")
+
+    def test_financial_listener_always_refuses(self):
+        f=fixture();f["ports"]["8092"]=True
+        code,body,_=checked(f)
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="runtime_ports_and_finance_isolation")["state"],"HOLD")
+
+    def test_null_payload_fails_closed(self):
+        code,body,_=checked({})
+        self.assertEqual(code,2)
+        self.assertEqual(body["lobbyAcceptance"],"HOLD")
+
+if __name__=="__main__":
+    unittest.main()
