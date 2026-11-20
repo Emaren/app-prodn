@@ -48,10 +48,15 @@ def fixture():
             "rootAvailableBytes":15*1024**3,
             "dataAvailableBytes":30*1024**3}
 
-def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD,proof=None):
+def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD,
+            proof=None,candidate_source=None,candidate_build=None):
     with tempfile.TemporaryDirectory() as td:
         arguments=["reconcile","--expect-source",source,"--expect-build",build,
                    "--phase",phase,"--profile",profile,"--out-dir",td]
+        if candidate_source is not None:
+            arguments.extend(["--candidate-source",candidate_source])
+        if candidate_build is not None:
+            arguments.extend(["--candidate-build",candidate_build])
         if proof is not None:
             proof_file=Path(td)/"private-proof"
             raw=json.dumps(proof,sort_keys=True).encode()
@@ -89,6 +94,36 @@ class FactoryReconciliationTests(unittest.TestCase):
         self.assertEqual(next(x for x in body["checks"]
             if x["name"]=="root_headroom_for_phase")["detail"]["minimumBytes"],
             6*1024**3+618531105)
+
+    def test_pre_stage_existing_library_plus_distinct_candidate_proof(self):
+        f=fixture()
+        candidate_source="da0bee282e525243ab6d307c0afd7ec0283b9b9d"
+        candidate_build="3IEUWQ_eUijufJlmrv10_"
+        proof=self.runtime_proof(candidate_source,candidate_build)
+        f["http"]["lobbyChat"]["http"]=500 # old Library known bug
+        f["http"]["lobbyRecent"]["listCount"]=0
+        f["http"]["lobbySnapshot"]["listCount"]=0
+        f["rootAvailableBytes"]=6*1024**3+618531105+25000000
+        code,body,_=checked(f,profile="baseline",phase="pre",proof=proof,
+                            candidate_source=candidate_source,candidate_build=candidate_build)
+        self.assertEqual(code,0)
+        self.assertEqual(body["acceptance"],"PASS")
+        self.assertEqual(body["expected"]["sourceSha"],SRC)
+        self.assertEqual(body["expected"]["candidateSourceSha"],candidate_source)
+        self.assertEqual(body["expected"]["candidateBuildId"],candidate_build)
+        self.assertEqual(body["lobbyAcceptance"],"HOLD")
+
+    def test_pre_stage_rejects_candidate_proof_substituted_from_live(self):
+        f=fixture()
+        candidate_source="da0bee282e525243ab6d307c0afd7ec0283b9b9d"
+        candidate_build="3IEUWQ_eUijufJlmrv10_"
+        code,body,_=checked(f,profile="baseline",phase="pre",
+                            candidate_source=candidate_source,candidate_build=candidate_build,
+                            proof=self.runtime_proof())
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"] if
+            x["name"]=="exact_factory_runtime_proof_required")["state"],"HOLD")
+        self.assertEqual(body["acceptance"],"HOLD")
 
     def test_pre_stage_one_byte_below_factory_budget_holds(self):
         f=fixture()
@@ -155,7 +190,7 @@ class FactoryReconciliationTests(unittest.TestCase):
         self.assertEqual(body["acceptance"],"PASS")
         self.assertEqual(body["lobbyAcceptance"],"HOLD")
         code,_,_=checked(f,profile="baseline",phase="pre")
-        self.assertEqual(code,2)  # 12 GiB stage budget, not 2 GiB runtime floor
+        self.assertEqual(code,2)  # No exact runtime proof; never pass the baseline.
 
     def test_player_never_self_certifies_browser_messages(self):
         f=fixture()

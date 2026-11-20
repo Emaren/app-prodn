@@ -119,6 +119,10 @@ def main():
     a=argparse.ArgumentParser()
     a.add_argument("--expect-source",required=True)
     a.add_argument("--expect-build",required=True)
+    # Before T7 the *existing* Library source must remain live. Candidate
+    # identity is independently source-bound to the Linux runtime proof.
+    a.add_argument("--candidate-source",default=None)
+    a.add_argument("--candidate-build",default=None)
     a.add_argument("--phase",choices=("pre","activate","rollback","reactivate","audit"),default="audit")
     a.add_argument("--profile",choices=("baseline","lobby","player","rollback"),default="player")
     a.add_argument("--out-dir",default=str(Path.home()/".aoe2war-product-releases"/"reconciliation-v1"))
@@ -131,6 +135,15 @@ def main():
         a.error("baseline cannot certify activated player source")
     assert re.fullmatch(r"[0-9a-f]{40}",args.expect_source)
     assert re.fullmatch(r"[A-Za-z0-9_-]{8,64}",args.expect_build)
+    if args.candidate_source or args.candidate_build:
+        if args.phase!="pre" or not args.candidate_source or not args.candidate_build:
+            a.error("candidate identity is a paired, pre-stage-only input")
+        if not re.fullmatch(r"[0-9a-f]{40}",args.candidate_source):
+            a.error("candidate source must be an exact 40-hex SHA")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}",args.candidate_build):
+            a.error("candidate build must be an exact BUILD_ID")
+    proof_source=args.candidate_source or args.expect_source
+    proof_build=args.candidate_build or args.expect_build
     command=["/usr/bin/ssh","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8","hel1",
              "python3 -I -B -c "+shlex.quote(REMOTE)]
     p=subprocess.run(command,text=True,capture_output=True,timeout=125)
@@ -198,15 +211,15 @@ def main():
                 raise ValueError("PROOF_MEMBER_SHA256")
             q=json.loads(raw)
             if (q.get("status")!="PASS_INDEPENDENT_LINUX_RUNTIME_BYTES_AND_EACH_TAR_MEMBER"
-                or q.get("source_commit")!=args.expect_source
-                or q.get("build_id")!=args.expect_build
+                or q.get("source_commit")!=proof_source
+                or q.get("build_id")!=proof_build
                 or type(q.get("runtime_archive_bytes")) is not int
                 or not 0<q["runtime_archive_bytes"]<=5*1024**3):
                 raise ValueError("PROOF_EXACT_SOURCE_BUILD_AND_SIZE")
             archive_bytes=q["runtime_archive_bytes"]
         except (OSError,ValueError,TypeError) as exc:
             proof_error=type(exc).__name__+":"+str(exc)[:90]
-    needs_proof=args.phase=="pre" and args.profile in ("lobby","player")
+    needs_proof=args.phase=="pre"
     proof_valid=archive_bytes>0 and proof_error is None
     if needs_proof:
         need(proof_valid,"exact_factory_runtime_proof_required",checks,proof_error)
@@ -245,6 +258,10 @@ def main():
     base_required={"deployed_source","deployed_build","library_data_nonempty",
                    "anonymous_auth_denied","runtime_ports_and_finance_isolation",
                    "single_live_web_service","root_headroom_for_phase"}
+    if args.phase=="pre":
+        # Otherwise an old Library baseline might pass without any proof of
+        # which new runtime is expected. The incoming bytes must be signed.
+        base_required.add("exact_factory_runtime_proof_required")
     check_by_name={x["name"]:x["state"] for x in checks}
     def passed(required):
         return all(check_by_name.get(name)=="PASS" for name in required)
@@ -258,6 +275,8 @@ def main():
               "player":"PASS" if player_ok else "HOLD"}
     result={"schema":"aoe2war.we2.production-reconciliation.v1","at":datetime.now(timezone.utc).isoformat(),
             "expected":{"sourceSha":args.expect_source,"buildId":args.expect_build,
+                        "candidateSourceSha":args.candidate_source,
+                        "candidateBuildId":args.candidate_build,
                         "phase":args.phase,"profile":args.profile},
             "observed":actual,"checks":checks,
             "lobbyAcceptance":"PASS" if lobby_ok else "HOLD",
