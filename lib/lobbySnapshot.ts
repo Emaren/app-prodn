@@ -132,7 +132,7 @@ async function loadLobbySnapshotFresh(
     const [
       wolo,
       woloMarket,
-      tournament,
+      featuredTournament,
       tournamentMessages,
       presence,
       recentMatches,
@@ -186,7 +186,7 @@ async function loadLobbySnapshotFresh(
         : woloEarners;
 
     const liveTicker = await optionalRead("live ticker", loadLiveTickerSnapshot(prisma, {
-      tournament,
+      tournament: featuredTournament,
       leaderboard: visibleLeaderboard,
       recentMatches,
       woloMarket,
@@ -195,19 +195,21 @@ async function loadLobbySnapshotFresh(
     const messages =
       restrictedProductionRoom
         ? tournamentMessages
-        : tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
+        : tournamentMessages.length > 0 || featuredTournament.roomSlug === LOBBY_ROOM_SLUG
         ? tournamentMessages
         : await optionalRead("lobby messages", getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 24, {
             uid: viewerUid,
             guestSessionId: guestReactionSessionId,
           }), []);
 
+    // Keep genuine tournament metadata and ticker inputs unchanged. The public
+    // snapshot uses the room the admitted signed production writer accepts.
+    const tournament = restrictedProductionRoom
+      ? { ...featuredTournament, roomSlug: LOBBY_ROOM_SLUG }
+      : featuredTournament;
+
     return {
-      // Keep tournament metadata, but present the actual authorized chat room
-      // so the existing client GET, POST, pagination and retry agree.
-      tournament: restrictedProductionRoom
-        ? { ...tournament, roomSlug: LOBBY_ROOM_SLUG }
-        : tournament,
+      tournament,
       messages,
       onlineUsers: presence.onlineUsers,
       recentMatches: recentMatches.map(projectLobbyMatchRow),

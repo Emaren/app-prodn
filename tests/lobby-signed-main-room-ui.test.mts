@@ -10,7 +10,8 @@ test("restricted production lobby snapshots read the same fixed room as the sign
   assert.match(snapshot, /const restrictedProductionRoom = usesNonfinancialProductionAuth\(\)/);
   assert.match(snapshot, /getLobbyMessages\(prisma,\s*restrictedProductionRoom \? LOBBY_ROOM_SLUG : tournament\.roomSlug, 24/);
   assert.match(snapshot, /const messages =\s*restrictedProductionRoom\s*\? tournamentMessages/);
-  assert.match(snapshot, /tournament: restrictedProductionRoom\s*\? \{ \.\.\.tournament, roomSlug: LOBBY_ROOM_SLUG \}/);
+  assert.match(snapshot, /const tournament = restrictedProductionRoom\s*\? \{ \.\.\.featuredTournament, roomSlug: LOBBY_ROOM_SLUG \}/);
+  assert.match(snapshot, /return \{\s*tournament,\s*messages,\s*onlineUsers:/);
   assert.match(writer, /input\.roomSlug !== LOBBY_ROOM_SLUG/);
   assert.match(writer, /callSocialWriter\("lobby", token/);
 });
@@ -26,8 +27,9 @@ test("the same projected room governs both client send and chat history paginati
 test("legacy nonproduction tournament chat remains scoped to its own original room", () => {
   const snapshot = source("lib/lobbySnapshot.ts");
   assert.match(snapshot, /restrictedProductionRoom \? LOBBY_ROOM_SLUG : tournament\.roomSlug/);
-  assert.match(snapshot, /: tournamentMessages\.length > 0 \|\| tournament\.roomSlug === LOBBY_ROOM_SLUG/);
-  assert.match(snapshot, /: tournament,\s*messages,/);
+  assert.match(snapshot, /: tournamentMessages\.length > 0 \|\| featuredTournament\.roomSlug === LOBBY_ROOM_SLUG/);
+  assert.ok(snapshot.includes("const tournament = restrictedProductionRoom"));
+  assert.ok(snapshot.includes(": featuredTournament;"));
 });
 
 test("the repair does not broaden public POST or database writer permissions", () => {
