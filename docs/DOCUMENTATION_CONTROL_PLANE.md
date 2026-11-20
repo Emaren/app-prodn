@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/storage-os-level2-owner-learning-20261120` at `d5c356fd51543f76a6c4d910138d0e73c3704267`
+Implementation baseline: `session-c/storage-os-level2-owner-learning-20261120` at `9f6214a45c4af454c79196a9bdea3ca9a2ee70e6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
