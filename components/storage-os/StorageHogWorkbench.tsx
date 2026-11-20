@@ -13,7 +13,7 @@ import type {VisualHog} from "@/lib/storageVisualPrivate";
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
 import {signedHogInventory,teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 import {
-  teachingDisposition,type TeachingLevel,type TeachingPlane,
+  teachingDisposition,strongestRecordedProtection,type TeachingLevel,type TeachingPlane,
 } from "@/lib/storageHogTeachingPolicy";
 
 const IDS:TeachingPlane[]=["mac","hel1-root","hel1-volume-105319120"];
@@ -199,12 +199,19 @@ export default function StorageHogWorkbench(){
   const item=hogs.find(h=>h.key===selected)??null;
   const last=item?events.filter(e=>e.plane===active&&e.category===item.key).at(-1)??null:null;
   const priorL5=item?events.some(e=>e.plane===active&&e.category===item.key&&e.requestedLevel===5):false;
-  const disposition=item?teachingDisposition(item.level,chosen,priorL5):null;
+  const priorFloor=item?strongestRecordedProtection(events,active,item.key):1;
+  const effectiveFloor=item?Math.max(item.level,priorFloor):5;
+  const disposition=item?teachingDisposition(effectiveFloor,chosen,priorL5):null;
   const canSave=teachingDeadline!==null&&!!item&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
-    disposition?.status==="ACCEPT"&&!priorL5&&(chosen!==5||confirmForever);
+    chosen>=effectiveFloor&&disposition?.status==="ACCEPT"&&!priorL5&&
+    (chosen!==2||note.trim().length>0)&&(chosen!==5||confirmForever);
   const choosePlane=(id:TeachingPlane)=>{setActive(id);setSelected(null);setNotice(null);};
-  const chooseItem=(key:string)=>{setSelected(key);setChosen(hogs.find(h=>h.key===key)?.level===5?5:2);setNote("");
-    setConfirmForever(false);setNotice(null);};
+  const chooseItem=(key:string)=>{
+    const candidate=hogs.find(h=>h.key===key);
+    const historical=strongestRecordedProtection(events,active,key);
+    setSelected(key);setChosen(Math.max(2,candidate?.level??2,historical) as TeachingLevel);setNote("");
+    setConfirmForever(false);setNotice(null);
+  };
   const save=async()=>{
     if(!item||!sourcePlane||!canSave)return;
     if(teachingSourceDeadline(sourcePlane.observedAt,chosen)===null){refreshClock();return;}
@@ -291,7 +298,7 @@ export default function StorageHogWorkbench(){
             const sameSource=past&&past.sourceObservedAt===sourcePlane?.observedAt&&
               past.grossBytes===h.grossBytes&&past.sourceFloor===h.level&&past.overlaps===h.overlaps;
             const applied=past?.requestedLevel===5||sameSource;
-            const level=applied&&past?past.effectiveLevel:h.level;
+            const level=Math.max(h.level,strongestRecordedProtection(events,active,h.key),applied&&past?past.effectiveLevel:1);
             return <button type="button" key={h.key} onClick={()=>chooseItem(h.key)}
               aria-pressed={isSelected} className={"w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
                 (isSelected?"border-cyan-300/60 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/20")}>
@@ -321,7 +328,7 @@ export default function StorageHogWorkbench(){
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {LEVELS.map(l=><button type="button" key={l.id}
-            disabled={!item||priorL5}
+            disabled={!item||priorL5||l.id<effectiveFloor}
             onClick={()=>{setChosen(l.id);setConfirmForever(false);setNotice(null);}}
             aria-pressed={chosen===l.id}
             className={"rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-40 "+
@@ -332,7 +339,7 @@ export default function StorageHogWorkbench(){
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (optional owner learning note, no passwords or secrets)</label>
+            <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (Level 2 requires an owner explanation; no passwords or secrets)</label>
             <textarea id="storage-owner-note" rows={3} maxLength={160} value={note}
               disabled={!item||priorL5} onChange={e=>setNote(e.target.value)}
               placeholder="Historical release archive; preserve until restored on Intel…"
@@ -343,7 +350,7 @@ export default function StorageHogWorkbench(){
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300"><Clock3 className="h-4 w-4"/> Classification evidence</div>
             {item?<div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
               <div>Requested: <strong className="text-white">L{chosen}</strong> · effective policy: <strong className="text-white">{disposition?.effectiveLevel?"L"+disposition.effectiveLevel:"HOLD"}</strong></div>
-              <div>Source protection: <strong className="text-amber-200">L{item.level} floor; permanent L5 cannot be withdrawn</strong></div>
+              <div>Source protection: <strong className="text-amber-200">L{item.level} source · historical minimum L{priorFloor}; stronger owner protection cannot be downgraded</strong></div>
               <div>Unique reclaim and exact-file admission: <strong className="text-amber-200">NOT VERIFIED</strong></div>
             </div>:<p className="mt-3 text-xs text-slate-400">No category selected.</p>}
           </div>
@@ -362,6 +369,8 @@ export default function StorageHogWorkbench(){
           </button>
           <div role="status" className="min-w-0 flex-1 text-xs leading-5 text-slate-400">
             {notice??(priorL5?"This category has permanent owner L5 protection.":
+              chosen<effectiveFloor?"A stronger signed source or historical owner floor blocks this classification.":
+              chosen===2&&!note.trim()?"Enter a written explanation before saving Level 2.":
               ledgerStatus!=="VERIFIED"?"Learning ledger not admitted: choices remain unsaved previews.":
               !access?.ownerBinding?"Recording requires enrollment of the owner's app account.":
               !access.mayRecord?"Only the enrolled owner account can record a classification.":
