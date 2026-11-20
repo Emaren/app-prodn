@@ -122,6 +122,8 @@ def main():
     a.add_argument("--phase",choices=("pre","activate","rollback","reactivate","audit"),default="audit")
     a.add_argument("--profile",choices=("baseline","lobby","player","rollback"),default="player")
     a.add_argument("--out-dir",default=str(Path.home()/".aoe2war-product-releases"/"reconciliation-v1"))
+    a.add_argument("--verified-runtime-proof",default=None)
+    a.add_argument("--runtime-proof-sha256",default=None)
     args=a.parse_args()
     if args.profile=="rollback" and args.phase!="rollback":
         a.error("rollback profile is only valid with rollback phase")
@@ -175,12 +177,48 @@ def main():
     need(all(pts.get(str(x)) is True for x in (3030,3032,3033,9447)) and
          all(pts.get(str(x)) is False for x in (8092,8093,8094,8095)),"runtime_ports_and_finance_isolation",checks,pts)
     need(actual.get("units",{}).get("aoe2hdbets-web-prod")=="active","single_live_web_service",checks,actual.get("units"))
-    # A new stage needs extraction headroom. After activation or rollback,
-    # requiring another complete 12GiB staging budget would reject a healthy
-    # already-installed runtime; keep a separate running floor instead.
-    min_root=(12 if args.phase=="pre" else 2)*1024**3
-    need((actual.get("rootAvailableBytes") or 0)>=min_root,"root_headroom_for_phase",checks,
-         {"availableBytes":actual.get("rootAvailableBytes"),"minimumBytes":min_root})
+    # Match accepted Factory coordinator's exact preflight:
+    # max(6 GiB + incoming, incoming + extracted + 1 GiB), where extracted
+    # source has a hard 5 GiB ceiling. Therefore for a new uncached runtime
+    # the conservative threshold is precisely 6 GiB + incoming archive.
+    proof_error=None
+    archive_bytes=0
+    if args.verified_runtime_proof or args.runtime_proof_sha256:
+        try:
+            pp=Path(args.verified_runtime_proof or "")
+            info=pp.lstat()
+            expected=args.runtime_proof_sha256 or ""
+            if (not re.fullmatch(r"[0-9a-f]{64}",expected)
+                    or not pp.is_file() or pp.is_symlink()
+                    or info.st_uid!=os.geteuid() or info.st_nlink!=1
+                    or (info.st_mode&0o777)!=0o600 or not 0<info.st_size<16384):
+                raise ValueError("PROOF_LOCAL_CUSTODY_OR_DIGEST")
+            raw=pp.read_bytes()
+            if hashlib.sha256(raw).hexdigest()!=expected:
+                raise ValueError("PROOF_MEMBER_SHA256")
+            q=json.loads(raw)
+            if (q.get("status")!="PASS_INDEPENDENT_LINUX_RUNTIME_BYTES_AND_EACH_TAR_MEMBER"
+                or q.get("source_commit")!=args.expect_source
+                or q.get("build_id")!=args.expect_build
+                or type(q.get("runtime_archive_bytes")) is not int
+                or not 0<q["runtime_archive_bytes"]<=5*1024**3):
+                raise ValueError("PROOF_EXACT_SOURCE_BUILD_AND_SIZE")
+            archive_bytes=q["runtime_archive_bytes"]
+        except (OSError,ValueError,TypeError) as exc:
+            proof_error=type(exc).__name__+":"+str(exc)[:90]
+    needs_proof=args.phase=="pre" and args.profile in ("lobby","player")
+    proof_valid=archive_bytes>0 and proof_error is None
+    if needs_proof:
+        need(proof_valid,"exact_factory_runtime_proof_required",checks,proof_error)
+    if args.phase=="pre":
+        min_root=6*1024**3 + (archive_bytes if needs_proof else 0)
+    else:
+        # Existing live/rollback source needs no new archive extraction.
+        min_root=2*1024**3
+    need((actual.get("rootAvailableBytes") or 0)>=min_root and
+         (not needs_proof or proof_valid),"root_headroom_for_phase",checks,
+         {"availableBytes":actual.get("rootAvailableBytes"),"minimumBytes":min_root,
+          "proofArchiveBytes":archive_bytes,"proofHold":proof_error})
     traffic=h.get("traffic",{})
     need(traffic.get("http")==200 and (traffic.get("listCount") or 0)>0 and
          actual.get("units",{}).get("traffic-v2-forward-ledger-aoe2hdbets.timer")=="active",

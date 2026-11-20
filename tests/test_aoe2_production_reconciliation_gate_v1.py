@@ -48,10 +48,17 @@ def fixture():
             "rootAvailableBytes":15*1024**3,
             "dataAvailableBytes":30*1024**3}
 
-def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD):
+def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD,proof=None):
     with tempfile.TemporaryDirectory() as td:
         arguments=["reconcile","--expect-source",source,"--expect-build",build,
                    "--phase",phase,"--profile",profile,"--out-dir",td]
+        if proof is not None:
+            proof_file=Path(td)/"private-proof"
+            raw=json.dumps(proof,sort_keys=True).encode()
+            proof_file.write_bytes(raw)
+            proof_file.chmod(0o600)
+            arguments.extend(["--verified-runtime-proof",str(proof_file),
+                              "--runtime-proof-sha256",__import__("hashlib").sha256(raw).hexdigest()])
         completed=SimpleNamespace(returncode=0,stdout=json.dumps(observation),stderr="")
         output=io.StringIO()
         with patch.object(m.subprocess,"run",return_value=completed), \
@@ -67,6 +74,41 @@ def checked(observation,profile="lobby",phase="activate",source=SRC,build=BUILD)
         return code,report,json.loads(output.getvalue())
 
 class FactoryReconciliationTests(unittest.TestCase):
+    @staticmethod
+    def runtime_proof(source=SRC,build=BUILD,runtime_bytes=618531105):
+        return {"status":"PASS_INDEPENDENT_LINUX_RUNTIME_BYTES_AND_EACH_TAR_MEMBER",
+                "source_commit":source,"build_id":build,
+                "runtime_archive_bytes":runtime_bytes}
+
+    def test_pre_stage_exact_factory_budget_can_pass_under_12gib(self):
+        f=fixture()
+        f["rootAvailableBytes"]=6*1024**3+618531105+25000000
+        code,body,summary=checked(f,phase="pre",proof=self.runtime_proof())
+        self.assertEqual(code,0)
+        self.assertEqual(body["lobbyAcceptance"],"PASS")
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="root_headroom_for_phase")["detail"]["minimumBytes"],
+            6*1024**3+618531105)
+
+    def test_pre_stage_one_byte_below_factory_budget_holds(self):
+        f=fixture()
+        f["rootAvailableBytes"]=6*1024**3+618531105-1
+        code,body,_=checked(f,phase="pre",proof=self.runtime_proof())
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="root_headroom_for_phase")["state"],"HOLD")
+
+    def test_pre_stage_missing_or_wrong_proof_holds(self):
+        f=fixture()
+        code,body,_=checked(f,phase="pre")
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="exact_factory_runtime_proof_required")["state"],"HOLD")
+        code,body,_=checked(f,phase="pre",proof=self.runtime_proof(source="0"*40))
+        self.assertEqual(code,2)
+        self.assertEqual(next(x for x in body["checks"]
+            if x["name"]=="exact_factory_runtime_proof_required")["state"],"HOLD")
+
     def test_real_data_lobby_can_pass_even_if_traffic_publication_stale(self):
         code,body,summary=checked(fixture())
         self.assertEqual(code,0)
