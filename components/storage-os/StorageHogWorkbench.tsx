@@ -3,6 +3,9 @@
 import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
+import StorageReviewQueue from "./StorageReviewQueue";
+import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
+import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
 import {
   Activity,Archive,ArrowLeft,Check,Clock3,Database,HardDrive,
@@ -17,6 +20,7 @@ import {
 } from "@/lib/storageHogTeachingPolicy";
 
 const IDS:TeachingPlane[]=["mac","hel1-root","hel1-volume-105319120"];
+type ExplorerPlane=TeachingPlane|"intel";
 const COLORS=["#22d3ee","#a78bfa","#f59e0b","#2dd4bf","#60a5fa","#fb7185","#f472b6","#c4b5fd"];
 const LVLCOLORS:{[K in TeachingLevel]:string}={2:"#fbbf24",3:"#a78bfa",4:"#34d399",5:"#fb7185"};
 const LEVELS:[
@@ -123,13 +127,62 @@ function Drive({reading,id,active,onSelect,inventory}:{
     </div>
   </button>;
 }
+function IntelDrive({snapshot,active,onSelect}:{snapshot:IntelColdView|null;active:boolean;onSelect:()=>void}){
+  const current=snapshot?.source==="SIGNED_PRIVATE_RECEIPT"&&snapshot.health==="ONLINE";
+  const free=current?snapshot.capacity.availableBytes:null;
+  return <button type="button" onClick={onSelect} aria-pressed={active}
+    className={"relative overflow-hidden rounded-3xl border p-5 text-left transition "+
+    (active?"border-cyan-300/50 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/25")}>
+    <div className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-2 text-sm font-bold text-white">
+        <Archive className="h-5 w-5 text-cyan-300"/>Intel · Cold vault</span>
+      <span className={"text-[10px] font-bold "+(current?"text-cyan-300":"text-amber-200")}>
+        {current?"SIGNED / CURRENT":snapshot?.health??"UNKNOWN"}</span>
+    </div>
+    <div className="mt-5 flex items-end justify-between gap-3">
+      <div><div className="text-[10px] uppercase tracking-widest text-slate-400">Available</div>
+        <div className="mt-1 text-3xl font-black tabular-nums text-white">{bytes(free)}</div></div>
+      <div className="text-right"><div className="text-[11px] text-slate-400">Used</div>
+        <div className="text-xl font-semibold text-slate-200">UNKNOWN</div></div>
+    </div>
+    <div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>
+    <div className="mt-3 flex justify-between gap-2 text-[10px] text-slate-400">
+      <span>Archive inventory · independent source</span><span>{current?shortTime(snapshot.observedAt):"NO CURRENT PROOF"}</span>
+    </div>
+  </button>;
+}
 export default function StorageHogWorkbench(){
   const [data,setData]=useState<StorageCommandCenter|null>(null);
+  const [intel,setIntel]=useState<IntelColdView|null>(null);
+  const [intelError,setIntelError]=useState<string|null>(null);
+  const [intelLoading,setIntelLoading]=useState(false);
+  const refreshIntel=useCallback(async()=>{
+    const abort=new AbortController();
+    const timeout=window.setTimeout(()=>abort.abort(),6000);
+    setIntelLoading(true);
+    try{
+      const r=await fetch("/api/admin/storage-os/intel",{
+        cache:"no-store",credentials:"same-origin",signal:abort.signal});
+      if(!r.ok)throw Error("SIGNED_INTEL_SOURCE_HOLD");
+      const v=await r.json() as IntelColdView;
+      if(v.schema!=="aoe2war.intel-cold.status.v1"||
+         v.authority!=="READ_ONLY_NO_CLEANUP_OR_REINSTALL")
+        throw Error("INTEL_SCHEMA_NOT_ADMITTED");
+      setIntel(v);setIntelError(null);
+    }catch(e){
+      setIntel(null);setIntelError(e instanceof Error?e.message:"INTEL_UNKNOWN");
+    }finally{window.clearTimeout(timeout);setIntelLoading(false);}
+  },[]);
+  useEffect(()=>{
+    void refreshIntel();
+    const t=window.setInterval(()=>{if(document.visibilityState==="visible")void refreshIntel();},60_000);
+    return()=>window.clearInterval(t);
+  },[refreshIntel]);
   const [events,setEvents]=useState<TeachingEvent[]>([]);
   const [access,setAccess]=useState<{ownerBinding:string|null;mayRecord:boolean}|null>(null);
   const [ledgerStatus,setLedgerStatus]=useState("UNAVAILABLE");
   const [error,setError]=useState<string|null>(null);
-  const [active,setActive]=useState<TeachingPlane>("mac");
+  const [active,setActive]=useState<ExplorerPlane>("mac");
   const [selected,setSelected]=useState<string|null>(null);
   const [chosen,setChosen]=useState<TeachingLevel>(2);
   const [note,setNote]=useState("");
@@ -182,9 +235,12 @@ export default function StorageHogWorkbench(){
   const [,refreshClock]=useReducer((tick:number)=>tick+1,0);
   const now=Date.now();
   const inventories=IDS.map(id=>signedHogInventory(data?.visual,id,now));
-  const activeInventory=inventories[IDS.indexOf(active)];
+  const activeTeaching:TeachingPlane=active==="intel"?"mac":active;
+  const activeInventory=active==="intel"
+    ? {plane:undefined,status:"UNKNOWN" as const,categoryCount:null,currentUntil:null}
+    : inventories[IDS.indexOf(activeTeaching)];
   const sourcePlane=activeInventory.plane;
-  const reading=data?.planes.find(p=>p.id===active);
+  const reading=active==="intel"?undefined:data?.planes.find(p=>p.id===active);
   const live=activeInventory.status==="PARTIAL";
   const teachingDeadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,chosen,now) : null;
   const l2Deadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,2,now) : null;
@@ -197,23 +253,24 @@ export default function StorageHogWorkbench(){
   const hogs=useMemo(()=>live?[...(sourcePlane?.hogs??[])].sort((a,b)=>b.grossBytes-a.grossBytes):[],
     [live,sourcePlane]);
   const item=hogs.find(h=>h.key===selected)??null;
-  const last=item?events.filter(e=>e.plane===active&&e.category===item.key).at(-1)??null:null;
-  const priorL5=item?events.some(e=>e.plane===active&&e.category===item.key&&e.requestedLevel===5):false;
-  const priorFloor=item?strongestRecordedProtection(events,active,item.key):1;
+  const last=item?events.filter(e=>e.plane===activeTeaching&&e.category===item.key).at(-1)??null:null;
+  const priorL5=item?events.some(e=>e.plane===activeTeaching&&e.category===item.key&&e.requestedLevel===5):false;
+  const priorFloor=item?strongestRecordedProtection(events,activeTeaching,item.key):1;
   const effectiveFloor=item?Math.max(item.level,priorFloor):5;
   const disposition=item?teachingDisposition(effectiveFloor,chosen,priorL5):null;
   const canSave=teachingDeadline!==null&&!!item&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
     chosen>=effectiveFloor&&disposition?.status==="ACCEPT"&&!priorL5&&
     (chosen!==2||note.trim().length>0)&&(chosen!==5||confirmForever);
-  const choosePlane=(id:TeachingPlane)=>{setActive(id);setSelected(null);setNotice(null);};
+  const choosePlane=(id:ExplorerPlane)=>{setActive(id);setSelected(null);setNotice(null);};
   const chooseItem=(key:string)=>{
+    if(active==="intel")return;
     const candidate=hogs.find(h=>h.key===key);
-    const historical=strongestRecordedProtection(events,active,key);
+    const historical=strongestRecordedProtection(events,activeTeaching,key);
     setSelected(key);setChosen(Math.max(2,candidate?.level??2,historical) as TeachingLevel);setNote("");
     setConfirmForever(false);setNotice(null);
   };
   const save=async()=>{
-    if(!item||!sourcePlane||!canSave)return;
+    if(active==="intel"||!item||!sourcePlane||!canSave)return;
     if(teachingSourceDeadline(sourcePlane.observedAt,chosen)===null){refreshClock();return;}
     setSaving(true);setNotice(null);
     try{
@@ -221,21 +278,28 @@ export default function StorageHogWorkbench(){
         method:"POST",cache:"no-store",credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          plane:active,category:item.key,level:chosen,observedAt:sourcePlane.observedAt,
+          plane:activeTeaching,category:item.key,level:chosen,observedAt:sourcePlane.observedAt,
           grossBytes:item.grossBytes,sourceFloor:item.level,overlaps:item.overlaps,
           previousId:last?.id??null,note,confirmPermanent:chosen===5&&confirmForever,
         }),
       });
-      const result=await response.json() as {detail?:string;authority?:string};
+      const result=await response.json() as {detail?:string;authority?:string;event?:TeachingEvent};
       if(!response.ok)throw Error(result.detail??"OWNER TEACHING HOLD");
-      if(result.authority!=="OWNER_FEEDBACK_ONLY_NO_DELETE")throw Error("INVALID WRITE RECEIPT");
-      setNotice("Owner classification recorded in the signed append-only intent ledger. No file was deleted.");
+      // Never claim a second write or suggest a blind retry when the server
+      // committed but its receipt is incomplete. History readback is authoritative.
+      const identity=result.event?.id&&/^[a-f0-9-]{36}$/.test(result.event.id)&&
+        /^[a-f0-9]{64}$/.test(result.event.digestSha256)
+        ? result.event.id+" · "+result.event.digestSha256 : null;
+      setNotice(result.authority==="OWNER_FEEDBACK_ONLY_NO_DELETE"&&identity
+        ? "Owner event committed: "+identity+" · feedback only, no deletion."
+        : "Write response incomplete: check the append-only history before any retry.");
       setConfirmForever(false);
       await refresh();
     }catch(e){setNotice(e instanceof Error?e.message:"SAVE FAILED");}
     finally{setSaving(false);}
   };
-  const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length;
+  const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length+
+    (intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"?1:0);
   return <main className="min-h-screen bg-[#070e18] text-slate-100">
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_at_24%_8%,rgba(34,211,238,.12),transparent_48%),radial-gradient(ellipse_at_80%_0%,rgba(167,139,250,.07),transparent_52%)]"/>
     <div className="relative mx-auto max-w-[1550px] space-y-5 px-4 py-7 sm:px-7 lg:px-9">
@@ -252,15 +316,20 @@ export default function StorageHogWorkbench(){
         </div>
       </header>
       {error&&<div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">{error}. Data withheld rather than fabricated.</div>}
-      <section aria-label="Three independent storage volumes" className="grid gap-3 md:grid-cols-3">
+      <section aria-label="Four independently verified storage planes" className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {IDS.map((id,i)=><Drive key={id} id={id} active={active===id}
           onSelect={()=>choosePlane(id)} reading={data?.planes.find(p=>p.id===id)}
           inventory={inventories[i]}/>)}
+        <IntelDrive snapshot={intel} active={active==="intel"} onSelect={()=>choosePlane("intel")}/>
       </section>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/3 drives with current capacity receipts":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
+        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/4 planes with admitted current readings":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
         <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):activeInventory.status} · Owner learning ledger: {ledgerStatus}</span>
       </div>
+      {active==="intel"?
+        <IntelColdStoragePanel snapshot={intel} loading={intelLoading} error={intelError}
+          onRefresh={()=>void refreshIntel()}/>:
+        <>
       <section className="grid gap-4 xl:grid-cols-[.96fr_1.04fr]" aria-label="Interactive capacity anatomy">
         <div className={PANEL+" p-5 sm:p-7"}>
           <div className="flex items-center justify-between gap-3">
@@ -294,11 +363,11 @@ export default function StorageHogWorkbench(){
             const total=hogs.reduce((acc,x)=>acc+x.grossBytes,0);
             const pct=total>0?100*h.grossBytes/total:0;
             const isSelected=selected===h.key;
-            const past=events.filter(e=>e.plane===active&&e.category===h.key).at(-1);
+            const past=events.filter(e=>e.plane===activeTeaching&&e.category===h.key).at(-1);
             const sameSource=past&&past.sourceObservedAt===sourcePlane?.observedAt&&
               past.grossBytes===h.grossBytes&&past.sourceFloor===h.level&&past.overlaps===h.overlaps;
             const applied=past?.requestedLevel===5||sameSource;
-            const level=Math.max(h.level,strongestRecordedProtection(events,active,h.key),applied&&past?past.effectiveLevel:1);
+            const level=Math.max(h.level,strongestRecordedProtection(events,activeTeaching,h.key),applied&&past?past.effectiveLevel:1);
             return <button type="button" key={h.key} onClick={()=>chooseItem(h.key)}
               aria-pressed={isSelected} className={"w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
                 (isSelected?"border-cyan-300/60 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/20")}>
@@ -313,7 +382,11 @@ export default function StorageHogWorkbench(){
           })}</div>}
         </div>
       </section>
-      <StoragePremiumInspector inventorySource={activeInventory} activeId={active}/>
+      <StorageReviewQueue plane={activeTeaching} observedAt={sourcePlane?.observedAt??null}
+        hogs={hogs} events={events} ownerBinding={access?.ownerBinding??null}
+        admitted={live&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true}
+        onInspect={chooseItem} now={now}/>
+      <StoragePremiumInspector inventorySource={activeInventory} activeId={activeTeaching}/>
       <section className={PANEL+" p-5 sm:p-7"} aria-label="Owner classification studio">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-[10px] font-black tracking-[.25em] text-amber-300">OWNER CLASSIFICATION · NEXT PHASE L2</p>
@@ -356,7 +429,7 @@ export default function StorageHogWorkbench(){
           </div>
         </div>
         {item&&sourcePlane&&access&&ledgerStatus==="VERIFIED"&&<StorageTeachingHistory
-          events={events} plane={active} item={item} observedAt={sourcePlane.observedAt}
+          events={events} plane={activeTeaching} item={item} observedAt={sourcePlane.observedAt}
           ownerBinding={access.ownerBinding} now={now}/>}
         {chosen===5&&item&&!priorL5&&<label className="mt-4 flex items-start gap-3 rounded-xl border border-rose-300/25 bg-rose-300/[.04] p-4 text-sm text-rose-100">
           <input type="checkbox" checked={confirmForever} onChange={e=>setConfirmForever(e.target.checked)} className="mt-1"/>
@@ -380,6 +453,7 @@ export default function StorageHogWorkbench(){
           </div>
         </div>
       </section>
+        </>}
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>
