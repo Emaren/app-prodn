@@ -54,8 +54,17 @@ class BoundaryTests(unittest.TestCase):
                 {"docs/DOCUMENTATION_CONTROL_PLANE.md",
                  "docs/document-registry.json"} |
                 {x for x in doc_paths if x.endswith(".md")})
+        # The old Factory source contract is historical, not a mutable pin to
+        # the new release coordinator. Fetch its own exact ancestor commit.
+        def historical_blob(relative):
+            if relative != "scripts/aoe2_product_release.py":
+                return (source/relative).read_bytes()
+            got=subprocess.run(["git","-C",str(source),"show",
+                     "f0b0b3118ac32b537e37abfdba1d0b877ac28a79:"+relative],
+                    capture_output=True,check=True,timeout=15)
+            return got.stdout
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
-            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
+            self.assertEqual(hashlib.sha256(historical_blob(relative)).hexdigest(),
                              expected)
         # The existing runner's SINGLE pinned root hash follows this exact
         # source controller, never a wildcard or runtime-discovered SHA.
@@ -72,7 +81,7 @@ class BoundaryTests(unittest.TestCase):
             for relative in policy.EXACT_WE2_FACTORY_SHA256:
                 out=root/relative
                 out.parent.mkdir(parents=True,exist_ok=True)
-                out.write_bytes((source/relative).read_bytes())
+                out.write_bytes(historical_blob(relative))
             def check(repo="Emaren/app-prodn",
                       branch=policy.EXACT_WE2_FACTORY_BRANCH,
                       base=policy.EXACT_WE2_FACTORY_BASE,changes=ordered):
@@ -126,6 +135,79 @@ class BoundaryTests(unittest.TestCase):
             # Do not allow non-exact branch fallback to an arbitrary Factory
             # source: the generic branch grammar remains closed.
             self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
+
+    def test_we2_reconciliation_exact_branch_base_source_sha_and_negatives(self):
+        import hashlib
+        source=GUARD.parent.parent
+        branch=policy.EXACT_WE2_RECON_BRANCH
+        base=policy.EXACT_WE2_RECON_BASE
+        self.assertEqual(branch,"we2/production-reconciliation-gate-v1-20261120")
+        self.assertEqual(base,"be935a2aac6c86cd4417dff4d3c12306b30e33b1")
+        self.assertIsNotNone(policy.BRANCH.fullmatch(branch))
+        self.assertIsNone(policy.BRANCH.fullmatch("we2/reconciliation-arbitrary"))
+        self.assertEqual(set(policy.EXACT_WE2_RECON_SHA256),{
+            "scripts/aoe2_product_release.py",
+            "scripts/aoe2_production_reconciliation_gate_v1.py"})
+        expected=set(policy.EXACT_WE2_RECON_CHANGED)
+        self.assertEqual(expected,set(policy.EXACT_WE2_RECON_SHA256)|
+                         set(policy.EXACT_WE2_RECON_DEPENDENCIES)|{
+            "tests/test_aoe2_production_reconciliation_gate_v1.py",
+            "tests/test_product_release_recovery.py",
+            "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json",
+            "docs/ENGINEERING_MEMORY.md","docs/LIVE_FINAL_PROOF_VISIBILITY.md",
+            "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
+            "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md"})
+        for name,digest in policy.EXACT_WE2_RECON_SHA256.items():
+            self.assertEqual(hashlib.sha256((source/name).read_bytes()).hexdigest(),digest)
+        with tempfile.TemporaryDirectory() as tmp:
+            checkout=Path(tmp)
+            for name in set(policy.EXACT_WE2_RECON_SHA256)|set(policy.EXACT_WE2_RECON_DEPENDENCIES):
+                dst=checkout/name;dst.parent.mkdir(parents=True,exist_ok=True)
+                dst.write_bytes((source/name).read_bytes());dst.chmod(0o644)
+            def accept(*,repo="Emaren/app-prodn",branch_=branch,base_=base,
+                       changed=sorted(expected)):
+                return policy.check_exact_we2_reconciliation_source(
+                    checkout,repo,branch_,base_,changed)
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+                self.assertIsNone(accept())
+                for name in policy.EXACT_WE2_RECON_SHA256:
+                    self.assertEqual(policy.authorize_changed_source(checkout,base,name),name)
+                self.assertEqual(policy.authorize_source("tests/test_player_profile.py"),
+                                 "tests/test_player_profile.py")
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_EXACT_CHANGED_SCOPE"):
+                    accept(changed=sorted(expected)+["scripts/extra.py"])
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SCOPE_BASE_OR_REPO"):
+                    accept(base_="0"*40)
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SCOPE_BASE_OR_REPO"):
+                    accept(repo="Emaren/kingdom-traders")
+                with self.assertRaisesRegex(policy.BoundaryHold,"UNREVIEWED_EXECUTABLE"):
+                    policy.authorize_changed_source(checkout,base,"scripts/unknown_exec.py")
+                path=checkout/"scripts/aoe2_product_release.py"
+                old=path.read_bytes()
+                path.write_bytes(old+b"\n# unauthorized change")
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SOURCE_SHA_DRIFT"):
+                    accept()
+                path.write_bytes(old)
+                alias=checkout/"extra-link"
+                os.link(path,alias)
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SOURCE_CUSTODY"):
+                    accept()
+                alias.unlink()
+                deps=checkout/"yarn.lock"
+                olddeps=deps.read_bytes()
+                deps.write_bytes(olddeps+b"\n# modified lock")
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_DEPENDENCY_HASH_DRIFT"):
+                    accept()
+                deps.write_bytes(olddeps)
+                path.unlink()
+                path.symlink_to(source/"scripts/aoe2_product_release.py")
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SOURCE_CUSTODY"):
+                    accept()
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_EXACT_BRANCH_OR_BASE"):
+                    policy.authorize_changed_source(checkout,base,
+                           "scripts/aoe2_production_reconciliation_gate_v1.py")
 
     def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
         name = policy.EXACT_REVIEWED_B_EMBER_GUARD

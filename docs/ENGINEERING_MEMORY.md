@@ -8,12 +8,49 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-11-05"
+reviewed_at: "2026-11-20"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
 # AoE2WAR Engineering Memory and Learned Invariants
+
+## November 20, 2026 — source-versus-live reconciliation; no release by documentation
+
+This is a bounded technical review of the entrypoint and release-sensitive
+invariants, not a new factual certification of every historical incident
+in the 3,645-line append-only engineering memory. The lead November 5 A05
+paragraphs below are HISTORICAL: their statement that original 3030 was
+then authoritative must never be read as current public routing.
+
+Current verified public 3032 serves accepted Library website source
+5339a981acbf15ea8d3c4393cb1fc75bc300ea45 and BUILD_ID
+sn6eybJdBu7mluOQByc4M; the separate original 3030 remains rollback.
+Integrated Community Lobby and Chat PR #1422 source candidate
+a78964f4bbc32515243f56f1c0a1fb623047af72, independently verified
+Linux BUILD_ID -lmy-xPi1N9FECHgVYtMa, is NOT deployed by these
+observations. Source CI and artifact verification are not Factory permits.
+
+On November 20, both existing Emaren admin Incognito and Scribe ordinary
+Chrome sessions returned authentic /api/auth/session HTTP 200, without
+extracting login material. Public archive total was 6,917 real battles,
+but /api/lobby/recent-matches?limit=2 returned HTTP 200 and ZERO items;
+lobby /api/lobby/chat?limit=2 returned HTTP 500. Library Games returned
+HTTP 200 with 7,154 accepted records and complete provenance.
+These are time-of-check observations, never permanent target counts.
+
+The eight-surface config/player-surface-contract.json and its readonly
+tests enforce nonempty authoritative truth and correct empty/error
+semantics rather than green HTTP 200 alone. Integrated PR #1422 preserves
+Chat #1418, restricted Library queries and the no-raw-guest-reactions
+reader. The qualified Linux artifact does not imply public activation.
+Neither Social SQL source nor a dormant Social writer is CHAT_DB_READY;
+a separate lobby writer needs LOBBY_CHAT_DB_READY before genuine writes.
+
+Durable lesson: independently reconcile Git source, separately signed
+root/database authority, active source/build headers, authoritative
+read models, and what actual people see. Historical notes, passing
+builds and metadata renewals never grant financial or Social authority.
 
 ## November 5, 2026 — mixed proxy does not fix new SSR reads
 

@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "watcher-desktop-companion-assurance"
-reviewed_at: "2026-10-20"
+reviewed_at: "2026-11-20"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -20,6 +20,31 @@ The Watcher is a separately versioned **Electron desktop companion**, not a Next
 The independent `config/kingdom-index-companions.json` catalogue lists nine mandatory assurance gates: source/artifact drift; replay ingress and finality; measured idle CPU/RSS/wakeups; failure and recovery; streaming arbitration; privacy and financial separation; update and rollback; dependency and dead-code health; and real-client release regression qualification.
 
 `lib/kingdomIndex.ts` projects the companion separately from website-route quality. Its assessment is `status: "unmeasured"` and `score: null`. This is **not a numeric score of zero or 100**: there is no independently authenticated installed-binary, source, and physical-platform evidence sufficient to assign one.
+
+## November 20, 2026 — release-tag and current source review
+
+An actual read-only GitHub Releases API check on Emaren/aoe2-watcher
+confirmed that the latest listed published release is v1.6.5,
+published 2026-10-19T20:13:38Z, neither draft nor prerelease.
+Its published target_commitish is precisely
+b49f31bb69fea629378072faa22220cdfcc2f1ef:
+https://github.com/Emaren/aoe2-watcher/releases/tag/v1.6.5
+The release exposes SHA256-marked platform artifacts. Their metadata
+does not certify a downloaded or installed binary, measured resource
+use or a working updater/rollback on any actual platform.
+
+The PRODUCT catalogue config/kingdom-index-companions.json still pins
+v1.6.5 and nine assurance gates. The separate
+config/kingdom-index-watcher-166-source-review.json has v1.6.6 in
+DRAFT_UNRELEASED state with AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED
+score authority. lib/kingdomIndex.ts continues to return
+status unmeasured and score null for this Electron companion,
+separate from 88 web routes. A proposed 58-point source-triage
+estimate cannot be promoted as a certified score.
+
+No new installed-client evidence, physical three-platform acceptance,
+numeric certification, update permit, wallet permission or source
+activation follows from this documentation review.
 
 ## Certification evidence required
 
