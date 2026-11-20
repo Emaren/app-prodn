@@ -146,11 +146,11 @@ EXACT_WE2_STORAGE_BRANCH = "we2/storage-protected-ingress-20261120"
 EXACT_WE2_STORAGE_BASE = "815d66ef94900d29bb50b7241dc47927a4343955"
 EXACT_WE2_STORAGE_PINS = {
     "scripts/r25_b_guard_production_v1.cjs":
-      "4dc72a3b15675c480d52c7d1644c6786ffe82dea2b8708bb8b213bdc3e4e1e26",
+      "e6eac08761ea83855b98ec4473df4f924f8819521c1332a07fd53a6977d10a59",
     "docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf":
       "463d7b269418d28663171a7b91d923146ca807f955ba5e217e9dbc47eefeaf10",
     "tests/test_r25_production_node_guard.py":
-      "f1c2d19a2e41ce352271133edceb39cb10ac689b1ad42552a28783c994ebeab9",
+      "d01aeae04ef8ce6e336f02cedd5ab0c2820d77cc54bcebde1eaedb9ae6959711",
     "tests/test_we2_storage_visual_exact_ingress.py":
       "72013ff895b25562c856c1bacc48946337331a0a1b26851a33e6dfdfd53b6e22",
     "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md":

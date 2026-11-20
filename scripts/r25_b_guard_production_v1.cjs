@@ -72,7 +72,35 @@ const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECR
   "PATH", "HOME", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TERM",
   "INVOCATION_ID", "JOURNAL_STREAM", "SYSTEMD_EXEC_PID", "NOTIFY_SOCKET",
   "WATCHDOG_PID", "WATCHDOG_USEC", "TMPDIR", "NEXT_TELEMETRY_DISABLED",
-  "CACHE_DIRECTORY"]);
+  "CACHE_DIRECTORY",
+  // Source-pinned, nonfinancial Storage OS receipt reader only. No teaching
+  // owner key, deletion signer, custody authority or arbitrary env suffix.
+  "AOE2WAR_OS_STORE_DIR", "AOE2WAR_OS_BRIDGE_TOKEN",
+  "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HMAC_KEY",
+  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY"]);
+const storageKeys = [
+  "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HMAC_KEY",
+  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY",
+];
+const storageEnv = ["AOE2WAR_OS_STORE_DIR", "AOE2WAR_OS_BRIDGE_TOKEN", ...storageKeys];
+const storagePresent = storageEnv.filter(k => Object.prototype.hasOwnProperty.call(process.env, k));
+if (storagePresent.length) {
+  need(storagePresent.length === storageEnv.length, "STORAGE_PARTIAL_ENROLLMENT_DENIED");
+  need(process.env.AOE2WAR_OS_STORE_DIR ===
+    "/mnt/HC_Volume_105319120/aoe2war/os-control",
+    "STORAGE_STORE_EXACT_ROOT_REQUIRED");
+  const token = process.env.AOE2WAR_OS_BRIDGE_TOKEN;
+  need(typeof token === "string" && /^[A-Za-z0-9_+=/-]{32,256}$/.test(token),
+    "STORAGE_BRIDGE_TOKEN_INVALID");
+  const keys = storageKeys.map(k => process.env[k]);
+  need(keys.every(k => typeof k === "string" && /^[a-f0-9]{64}$/.test(k)) &&
+    new Set(keys).size === keys.length &&
+    keys.every(k => k !== token), "STORAGE_SOURCE_KEY_SEGREGATION_REQUIRED");
+}
 need(process.platform === "linux" && process.getuid() === UID && process.geteuid() === UID,
   "EXACT_DEDICATED_UID_REQUIRED");
 for (const [key, value] of Object.entries(required)) need(process.env[key] === value, "ENV_" + key);

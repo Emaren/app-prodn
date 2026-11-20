@@ -194,6 +194,31 @@ assert.throws(()=>setup({AOE2WAR_R25_ISOLATED_WEB:undefined}),/ENV_AOE2WAR_R25_I
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:undefined}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:'/mnt/private'}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({WOLO_SIGNER_KEY:'never-imported'}),/UNREVIEWED_ENVIRONMENT/);
+// Storage source signer material is accepted only as a complete, isolated,
+// exact root enrollment. Never add teaching/custody/delete privileges.
+const storageVars={
+ AOE2WAR_OS_STORE_DIR:'/mnt/HC_Volume_105319120/aoe2war/os-control',
+ AOE2WAR_OS_BRIDGE_TOKEN:'B'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'a'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY:'b'.repeat(64),
+ AOE2WAR_STORAGE_VISUAL_HMAC_KEY:'c'.repeat(64),
+ AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY:'d'.repeat(64)
+};
+assert.equal(typeof setup(storageVars).http.Server,'function');
+for(const changes of [
+ {AOE2WAR_OS_STORE_DIR:undefined},
+ {AOE2WAR_OS_STORE_DIR:'/tmp/alternate'},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:undefined},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'SHORT'},
+ {AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'b'.repeat(64)},
+ {AOE2WAR_STORAGE_VISUAL_HMAC_KEY:'d'.repeat(64)},
+ {AOE2WAR_OS_BRIDGE_TOKEN:'a'.repeat(64)},
+ {AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY:'f'.repeat(64)},
+ {FINANCIAL_SIGNER_KEY:'f'.repeat(64)}
+])assert.throws(()=>setup({...storageVars,...changes}),/AOE2WAR_PRODUCTION_HOLD/);
+assert.throws(()=>setup({
+ AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY:'a'.repeat(64)
+}),/STORAGE_PARTIAL_ENROLLMENT_DENIED/);
 console.log('PASS:actual_preloader_transport_and_http_boundaries');
 '''
         result=subprocess.run(["node","-e",script,str(ROOT/"scripts/r25_b_guard_production_v1.cjs")],capture_output=True,text=True,timeout=15)
