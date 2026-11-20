@@ -55,9 +55,9 @@ test("daemon polling, visibility, freshness and historical click preference", as
     },
   };
   type Lower = ReactElement<{onClick:(event:{target:null})=>void}>;
-  const module = {exports:{} as {default:()=>ReactElement<{children:ReactNode}>}};
+  const tileModule = {exports:{} as {default:()=>ReactElement<{children:ReactNode}>}};
   vm.runInNewContext(javascript, {
-    exports:module.exports,Date,AbortController,document,Element:class {},fetch,
+    exports:tileModule.exports,Date,AbortController,document,Element:class {},fetch,
     window:{setTimeout,clearTimeout,setInterval,clearInterval,localStorage:{
       getItem:(k:string)=>storage.get(k),setItem:(k:string,v:string)=>storage.set(k,v),
     }},
@@ -70,7 +70,7 @@ test("daemon polling, visibility, freshness and historical click preference", as
   });
   function render() {
     cursor=0;
-    const sections=Children.toArray(module.exports.default().props.children);
+    const sections=Children.toArray(tileModule.exports.default().props.children);
     for(const effect of effects.splice(0)){const dispose=effect();if(dispose)cleanup.push(dispose);}
     return sections.at(-1) as Lower;
   }
