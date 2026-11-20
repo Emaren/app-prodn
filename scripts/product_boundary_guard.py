@@ -156,6 +156,10 @@ EXACT_WE2_RECON_CHANGED = frozenset(EXACT_WE2_RECON_SHA256) | frozenset({
     "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
+    "docs/ENGINEERING_MEMORY.md",
+    "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
+    "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
+    "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md",
 })
 BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/production-reconciliation-gate-v1-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")

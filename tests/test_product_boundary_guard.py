@@ -153,7 +153,10 @@ class BoundaryTests(unittest.TestCase):
             "tests/test_aoe2_production_reconciliation_gate_v1.py",
             "tests/test_product_release_recovery.py",
             "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py",
-            "docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"})
+            "docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json",
+            "docs/ENGINEERING_MEMORY.md","docs/LIVE_FINAL_PROOF_VISIBILITY.md",
+            "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
+            "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md"})
         for name,digest in policy.EXACT_WE2_RECON_SHA256.items():
             self.assertEqual(hashlib.sha256((source/name).read_bytes()).hexdigest(),digest)
         with tempfile.TemporaryDirectory() as tmp:
