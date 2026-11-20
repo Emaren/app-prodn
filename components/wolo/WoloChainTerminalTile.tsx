@@ -37,6 +37,7 @@ const RUNTIME_VIEW_KEY = "wolo-runtime-view";
 const DAEMON_VIEW_KEY = "wolo-daemon-view";
 const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
 const WOLO_STATUS_POLL_MS = 8000;
+const WOLO_DAEMON_POLL_MS = 3000;
 const BLOCK_FEED_MAX_BYTES = 131072;
 
 async function readBoundedBlockFeedJson(response: Response): Promise<unknown> {
@@ -371,11 +372,15 @@ export default function WoloChainTerminalTile() {
     };
 
     const interval = window.setInterval(loadIfVisible, WOLO_STATUS_POLL_MS);
+    const daemonInterval = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void loadDaemonLog();
+    }, WOLO_DAEMON_POLL_MS);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      window.clearInterval(daemonInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
@@ -601,8 +606,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap gap-2">
-                <PremiumRuntimeChip label="protected operator journal" />
-                <PremiumRuntimeChip label="public access restricted" />
+                <PremiumRuntimeChip label={daemon?.ok ? "raw live tail" : "protected operator journal"} />
+                <PremiumRuntimeChip label={daemon?.ok ? "last 40 lines" : "public access restricted"} />
               </div>
             </div>
 
@@ -623,6 +628,7 @@ export default function WoloChainTerminalTile() {
               title={(daemon?.label || "daemon.log").toUpperCase()}
               badge="local"
               lines={daemonLines}
+              live={Boolean(daemon?.ok)}
             />
           </div>
         </section>
@@ -637,8 +643,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <RuntimeChip label="protected operator journal" />
-                <RuntimeChip label="public access restricted" />
+                <RuntimeChip label={daemon?.ok ? "raw live tail" : "protected operator journal"} />
+                <RuntimeChip label={daemon?.ok ? "last 40 lines" : "public access restricted"} />
               </div>
             </div>
             <div
@@ -658,6 +664,7 @@ export default function WoloChainTerminalTile() {
               title={daemon?.label || "daemon.log"}
               badge="local"
               lines={plainDaemonLines.length > 0 ? plainDaemonLines : daemonLines}
+              live={Boolean(daemon?.ok)}
             />
           </div>
         </section>
@@ -735,31 +742,33 @@ function DaemonConsolePanel({
   title,
   badge,
   lines,
+  live,
 }: {
   title: string;
   badge: string;
   lines: string[];
+  live: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.6rem] border border-slate-500/20 bg-[#0a1018] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.06)]">
+    <div className="overflow-hidden rounded-[1.6rem] border border-cyan-300/12 bg-[#07101b] shadow-[inset_0_0_0_1px_rgba(34,211,238,0.05)]">
       <div className="border-b border-slate-400/15 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-300/80">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-cyan-100/75">
               {title}
             </div>
             <div className="mt-1 text-xs text-slate-400 sm:text-sm">
-              operator-only journal · public read-only rail
+              {live ? "live validator output · control-room color rail" : "operator-only journal · public read-only rail"}
             </div>
           </div>
 
-          <div className="rounded-full border border-slate-300/15 bg-white/[0.035] px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
+          <div className="rounded-full border border-fuchsia-300/15 bg-fuchsia-300/5 px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
             {badge}
           </div>
         </div>
       </div>
 
-      <div className="max-h-[26rem] overflow-auto bg-[#0b1118] px-5 py-4 font-mono text-[14px] leading-[1.55] text-slate-100 sm:text-[15px]">
+      <div className="max-h-[26rem] overflow-auto bg-[#080f18] px-5 py-4 font-mono text-[14px] leading-[1.55] text-slate-100 sm:text-[15px]">
         <div>
           {lines.map((line, index) => renderDaemonLine(line, index))}
         </div>
