@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, existsSync } from "node:fs";
-import { evaluatePlayerSurfaceEvidence } from "../scripts/player-surface-live-check.mjs";
+import { evaluatePlayerSurfaceEvidence } from "./player-surface-live-check.mjs";
 
 const source = (p: string) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
 const contract = JSON.parse(source("config/player-surface-contract.json"));
