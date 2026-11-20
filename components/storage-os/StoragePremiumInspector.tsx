@@ -7,7 +7,8 @@
 import {useMemo,useState} from "react";
 import {Archive,ChevronRight,Clock3,FileSearch,HardDrive,LockKeyhole,ShieldAlert,ShieldCheck} from "lucide-react";
 import {INDIVIDUAL_TRANSPORT_ADOPTED} from "@/lib/storageReviewTransportPolicy";
-import type {PlaneId,StorageVisualView,VisualReviewItem,VisualCapacitySample} from "@/lib/storageVisualPrivate";
+import type {PlaneId,VisualReviewItem,VisualCapacitySample} from "@/lib/storageVisualPrivate";
+import type {signedHogInventory} from "@/lib/storageSignedFreshness";
 
 type Sort = "largest"|"smallest"|"name"|"protection";
 const FLOW = [
@@ -17,16 +18,11 @@ const FLOW = [
 ] as const;
 const LABELS:Record<PlaneId,string>={
   mac:"M1 / APFS Data","hel1-root":"HEL1 / OS root",
-  "hel1-volume-105319120":"HEL1 / UUID-verified ext4 volume",
+  "hel1-volume-105319120":"HEL1 / Data volume 105319120",
 };
 function size(n:number|null|undefined){
   if(n===null||n===undefined||!Number.isSafeInteger(n)||n<0)return "UNKNOWN";
   return n>=1073741824?(n/1073741824).toFixed(2)+" GiB":n>=1048576?(n/1048576).toFixed(1)+" MiB":n+" B";
-}
-function status(available:boolean,age:number):"VERIFIED"|"PARTIAL"|"STALE"|"UNKNOWN" {
-  if(!available)return "UNKNOWN";
-  if(!Number.isFinite(age)||age< -60000||age>36*3600000)return "STALE";
-  return "PARTIAL"; // Source v1 never certifies full filesystem coverage.
 }
 function badge(t:string){
   const c=t==="VERIFIED"?"text-emerald-200 border-emerald-300/30":
@@ -41,21 +37,17 @@ function trendPoints(samples:VisualCapacitySample[]) {
   return vals.map((v,i)=>String(8+i*284/(vals.length-1))+","+
     String(60-48*(v-min)/span)).join(" ");
 }
-export default function StoragePremiumInspector({visual,activeId}:{
-  visual:StorageVisualView|undefined;activeId:PlaneId;
+export default function StoragePremiumInspector({inventorySource,activeId}:{
+  inventorySource:ReturnType<typeof signedHogInventory>;activeId:PlaneId;
 }){
   const [sort,setSort]=useState<Sort>("largest");
   const [chosen,setChosen]=useState<string|null>(null);
   const [openLevel,setOpenLevel]=useState<1|2|3|4|5>(2);
   const [dryRun,setDryRun]=useState<string|null>(null);
-  const plane=visual?.planes.find(p=>p.id===activeId);
-  const signed=visual?.source==="SIGNED_PRIVATE_RECEIPT";
-  const age=plane?Date.now()-Date.parse(plane.observedAt):Number.NaN;
-  const confidence=status(signed&&plane?.status==="RECEIPT",age);
-  const items=INDIVIDUAL_TRANSPORT_ADOPTED&&confidence==="PARTIAL"?
-    (plane?.reviewItems??[]):[];
+  const {plane,status:confidence}=inventorySource;
+  const items=INDIVIDUAL_TRANSPORT_ADOPTED&&confidence==="PARTIAL"?plane?.reviewItems:undefined;
   const inventory=useMemo(()=>{
-    const a=[...items];
+    const a=[...(items??[])];
     a.sort((x,y)=>sort==="largest"?y.grossBytes-x.grossBytes:
       sort==="smallest"?x.grossBytes-y.grossBytes:
       sort==="name"?x.alias.localeCompare(y.alias):y.level-x.level);
@@ -64,7 +56,7 @@ export default function StoragePremiumInspector({visual,activeId}:{
   const focused=inventory.find(x=>x.alias===chosen)??null;
   const samples=INDIVIDUAL_TRANSPORT_ADOPTED?(plane?.capacitySamples??[]):[];
   const stages=FLOW.map((name,i)=>({
-    name,verdict:i===0&&signed&&plane?.status==="RECEIPT"?"PARTIAL":"HOLD",
+    name,verdict:i===0&&confidence==="PARTIAL"?"PARTIAL":"HOLD",
   }));
   const preview=async(item:VisualReviewItem)=>{
     setDryRun("Verifying signed source-bound preflight…");
@@ -99,7 +91,7 @@ export default function StoragePremiumInspector({visual,activeId}:{
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
           <div className="flex items-center gap-2 text-xs text-slate-400"><FileSearch className="h-4 w-4"/> Admitted individual files</div>
-          <div className="mt-2 text-3xl font-black tabular-nums text-white">{inventory.length}</div>
+          <div className="mt-2 text-3xl font-black tabular-nums text-white">{items ? inventory.length : "UNKNOWN"}</div>
           <div className="mt-1 text-[11px] text-slate-400">No category is an individual file</div>
         </div>
         <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[.025] p-4">
@@ -114,8 +106,8 @@ export default function StoragePremiumInspector({visual,activeId}:{
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
           <div className="flex items-center gap-2 text-xs text-slate-400"><HardDrive className="h-4 w-4"/> Allocated / logical</div>
-          <div className="mt-2 text-xl font-black text-white">PARTIAL / UNKNOWN</div>
-          <div className="mt-1 text-[11px] text-slate-400">No APFS clone or snapshot double counting</div>
+          <div className="mt-2 text-xl font-black text-white">{confidence} / UNKNOWN</div>
+          <div className="mt-1 text-[11px] text-slate-400">Gross categories can overlap on disk</div>
         </div>
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_.75fr]">

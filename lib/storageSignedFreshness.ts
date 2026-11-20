@@ -5,6 +5,7 @@
  * Never upgrade any of those unknowns because a visual file merely exists.
  */
 import type { PlaneId, StorageVisualView } from "./storageVisualPrivate.ts";
+import type { TeachingLevel } from "./storageHogTeachingPolicy.ts";
 
 export const FRESHNESS_SCHEMA = "aoe2war.storage-os.signed-freshness.v1";
 export const FRESHNESS_PLANES = ["mac", "hel1-root", "hel1-volume-105319120"] as const;
@@ -41,6 +42,29 @@ const LABELS: Record<PlaneId,string> = {
 };
 const TTL = 36*3600_000;
 const FUTURE = 60_000;
+
+// The inclusive deadline lets the browser expire an observation between polls.
+// The write route evaluates the same deadline again against its own clock.
+function receiptDeadline(observedAt:string|undefined,maxAge:number,now:number):number|null {
+  const observed = Date.parse(observedAt ?? "");
+  const deadline = observed + maxAge;
+  return Number.isFinite(now) && observed <= now + FUTURE && now <= deadline ? deadline : null;
+}
+export function teachingSourceDeadline(observedAt:string|undefined,level:TeachingLevel,now=Date.now()) {
+  return receiptDeadline(observedAt,level === 2 ? 3_600_000 : TTL,now);
+}
+export function signedHogInventory(visual:StorageVisualView|null|undefined,id:PlaneId,now=Date.now()) {
+  const plane = visual?.source === "SIGNED_PRIVATE_RECEIPT" &&
+    visual.authority === "PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY"
+    ? visual.planes.find(item => item.id === id) : undefined;
+  const observed = Date.parse(plane?.observedAt ?? "");
+  if (!plane || !Number.isFinite(observed) || !Number.isFinite(now) || observed > now + FUTURE)
+    return {plane:undefined,status:"UNKNOWN" as const,categoryCount:null,currentUntil:null};
+  const currentUntil = receiptDeadline(plane.observedAt,TTL,now);
+  if (plane.status !== "RECEIPT" || currentUntil === null)
+    return {plane,status:"STALE" as const,categoryCount:null,currentUntil:null};
+  return {plane,status:"PARTIAL" as const,categoryCount:plane.hogs.length,currentUntil};
+}
 export function unknownSignedFreshness(now:Date):SignedFreshnessView {
   return {
     schema:FRESHNESS_SCHEMA,authority:"PRIVATE_READ_ONLY_NOT_ADOPTION",
