@@ -705,9 +705,6 @@ def prepare_artifacts(approval, work, log, invocation=None):
     stage = transport.private_dir(work / approval["sourceSha"][:12])
     event(log, approval, "download", "running",
           {"artifactId": approval["artifactId"], "expectedSha256": approval["artifactSha256"]})
-    runtime_zip = transport.download(
-        cache, approval["artifactId"], approval["artifactBytes"], approval["artifactSha256"]
-    )
     proof_zip = transport.download(
         cache, approval["proofArtifactId"], approval["proofArtifactBytes"],
         approval["proofArtifactSha256"]
@@ -717,9 +714,18 @@ def prepare_artifacts(approval, work, log, invocation=None):
         stage / "b-linux-independent-review-v2.json", approval["proofSha256"], limit=16384
     )
     proof = json.loads(proof_path.read_text())
-    need(proof.get("source_commit") == approval["sourceSha"] and
+    need(isinstance(proof, dict) and proof.get("source_commit") == approval["sourceSha"] and
          proof.get("build_id") == approval["buildId"] and
          proof.get("run_id") == approval["runId"], "PROOF_SOURCE_MISMATCH")
+    need(type(proof.get("github_artifact_id")) is int and
+         proof["github_artifact_id"] == approval["artifactId"], "PROOF_RUNTIME_ZIP_ID_MISMATCH")
+    need(type(proof.get("github_artifact_zip_bytes")) is int and
+         proof["github_artifact_zip_bytes"] == approval["artifactBytes"], "PROOF_RUNTIME_ZIP_SIZE_MISMATCH")
+    need(proof.get("github_artifact_zip_sha256") == approval["artifactSha256"],
+         "PROOF_RUNTIME_ZIP_DIGEST_MISMATCH")
+    runtime_zip = transport.download(
+        cache, approval["artifactId"], approval["artifactBytes"], approval["artifactSha256"]
+    )
     archive = transport.member(
         runtime_zip, "runtime.tar.gz", stage / "runtime.tar.gz",
         proof.get("runtime_archive_sha256")
@@ -727,6 +733,7 @@ def prepare_artifacts(approval, work, log, invocation=None):
     proof = transport.validate_proof(
         proof_path, approval["sourceSha"], approval["buildId"], approval["runId"], archive
     )
+    need(transport.sha(proof_path) == approval["proofSha256"], "PROOF_CHANGED_DURING_PREPARATION")
     event(log, approval, "T4", extra={"proofSha256": approval["proofSha256"]})
     if invocation is not None:
         invocation.artifact_sha = proof["runtime_archive_sha256"]
