@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6b80eae102df1f849168e46d729166511f50a15acc137822b64549a06718b1b9",
+      "sha256": "7f796a9c24102b3696109e3e00182434d15e4a05c1b151ce82513c815f9f1523",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3549,7 +3549,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "1d614043a58c1e1d71bd92b4cad336cddd407d21"
+    "commit": "7f2957285bf65aef12f963e410af1ea602741742"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
