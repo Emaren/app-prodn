@@ -1,19 +1,46 @@
 ---
 id: "aoe2war.app-prodn.session-b-hel1-absent-v22-signing-approval-20261112"
 title: "Session B HEL1 real absent-preimage recovery and owner-root signer approval packet"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit"
-reviewed_at: "2026-11-12"
-review_interval_days: 7
+reviewed_at: "2026-11-20"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Session B HEL1 real absent-preimage recovery and owner-root signer approval packet
+
+## November 20, 2026 — archived historical review, NOT renewed signer approval
+
+This November 12 source-review packet is preserved below for exact
+historic source hashes, prior observed host preimage and owner-reported
+public-key fingerprint. Review of today's production identity showed
+this old seven-day draft cannot serve as a present-root, signer,
+Social SQL or website activation permit. Its document lifecycle is
+therefore HISTORICAL with no recurring approval interval.
+
+Observed live public 3032 runs accepted Library source
+5339a981acbf15ea8d3c4393cb1fc75bc300ea45 and BUILD_ID
+sn6eybJdBu7mluOQByc4M. Current integrated Lobby/Chat
+source a78964f4bbc32515243f56f1c0a1fb623047af72 and BUILD_ID
+-lmy-xPi1N9FECHgVYtMa are candidates, not the activated website.
+Central/WE2 physical census still finds Social writer inactive,
+three Social-specific root authority targets absent, and no real
+CHAT_DB_READY; Lobby Chat has its own distinct signed SQL writer gate.
+The old November 12 host preimage cannot be substituted for a fresh
+root readback.
+
+These source observations do NOT constitute an independent owner
+signature, replacement signer authority, root install/SQL permit,
+Factory T10, financial grant, or authenticated messaging acceptance.
+The precise historical claims below retain their ORIGINAL dated
+meaning. New production authority requires independently accepted,
+fresh, source-bound WE1/WE2 receipts and real browser outcomes.
 
 **EXACT-SOURCE REVIEW ONLY.** This is an independent Central/sole-owner source
 review request, NOT a root, source-install or public-activation command.
@@ -194,7 +221,7 @@ acceptance. Two separately authorized true 3032 original-runtime rollbacks
 must use two different fresh signed nonces. C03 strict option stays
 uninstalled until Session A approves its own reader/HBA and sidecar.
 
-**CURRENT SOURCE REVIEW, NOT PRODUCTION STATE:**
+**NOVEMBER 12 HISTORICAL SOURCE-REVIEW SNAPSHOT — NOT CURRENT PRODUCTION STATE:**
 
 HEL1_SOURCE_PREIMAGE_REPAIRED=HOLD_SOURCE_READY_HOST_UNCHANGED
 
