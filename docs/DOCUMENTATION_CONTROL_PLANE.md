@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/storage-os-level2-owner-learning-20261120` at `9f6214a45c4af454c79196a9bdea3ca9a2ee70e6`
+Implementation baseline: `we2/storage-protected-ingress-20261120` at `31dba6ded71e05312684f9324c6a95188d3536ee`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **155**
+- Authoritative repository documents: **156**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 13
 - `reference`: 81
-- `runbook`: 49
+- `runbook`: 50
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 47
+- `draft`: 48
 - `generated`: 1
 - `historical`: 13
 - `superseded`: 3
@@ -203,6 +203,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
 | [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
+| [Protected Storage OS ingress admission for deployed Explorer](release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md) | `runbook` | `draft` | `nonfinancial-source-review-only` |
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
 | [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
