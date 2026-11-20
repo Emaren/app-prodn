@@ -53,6 +53,25 @@ type ReviewScope = {
   plane:TeachingPlane; category:string; observedAt:string;
   sourceFloor:ProtectionLevel; overlaps:boolean;
 };
+/** Permanent review ceiling across *all* signed owner events for a plane/category.
+ * There is intentionally NO downgrade/reclassification executor in this release.
+ * Historic L3/L4 decisions and signed inherited floors survive later L2 feedback.
+ * This is a conservative category policy, never an exact-item deletion rule.
+ */
+export function strongestRecordedProtection(
+  events: readonly TeachingEvent[], plane:TeachingPlane, category:string,
+):ProtectionLevel {
+  let floor:ProtectionLevel = 1;
+  for (const event of events) {
+    if(event.plane !== plane || event.category !== category)continue;
+    // Only call on readTeachingEvents()-verified ledger entries.
+    if(!isProtectionLevel(event.sourceFloor) || !isProtectionLevel(event.effectiveLevel) ||
+       !isTeachingLevel(event.requestedLevel))return 5; // corruption must never grant L2
+    floor=Math.max(floor,event.sourceFloor,event.effectiveLevel,event.requestedLevel) as ProtectionLevel;
+  }
+  return floor;
+}
+
 type ReviewFinding = "PROTECTED" | "ALREADY_REVIEWED" | "NEEDS_EXAMPLES" | "REVIEW_SUGGESTED" | "EXPIRED";
 
 /** The input ledger is in verified append order. Comparable past category
@@ -60,7 +79,12 @@ type ReviewFinding = "PROTECTED" | "ALREADY_REVIEWED" | "NEEDS_EXAMPLES" | "REVI
 export function categoryReviewEvidence(events:readonly TeachingEvent[], scope:ReviewScope,
   ownerBinding:string|null, now=Date.now()):{finding:ReviewFinding; examples:TeachingEvent[]} {
   const history = events.filter(e => e.plane === scope.plane && e.category === scope.category);
-  if (scope.sourceFloor !== 2 || history.some(e => e.effectiveLevel === 5))
+  // Signed inherited floors and all stronger decisions are sticky: an old
+  // L4 followed by two L2 notes is NEVER evidence for an L2 recommendation.
+  // A future separately authenticated reclassification must introduce a
+  // versioned, independently reviewed authority; this release has none.
+  if (scope.sourceFloor !== 2 ||
+      strongestRecordedProtection(history,scope.plane,scope.category) > 2)
     return {finding:"PROTECTED", examples:[]};
   if (teachingSourceDeadline(scope.observedAt,2,now) === null)
     return {finding:"EXPIRED", examples:[]};
