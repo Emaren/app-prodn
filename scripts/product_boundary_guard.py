@@ -159,6 +159,10 @@ EXACT_WE2_STORAGE_PINS = {
 EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
     "scripts/product_boundary_guard.py",
     "tests/test_product_boundary_guard.py",
+    # DocsV2 implementation index is a source-owned *documentation-only*
+    # commit after the exact executable implementation baseline.
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
 }
 BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
