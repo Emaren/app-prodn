@@ -149,7 +149,8 @@ class BoundaryTests(unittest.TestCase):
             "scripts/aoe2_product_release.py",
             "scripts/aoe2_production_reconciliation_gate_v1.py"})
         expected=set(policy.EXACT_WE2_RECON_CHANGED)
-        self.assertEqual(expected,set(policy.EXACT_WE2_RECON_SHA256)|{
+        self.assertEqual(expected,set(policy.EXACT_WE2_RECON_SHA256)|
+                         set(policy.EXACT_WE2_RECON_DEPENDENCIES)|{
             "tests/test_aoe2_production_reconciliation_gate_v1.py",
             "tests/test_product_release_recovery.py",
             "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py",
@@ -161,7 +162,7 @@ class BoundaryTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256((source/name).read_bytes()).hexdigest(),digest)
         with tempfile.TemporaryDirectory() as tmp:
             checkout=Path(tmp)
-            for name in policy.EXACT_WE2_RECON_SHA256:
+            for name in set(policy.EXACT_WE2_RECON_SHA256)|set(policy.EXACT_WE2_RECON_DEPENDENCIES):
                 dst=checkout/name;dst.parent.mkdir(parents=True,exist_ok=True)
                 dst.write_bytes((source/name).read_bytes());dst.chmod(0o644)
             def accept(*,repo="Emaren/app-prodn",branch_=branch,base_=base,
@@ -193,6 +194,12 @@ class BoundaryTests(unittest.TestCase):
                 with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SOURCE_CUSTODY"):
                     accept()
                 alias.unlink()
+                deps=checkout/"yarn.lock"
+                olddeps=deps.read_bytes()
+                deps.write_bytes(olddeps+b"\n# modified lock")
+                with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_DEPENDENCY_HASH_DRIFT"):
+                    accept()
+                deps.write_bytes(olddeps)
                 path.unlink()
                 path.symlink_to(source/"scripts/aoe2_product_release.py")
                 with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RECON_SOURCE_CUSTODY"):

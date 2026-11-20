@@ -149,7 +149,12 @@ EXACT_WE2_RECON_SHA256 = {
     "scripts/aoe2_product_release.py": "5382fdbee174a990aae69c744c582cf7a9337f1b9185c52441c337e9e9f49f61",
     "scripts/aoe2_production_reconciliation_gate_v1.py": "c9bf78a0c59f2904fcf619a2d92b4d6dd4fd3696a5b9e274d768626c7e51f7e7",
 }
-EXACT_WE2_RECON_CHANGED = frozenset(EXACT_WE2_RECON_SHA256) | frozenset({
+EXACT_WE2_RECON_DEPENDENCIES = {
+    "package.json": "de880f6fb002de1e063057f88301e21eb397cea1ae6ac187cf962a1ef8f18f78",
+    "yarn.lock": "50ae5153ff7c952511247c5672b44387b2fa8b279e09bf2377c5375f921ca301",
+}
+EXACT_WE2_RECON_CHANGED = (frozenset(EXACT_WE2_RECON_SHA256) |
+    frozenset(EXACT_WE2_RECON_DEPENDENCIES) | frozenset({
     "tests/test_aoe2_production_reconciliation_gate_v1.py",
     "tests/test_product_release_recovery.py",
     "scripts/product_boundary_guard.py",
@@ -160,7 +165,7 @@ EXACT_WE2_RECON_CHANGED = frozenset(EXACT_WE2_RECON_SHA256) | frozenset({
     "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
     "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
     "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md",
-})
+}))
 BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/production-reconciliation-gate-v1-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
@@ -575,6 +580,24 @@ def check_exact_we2_reconciliation_source(checkout: Path, repo: str,
         raise BoundaryHold("WE2_RECON_EXACT_CHANGED_SCOPE")
     for source_path in EXACT_WE2_RECON_SHA256:
         authorize_changed_source(checkout,base,source_path)
+    for relative, expected in EXACT_WE2_RECON_DEPENDENCIES.items():
+        target=checkout/relative
+        st=target.lstat()
+        if (target.is_symlink() or not stat.S_ISREG(st.st_mode)
+                or st.st_uid != os.geteuid() or st.st_nlink!=1
+                or stat.S_IMODE(st.st_mode)&0o022
+                or not 500 <= st.st_size <= 300000):
+            raise BoundaryHold("WE2_RECON_DEPENDENCY_CUSTODY")
+        fd=os.open(target,os.O_RDONLY|os.O_NOFOLLOW)
+        try:
+            held=os.fstat(fd)
+            if (held.st_dev,held.st_ino,held.st_size)!=(st.st_dev,st.st_ino,st.st_size):
+                raise BoundaryHold("WE2_RECON_DEPENDENCY_RACE")
+            blob=os.read(fd,300001)
+        finally:
+            os.close(fd)
+        if (len(blob)!=st.st_size or hashlib.sha256(blob).hexdigest()!=expected):
+            raise BoundaryHold("WE2_RECON_DEPENDENCY_HASH_DRIFT")
 
 def main() -> int:
     parser = argparse.ArgumentParser()
