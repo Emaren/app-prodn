@@ -182,8 +182,7 @@ export async function appendTeachingEvent(input:{
     // The signed ledger is append-only. Later L2 suggestions cannot silently
     // undo any earlier L3/L4, owner deny or inherited source floor.
     const priorFloor=strongestRecordedProtection(old,input.plane,input.category);
-    if(input.requestedLevel<priorFloor || input.sourceFloor<priorFloor &&
-       input.requestedLevel<priorFloor)
+    if(input.requestedLevel<priorFloor)
       throw Error("TEACHING_OWNER_STRONGER_PROTECTION_HOLD");
     // No reclassification/downgrade authority is installed here; a distinct
     // separately authenticated and reviewed version would be required.
