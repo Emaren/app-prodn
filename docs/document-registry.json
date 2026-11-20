@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0c44905b877511e9e0292efffda9545f9cf42350861cbfed3b78d9a1dcac94f4",
+      "sha256": "0da05b668184343f1bd3d1dabeb4450c43f5b3b9f80252173e7e0563041bb4b7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3526,8 +3526,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/wolo-daemon-post1422-20261120",
-    "commit": "30326ca5ce659a6c0da92c0414cb7fffdb7cf85f"
+    "branch": "session-c/lobby-main-room-ui-20261120",
+    "commit": "048b1186ce3ab1686a2b88299973cf91d3b5e72d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
