@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import StorageTeachingHistory from "./StorageTeachingHistory";
+import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
 import {
   Activity,Archive,ArrowLeft,Check,Clock3,Database,HardDrive,
   Laptop2,LockKeyhole,RefreshCw,Server,ShieldAlert,ShieldCheck,SlidersHorizontal,
@@ -10,6 +11,7 @@ import {
 import type {StorageCommandCenter,StorageReading} from "@/lib/storageCommandCenterProjection";
 import type {VisualHog} from "@/lib/storageVisualPrivate";
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
+import {signedHogInventory,teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 import {
   teachingDisposition,type TeachingLevel,type TeachingPlane,
 } from "@/lib/storageHogTeachingPolicy";
@@ -54,8 +56,9 @@ function segment(start:number,end:number,inside:number,outside:number){
     b.join(" ")+" L "+c.join(" ")+" A "+inside+" "+inside+" 0 "+
     (finish-start>180?1:0)+" 0 "+d.join(" ")+" Z";
 }
-function Sunburst({hogs,selected,onSelect}:{
-  hogs:VisualHog[];selected:string|null;onSelect:(key:string)=>void;
+function Sunburst({hogs,status,selected,onSelect}:{
+  hogs:VisualHog[];status:ReturnType<typeof signedHogInventory>["status"];
+  selected:string|null;onSelect:(key:string)=>void;
 }){
   const sum=hogs.reduce((a,h)=>a+h.grossBytes,0);
   let cursor=0;
@@ -76,10 +79,10 @@ function Sunburst({hogs,selected,onSelect}:{
       <circle cx="130" cy="130" r="70" stroke="#27435a" strokeWidth="1" fill="#091522"/>
       <circle cx="130" cy="130" r="61" stroke="#294054" strokeWidth="1" fill="none" strokeDasharray="1 9"/>
       <text x="130" y="124" fill="#f8fafc" textAnchor="middle" fontSize="23" fontWeight="700">
-        {sum>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
+        {status==="PARTIAL"&&hogs.length>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
       </text>
       <text x="130" y="146" fill="#839bad" textAnchor="middle" fontSize="9" letterSpacing="1.6">
-        {sum>0?"GROSS MAPPED":"AWAITING PROOF"}
+        {status==="PARTIAL"?(hogs.length>0?"GROSS REPORTED":"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
       </text>
     </svg>
     <p className="mt-1 text-center text-[11px] leading-5 text-slate-400">
@@ -87,9 +90,9 @@ function Sunburst({hogs,selected,onSelect}:{
     </p>
   </div>;
 }
-function Drive({reading,id,active,onSelect,topCount}:{
+function Drive({reading,id,active,onSelect,inventory}:{
   reading:StorageReading|undefined;id:TeachingPlane;active:boolean;
-  onSelect:()=>void;topCount:number;
+  onSelect:()=>void;inventory:ReturnType<typeof signedHogInventory>;
 }){
   const title=id==="mac"?"M1 · Development Mac":id==="hel1-root"?"HEL1 · Root":"HEL1 · Data volume";
   const Icon=id==="mac"?Laptop2:id==="hel1-root"?Server:Database;
@@ -108,19 +111,22 @@ function Drive({reading,id,active,onSelect,topCount}:{
       <div><div className="text-[10px] uppercase tracking-widest text-slate-400">Available</div>
         <div className="mt-1 text-3xl font-black tabular-nums text-white">{bytes(free)}</div></div>
       <div className="text-right"><div className="text-[11px] text-slate-400">Used</div>
-        <div className="text-xl font-semibold tabular-nums text-slate-200">{used===null?"—":used.toFixed(1)+"%"}</div></div>
+        <div className="text-xl font-semibold tabular-nums text-slate-200">{used===null?"Unknown":used.toFixed(1)+"%"}</div></div>
     </div>
-    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
-      <div className="h-full rounded-full bg-cyan-400" style={{width:(used??0)+"%"}}/>
-    </div>
+    {used===null?<div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>:
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full rounded-full bg-cyan-400" style={{width:used+"%"}}/>
+      </div>}
     <div className="mt-3 flex justify-between text-[10px] text-slate-400">
-      <span>{topCount} verified gross categories</span><span>{shortTime(reading?.asOf??null)} OLD</span>
+      <span>{inventory.categoryCount===null ? (inventory.status==="STALE"?"Category inventory stale":"Category inventory unknown") :
+        inventory.categoryCount+" reported gross categories"}</span><span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
     </div>
   </button>;
 }
 export default function StorageHogWorkbench(){
   const [data,setData]=useState<StorageCommandCenter|null>(null);
   const [events,setEvents]=useState<TeachingEvent[]>([]);
+  const [access,setAccess]=useState<{ownerBinding:string|null;mayRecord:boolean}|null>(null);
   const [ledgerStatus,setLedgerStatus]=useState("UNAVAILABLE");
   const [error,setError]=useState<string|null>(null);
   const [active,setActive]=useState<TeachingPlane>("mac");
@@ -147,14 +153,17 @@ export default function StorageHogWorkbench(){
       if(abort.signal.aborted)return;
       setData(storage);setError(null);
       if(b.ok){
-        const ledger=await b.json() as {schema:string;events:TeachingEvent[]};
+        const ledger=await b.json() as {schema:string;events:TeachingEvent[];ownerBinding?:string|null;mayRecord?:boolean};
         if(ledger.schema!=="aoe2war.storage-teaching-history.v1"||!Array.isArray(ledger.events))
           throw Error("TEACHING LEDGER SCHEMA HOLD");
+        if(abort.signal.aborted)return;
+        const ownerBinding=typeof ledger.ownerBinding==="string"&&/^[a-f0-9]{64}$/.test(ledger.ownerBinding)?ledger.ownerBinding:null;
+        setAccess({ownerBinding,mayRecord:!!ownerBinding&&ledger.mayRecord===true});
         setEvents(ledger.events);setLedgerStatus("VERIFIED");
-      }else{setEvents([]);setLedgerStatus("NOT ENROLLED");}
+      }else{setAccess(null);setEvents([]);setLedgerStatus("NOT ENROLLED");}
     }catch(e){
       if(!abort.signal.aborted){
-        setData(null);setEvents([]);setLedgerStatus("UNKNOWN");
+        setData(null);setAccess(null);setEvents([]);setLedgerStatus("UNKNOWN");
         setError(e instanceof Error?e.message:"SOURCE READ FAILED");
       }
     }finally{window.clearTimeout(timeout);if(pending.current===abort)pending.current=null;}
@@ -170,22 +179,35 @@ export default function StorageHogWorkbench(){
       window.clearInterval(tick);pending.current?.abort();pending.current=null;};
   },[refresh]);
 
-  const sourcePlane=data?.visual?.planes.find(p=>p.id===active);
+  const [,refreshClock]=useReducer((tick:number)=>tick+1,0);
+  const now=Date.now();
+  const inventories=IDS.map(id=>signedHogInventory(data?.visual,id,now));
+  const activeInventory=inventories[IDS.indexOf(active)];
+  const sourcePlane=activeInventory.plane;
   const reading=data?.planes.find(p=>p.id===active);
-  const live=data?.visual?.source==="SIGNED_PRIVATE_RECEIPT"&&sourcePlane?.status==="RECEIPT";
+  const live=activeInventory.status==="PARTIAL";
+  const teachingDeadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,chosen,now) : null;
+  const l2Deadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,2,now) : null;
+  const nextDeadline=Math.min(l2Deadline??Infinity,teachingDeadline??Infinity,...inventories.map(p=>p.currentUntil??Infinity));
+  useEffect(()=>{
+    if(!Number.isFinite(nextDeadline))return;
+    const timer=window.setTimeout(refreshClock,Math.max(0,nextDeadline+1-Date.now()));
+    return ()=>window.clearTimeout(timer);
+  },[nextDeadline]);
   const hogs=useMemo(()=>live?[...(sourcePlane?.hogs??[])].sort((a,b)=>b.grossBytes-a.grossBytes):[],
     [live,sourcePlane]);
   const item=hogs.find(h=>h.key===selected)??null;
   const last=item?events.filter(e=>e.plane===active&&e.category===item.key).at(-1)??null:null;
   const priorL5=item?events.some(e=>e.plane===active&&e.category===item.key&&e.requestedLevel===5):false;
   const disposition=item?teachingDisposition(item.level,chosen,priorL5):null;
-  const canSave=!!live&&!!item&&ledgerStatus==="VERIFIED"&&!saving&&
+  const canSave=teachingDeadline!==null&&!!item&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
     disposition?.status==="ACCEPT"&&!priorL5&&(chosen!==5||confirmForever);
   const choosePlane=(id:TeachingPlane)=>{setActive(id);setSelected(null);setNotice(null);};
   const chooseItem=(key:string)=>{setSelected(key);setChosen(hogs.find(h=>h.key===key)?.level===5?5:2);setNote("");
     setConfirmForever(false);setNotice(null);};
   const save=async()=>{
     if(!item||!sourcePlane||!canSave)return;
+    if(teachingSourceDeadline(sourcePlane.observedAt,chosen)===null){refreshClock();return;}
     setSaving(true);setNotice(null);
     try{
       const response=await fetch("/api/admin/storage-os/teaching",{
@@ -224,13 +246,13 @@ export default function StorageHogWorkbench(){
       </header>
       {error&&<div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">{error}. Data withheld rather than fabricated.</div>}
       <section aria-label="Three independent storage volumes" className="grid gap-3 md:grid-cols-3">
-        {IDS.map(id=><Drive key={id} id={id} active={active===id}
+        {IDS.map((id,i)=><Drive key={id} id={id} active={active===id}
           onSelect={()=>choosePlane(id)} reading={data?.planes.find(p=>p.id===id)}
-          topCount={data?.visual?.planes.find(p=>p.id===id)?.hogs.length??0}/>)}
+          inventory={inventories[i]}/>)}
       </section>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{safeCount}/3 drives with current capacity receipts · Individual file coverage: NOT ADMITTED</span>
-        <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):"UNKNOWN / STALE"} · Owner learning ledger: {ledgerStatus}</span>
+        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/3 drives with current capacity receipts":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
+        <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):activeInventory.status} · Owner learning ledger: {ledgerStatus}</span>
       </div>
       <section className="grid gap-4 xl:grid-cols-[.96fr_1.04fr]" aria-label="Interactive capacity anatomy">
         <div className={PANEL+" p-5 sm:p-7"}>
@@ -238,7 +260,7 @@ export default function StorageHogWorkbench(){
             <div><p className="text-[10px] font-black tracking-[.26em] text-cyan-300">CAPACITY MAP</p><h2 className="mt-2 text-2xl font-bold text-white">{reading?.label??active}</h2></div>
             <HardDrive className="h-6 w-6 text-cyan-300"/>
           </div>
-          <div className="mt-2"><Sunburst hogs={hogs} selected={selected} onSelect={chooseItem}/></div>
+          <div className="mt-2"><Sunburst hogs={hogs} status={activeInventory.status} selected={selected} onSelect={chooseItem}/></div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Source observed</div>
@@ -257,7 +279,9 @@ export default function StorageHogWorkbench(){
             <SlidersHorizontal className="h-5 w-5 text-slate-400"/>
           </div>
           {hogs.length===0?<div className="mt-6 flex min-h-[330px] flex-col justify-center rounded-2xl border border-dashed border-white/15 p-6 text-sm leading-6 text-amber-100/90">
-            No current signed hog inventory for this drive. Connect the approved bounded host collector; do not substitute old screenshots or calculated guesses.
+            {live?"The signed observation reported no gross categories for this drive.":
+              activeInventory.status==="STALE"?"The last signed category inventory has expired. Awaiting a new host observation.":
+              "No current signed hog inventory for this drive."}
           </div>:
           <div className="mt-5 max-h-[610px] space-y-2 overflow-y-auto pr-1">{hogs.map((h,i)=>{
             const total=hogs.reduce((acc,x)=>acc+x.grossBytes,0);
@@ -266,7 +290,8 @@ export default function StorageHogWorkbench(){
             const past=events.filter(e=>e.plane===active&&e.category===h.key).at(-1);
             const sameSource=past&&past.sourceObservedAt===sourcePlane?.observedAt&&
               past.grossBytes===h.grossBytes&&past.sourceFloor===h.level&&past.overlaps===h.overlaps;
-            const level=past?.requestedLevel===5?5:(sameSource&&past?past.effectiveLevel:h.level);
+            const applied=past?.requestedLevel===5||sameSource;
+            const level=applied&&past?past.effectiveLevel:h.level;
             return <button type="button" key={h.key} onClick={()=>chooseItem(h.key)}
               aria-pressed={isSelected} className={"w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
                 (isSelected?"border-cyan-300/60 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/20")}>
@@ -274,14 +299,14 @@ export default function StorageHogWorkbench(){
                 <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">#{i+1} · {h.overlaps?"OVERLAP":"GROSS ALLOCATION"}</div>
                   <div className="mt-1 truncate text-sm font-semibold text-white">{h.label}</div></div>
                 <div className="shrink-0 text-right"><div className="font-mono text-sm font-bold text-white">{bytes(h.grossBytes)}</div>
-                  <div className="mt-1 text-[10px] font-bold" style={{color:level>1?LVLCOLORS[level as TeachingLevel]:"#22d3ee"}}>L{level} {past?"· taught":"· source"}</div></div>
+                  <div className="mt-1 text-[10px] font-bold" style={{color:level>1?LVLCOLORS[level as TeachingLevel]:"#22d3ee"}}>L{level} {applied?"· taught":"· source"}</div></div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full" style={{width:pct+"%",background:COLORS[i%COLORS.length]}}/></div>
             </button>;
           })}</div>}
         </div>
       </section>
-      <StoragePremiumInspector visual={data?.visual} activeId={active}/>
+      <StoragePremiumInspector inventorySource={activeInventory} activeId={active}/>
       <section className={PANEL+" p-5 sm:p-7"} aria-label="Owner classification studio">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-[10px] font-black tracking-[.25em] text-amber-300">OWNER CLASSIFICATION · NEXT PHASE L2</p>
@@ -318,12 +343,14 @@ export default function StorageHogWorkbench(){
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300"><Clock3 className="h-4 w-4"/> Classification evidence</div>
             {item?<div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
               <div>Requested: <strong className="text-white">L{chosen}</strong> · effective policy: <strong className="text-white">{disposition?.effectiveLevel?"L"+disposition.effectiveLevel:"HOLD"}</strong></div>
-              <div>Previous owner record: <strong className="text-white">{last?"L"+last.requestedLevel+" · "+last.at:"NONE"}</strong></div>
               <div>Source protection: <strong className="text-amber-200">L{item.level} floor; permanent L5 cannot be withdrawn</strong></div>
               <div>Unique reclaim and exact-file admission: <strong className="text-amber-200">NOT VERIFIED</strong></div>
             </div>:<p className="mt-3 text-xs text-slate-400">No category selected.</p>}
           </div>
         </div>
+        {item&&sourcePlane&&access&&ledgerStatus==="VERIFIED"&&<StorageTeachingHistory
+          events={events} plane={active} item={item} observedAt={sourcePlane.observedAt}
+          ownerBinding={access.ownerBinding} now={now}/>}
         {chosen===5&&item&&!priorL5&&<label className="mt-4 flex items-start gap-3 rounded-xl border border-rose-300/25 bg-rose-300/[.04] p-4 text-sm text-rose-100">
           <input type="checkbox" checked={confirmForever} onChange={e=>setConfirmForever(e.target.checked)} className="mt-1"/>
           I understand L5 is permanent protection and cannot be downgraded or approved for software deletion.
@@ -336,7 +363,10 @@ export default function StorageHogWorkbench(){
           <div role="status" className="min-w-0 flex-1 text-xs leading-5 text-slate-400">
             {notice??(priorL5?"This category has permanent owner L5 protection.":
               ledgerStatus!=="VERIFIED"?"Learning ledger not admitted: choices remain unsaved previews.":
-              !live?"Signed source missing: saving disabled.":
+              !access?.ownerBinding?"Recording requires enrollment of the owner's app account.":
+              !access.mayRecord?"Only the enrolled owner account can record a classification.":
+              !live?"Saving requires a current signed observation.":
+              teachingDeadline===null?"Level 2 teaching requires a signed observation from the past hour.":
               "Saves an append-only owner-intent receipt; never executes delete, archive or migration.")}
           </div>
         </div>
