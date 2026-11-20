@@ -7,7 +7,7 @@ import {constants} from "node:fs";
 import {promises as fs} from "node:fs";
 import path from "node:path";
 import {
-  STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,teachingDisposition,isTeachingLevel,isTeachingPlane,
+  STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,teachingDisposition,strongestRecordedProtection,isTeachingLevel,isTeachingPlane,
   isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,
   type LearningEffect,
 } from "./storageHogTeachingPolicy.ts";
@@ -179,6 +179,15 @@ export async function appendTeachingEvent(input:{
     if(admission.status!=="ACCEPT"||admission.effect===null||admission.effectiveLevel===null)
       throw Error("TEACHING_PROTECTED_LEVEL_HOLD");
     if(immutable)throw Error("TEACHING_L5_ALREADY_PERMANENT");
+    // The signed ledger is append-only. Later L2 suggestions cannot silently
+    // undo any earlier L3/L4, owner deny or inherited source floor.
+    const priorFloor=strongestRecordedProtection(old,input.plane,input.category);
+    if(input.requestedLevel<priorFloor || input.sourceFloor<priorFloor &&
+       input.requestedLevel<priorFloor)
+      throw Error("TEACHING_OWNER_STRONGER_PROTECTION_HOLD");
+    // No reclassification/downgrade authority is installed here; a distinct
+    // separately authenticated and reviewed version would be required.
+
     const before=old.at(-1)??null;
     const stamp=new Date(Math.max(Date.now(),before?Date.parse(before.at)+1:0)).toISOString();
     const bare:BareEvent={schema:STORAGE_TEACHING_SCHEMA,id:randomUUID(),at:stamp,
