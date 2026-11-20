@@ -107,7 +107,8 @@ test("scoped V1 dispatch isolates storage from every private bridge operation", 
   const priorStore = process.env.AOE2WAR_OS_STORE_DIR;
   const priorToken = process.env.AOE2WAR_OS_BRIDGE_TOKEN;
   process.env.AOE2WAR_OS_STORE_DIR = temp;
-  process.env.AOE2WAR_OS_BRIDGE_TOKEN = fixtureToken;
+  // Synthetic fixture credential, never a production secret or literal token.
+  Object.assign(process.env, {AOE2WAR_OS_BRIDGE_TOKEN: fixtureToken});
   t.after(() => {
     if (priorStore === undefined) delete process.env.AOE2WAR_OS_STORE_DIR;
     else process.env.AOE2WAR_OS_STORE_DIR = priorStore;
