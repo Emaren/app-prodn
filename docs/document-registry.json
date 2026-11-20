@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5db56452951c9db1246117febfdd8ab509943ec954ede59caa9b603ccec0fea8",
+      "sha256": "c932102b2718b3ae7b852934d6f8f55e6ee161f3077dfc8bd9219c89c7dca257",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3461,7 +3461,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we2/production-reconciliation-gate-v1-20261120",
-    "commit": "4c0cb04411f158405998702cd4a3a335160596b1"
+    "commit": "d16f702e102f554c82e6977147edb0db7be353fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
