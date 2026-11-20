@@ -24,6 +24,7 @@ import type { HeroPlaylistView } from "@/lib/hero/types";
 import {
   getFallbackLeaderboard,
   getFallbackTournament,
+  LOBBY_ROOM_SLUG,
   type LobbyFeaturedWarriorHonor,
   type LobbyLeaderboardEntry,
   type LobbyLeaderboardSummary,
@@ -1956,7 +1957,8 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   );
   
   const chatRoomTitle =
-    messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
+    messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug &&
+    !tournament.isFallback && tournament.roomSlug !== LOBBY_ROOM_SLUG
       ? h("{title} Chat", { title: tournament.title })
       : h("Live Chat");
 
