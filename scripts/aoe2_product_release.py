@@ -33,6 +33,7 @@ CONTROLLER_SHA = "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c0
 PREPARE_SHA = "17f2ee180d69fae4f4b4c7e01f282e6e11db87a0c2d74a129d2eb7d63fbb6d20"
 INSPECTOR = "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
 INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"
+RECONCILER_SHA = "c9bf78a0c59f2904fcf619a2d92b4d6dd4fd3696a5b9e274d768626c7e51f7e7"
 SSH = ["/usr/bin/ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=8"]
 # Public HTTPS blocks the Python-urllib default UA. This observer is read-only.
 PUBLIC_OBSERVER_UA = "Mozilla/5.0 (compatible; AoE2WAR-Release-Observer/1.0)"
@@ -693,6 +694,59 @@ def root_pins():
          [CONTROLLER_SHA, PREPARE_SHA, INSPECTOR_SHA], "INSTALLED_ROOT_SOURCE_DRIFT")
 
 
+
+def verify_live_reconciliation(*, phase, profile, source, build):
+    """Exact read-only M1 reconciliation, included in the pre-T10 ledger.
+
+    The reconciler has no root, DB, credential or release-controller powers.
+    A missing file, different tested source or fabricated receipt always HOLDs.
+    """
+    need(phase in ("activate", "rollback", "reactivate") and
+         profile in ("lobby", "rollback"), "RECONCILIATION_PHASE_SCOPE")
+    need(re.fullmatch(r"[0-9a-f]{40}", source) is not None and
+         re.fullmatch(r"[A-Za-z0-9_-]{8,64}", build) is not None,
+         "RECONCILIATION_IDENTITY_SCOPE")
+    target = Path(__file__).with_name("aoe2_production_reconciliation_gate_v1.py")
+    stat_before = target.lstat()
+    need(stat.S_ISREG(stat_before.st_mode) and not target.is_symlink() and
+         stat_before.st_uid == os.geteuid() and stat_before.st_nlink == 1 and
+         not (stat_before.st_mode & 0o022), "RECONCILER_SOURCE_AUTHORITY")
+    raw = target.read_bytes()
+    need(hashlib.sha256(raw).hexdigest() == RECONCILER_SHA,
+         "RECONCILER_SOURCE_SHA_DRIFT")
+    proc = subprocess.run([
+        sys.executable, "-I", "-B", str(target), "--phase", phase,
+        "--profile", profile, "--expect-source", source, "--expect-build", build
+    ], capture_output=True, text=True, timeout=150, check=False)
+    need(proc.returncode == 0, "RECONCILIATION_PRODUCTION_HOLD")
+    try:
+        response = json.loads(proc.stdout.strip().splitlines()[-1])
+        receipt_path = Path(response["json"])
+        digest = response["sha256"]
+        st = receipt_path.lstat()
+        need(response["status"] == "PASS" and re.fullmatch(r"[0-9a-f]{64}", digest)
+             and stat.S_ISREG(st.st_mode) and not receipt_path.is_symlink()
+             and st.st_uid == os.geteuid() and st.st_nlink == 1
+             and stat.S_IMODE(st.st_mode) == 0o600
+             and receipt_path.parent.resolve() ==
+                 (Path.home()/".aoe2war-product-releases"/"reconciliation-v1").resolve(),
+             "RECONCILIATION_RECEIPT_CUSTODY")
+        bytes_ = receipt_path.read_bytes()
+        need(hashlib.sha256(bytes_).hexdigest() == digest,
+             "RECONCILIATION_RECEIPT_SHA")
+        receipt = json.loads(bytes_)
+        need(receipt.get("schema") == "aoe2war.we2.production-reconciliation.v1"
+             and receipt.get("acceptance") == "PASS"
+             and receipt.get("expected", {}).get("sourceSha") == source
+             and receipt.get("expected", {}).get("buildId") == build
+             and receipt.get("expected", {}).get("phase") == phase
+             and receipt.get("expected", {}).get("profile") == profile,
+             "RECONCILIATION_RECEIPT_SOURCE_BUILD")
+    except (OSError, KeyError, TypeError, ValueError, IndexError) as error:
+        raise RuntimeError("HOLD_PRODUCT_RELEASE_RECONCILIATION_RECEIPT_INVALID") from error
+    return digest
+
+
 def event(path, approval, name, state="pass", extra=None, at="NOW"):
     evidence = {"buildId": approval["buildId"], "runId": approval["runId"]}
     evidence.update(extra or {})
@@ -992,7 +1046,13 @@ def release(approval, remote, proof, log, work, invocation=None):
          "CONTROLLER_INTERRUPTED_REQUIRES_REVIEWED_RECOVERY")
     if invocation is not None:
         invocation.manifest(selected, phase)
-    accepted = {x["event"] for x in ledger.read(log, source) if x["state"] == "pass"}
+    prior_events = ledger.read(log, source)
+    need(not any(row["event"] == "hold" and row["state"] == "hold"
+                 and row["evidence"].get("reason") ==
+                     "RECONCILIATION_T9_LOBBY_OR_RUNTIME_FAILED"
+                 for row in prior_events),
+         "PRIOR_RECONCILIATION_HOLD_REQUIRES_REVIEWED_RECOVERY")
+    accepted = {x["event"] for x in prior_events if x["state"] == "pass"}
     if "T10" in accepted:
         public_and_root(source, approval["buildId"])
         root_pins()
@@ -1039,8 +1099,36 @@ def release(approval, remote, proof, log, work, invocation=None):
     digest = stage_witness(work, "T9", source, approval["buildId"])
     if invocation is not None:
         invocation.record("REACTIVATED", proof=digest)
+    # This hard gate runs BEFORE T9/T10 can be durably accepted. A successful
+    # /factory and /wolo response alone never proves recent games, Lobby Chat
+    # HTTP 200 or valid featured images. Its evidence is sealed into the
+    # release ledger, not a detached optional dashboard.
+    try:
+        reconciliation_sha = verify_live_reconciliation(
+            phase="reactivate", profile="lobby", source=source,
+            build=approval["buildId"])
+    except Exception as error:
+        event(log, approval, "hold", "hold",
+              {"reason": "RECONCILIATION_T9_LOBBY_OR_RUNTIME_FAILED"})
+        # Never leave a failed candidate publicly served by silently issuing
+        # T10. Use only the already authorized original root controller.
+        try:
+            approved_controller("rollback", manifest, approval)
+            public_and_root(selected["previous_source"], selected["previous_build"])
+        except Exception as rollback_error:
+            raise RuntimeError(
+                "HOLD_PRODUCT_RELEASE_RECONCILIATION_AND_ROLLBACK_UNVERIFIED"
+            ) from rollback_error
+        raise RuntimeError(
+            "HOLD_PRODUCT_RELEASE_RECONCILIATION_FAILED_LIBRARY_RESTORED"
+        ) from error
     if "T9" not in accepted:
-        event(log, approval, "T9", extra={"proofSha256": digest})
+        # T9's required witness remains the public HTTPS proof. The
+        # separately sealed reconciliation SHA is an additional bounded
+        # evidence field, never a substitute for the public witness digest.
+        event(log, approval, "T9", extra={
+            "proofSha256": digest, "expectedSha256": reconciliation_sha
+        })
     root_pins()
     # Existing source-pinned observer validates protected processes and finance denial.
     ssh("python3 -I -B " + INSPECTOR + " --phase inspect", root=True)

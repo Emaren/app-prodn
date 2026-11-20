@@ -99,10 +99,82 @@ class RecoveryTests(unittest.TestCase):
              patch.object(R,"canonical_main_ancestry",return_value={}), \
              patch.object(R,"controller",side_effect=lambda action,manifest:actions.append(action)), \
              patch.object(R,"stage_witness",return_value="6"*64), \
+             patch.object(R,"verify_live_reconciliation",return_value="7"*64), \
              patch.object(R,"seal_acceptance") as seal:
             R.release(self.approval,remote,{"runtime_archive_sha256":"5"*64},log,work)
         self.assertEqual(actions,["activate","rollback","reactivate","status"])
         self.assertEqual(seal.call_count,1)
+        t9=[x for x in R.ledger.read(log) if x["event"]=="T9"]
+        self.assertEqual(len(t9),1)
+        self.assertEqual(t9[0]["evidence"]["expectedSha256"],"7"*64)
+        self.assertEqual(t9[0]["evidence"]["proofSha256"],"6"*64)
+
+    def test_bad_reconciliation_auto_rolls_back_and_never_seals_t10(self):
+        work=self.parent/"run";work.mkdir(mode=0o700)
+        log=work/"release-events-v1.jsonl"
+        R.event(log,self.approval,"T3")
+        remote="/home/tony/.aoe2war-b-os-"+self.approval["sourceSha"][:12]+"-run-1234"
+        selected={"source":self.approval["sourceSha"],
+          "build":self.approval["buildId"],"github_run_id":1234,
+          "archive_path":remote+"/runtime.tar.gz","archive_sha256":"5"*64,
+          "independent_proof_sha256":"4"*64,"financial_authorized":False,
+          "previous_source":"9"*40,"previous_build":"previousBuild123"}
+        def ssh(command,**kwargs):
+            if "product-release-manifests/" in command:return json.dumps(selected)
+            if "state.json" in command:return json.dumps({"phase":"prepared"})
+            return ""
+        actions=[]
+        with patch.object(R,"ssh",side_effect=ssh), \
+             patch.object(R,"root_pins"), \
+             patch.object(R,"canonical_main_ancestry",return_value={}), \
+             patch.object(R,"controller",side_effect=lambda action,manifest:actions.append(action)), \
+             patch.object(R,"stage_witness",return_value="6"*64), \
+             patch.object(R,"verify_live_reconciliation",
+                          side_effect=RuntimeError("HOLD_PRODUCT_RELEASE_LOBBY_HTTP_500")), \
+             patch.object(R,"public_and_root") as old_verification, \
+             patch.object(R,"seal_acceptance") as seal:
+            with self.assertRaisesRegex(RuntimeError,"RECONCILIATION_FAILED_LIBRARY_RESTORED"):
+                R.release(self.approval,remote,{"runtime_archive_sha256":"5"*64},log,work)
+        self.assertEqual(actions,["activate","rollback","reactivate","rollback"])
+        old_verification.assert_called_once_with("9"*40,"previousBuild123")
+        seal.assert_not_called()
+        observed=R.ledger.read(log)
+        self.assertFalse(any(row["event"]=="T10" for row in observed))
+        self.assertTrue(any(row["event"]=="hold" and row["state"]=="hold"
+             and row["evidence"].get("reason")=="RECONCILIATION_T9_LOBBY_OR_RUNTIME_FAILED"
+             for row in observed))
+        # An ordinary resume cannot silently re-activate a known bad source.
+        with patch.object(R,"ssh",side_effect=ssh),patch.object(R,"root_pins"), \
+             patch.object(R,"canonical_main_ancestry",return_value={}):
+            with self.assertRaisesRegex(RuntimeError,"PRIOR_RECONCILIATION_HOLD"):
+                R.release(self.approval,remote,{"runtime_archive_sha256":"5"*64},log,work)
+
+    def test_reconciliation_source_digest_drift_is_hold(self):
+        with patch.object(R,"RECONCILER_SHA","0"*64), \
+             patch.object(R.subprocess,"run",
+                          side_effect=AssertionError("never execute changed gate")):
+            with self.assertRaisesRegex(RuntimeError,"RECONCILER_SOURCE_SHA_DRIFT"):
+                R.verify_live_reconciliation(phase="reactivate",profile="lobby",
+                    source="1"*40,build="candidateBuild123")
+
+    def test_reconciliation_forged_build_receipt_is_hold(self):
+        root=self.parent
+        dest=root/".aoe2war-product-releases"/"reconciliation-v1"
+        dest.mkdir(parents=True,mode=0o700)
+        body={"schema":"aoe2war.we2.production-reconciliation.v1",
+              "acceptance":"PASS","expected":{
+                 "sourceSha":"1"*40,"buildId":"FORGED_BUILD",
+                 "phase":"reactivate","profile":"lobby"}}
+        raw=(json.dumps(body,sort_keys=True)+"\n").encode()
+        receipt=dest/"fixture.json";receipt.write_bytes(raw);receipt.chmod(0o600)
+        output={"status":"PASS","json":str(receipt),
+                "sha256":hashlib.sha256(raw).hexdigest()}
+        proc=types.SimpleNamespace(returncode=0,stdout=json.dumps(output)+"\n",stderr="")
+        with patch.object(R.Path,"home",return_value=root), \
+             patch.object(R.subprocess,"run",return_value=proc):
+            with self.assertRaisesRegex(RuntimeError,"RECONCILIATION_RECEIPT_SOURCE_BUILD"):
+                R.verify_live_reconciliation(phase="reactivate",profile="lobby",
+                    source="1"*40,build="candidateBuild123")
 
     def test_new_source_behind_main_is_hold(self):
         main="e"*40
