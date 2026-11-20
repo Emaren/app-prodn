@@ -34,6 +34,9 @@ test("signed exact item binds machine filesystem device inode revision and alloc
   const read=verifyExactItems(signed(),KEY,NOW);
   assert.equal(read.source,"SIGNED_PRIVATE_RECEIPT");
   assert.equal(read.items.length,1);
+  // Cross-language native producer vector: NUL-terminated identity domain.
+  assert.equal(read.items[0].objectId,
+    "cc9d220f9014d351d97fa002a19edea25189610975f1c6bf9ff8ab99fee6aa1e");
   assert.equal(read.items[0].allocatedBytes,4294967296);
   assert.equal(read.items[0].logicalBytes,5368709120);
   assert.equal(read.items[0].level,5);

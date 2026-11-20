@@ -48,7 +48,7 @@ function stable(v:unknown):string{
   return JSON.stringify(v);
 }
 export function exactObjectId(x:{machine:string;filesystemUuid:string;deviceId:string;inode:string;sourceDigest:string}){
-  return createHash("sha256").update("AOE2WAR:STORAGE-FS-OBJECT-ID:V1\\0")
+  return createHash("sha256").update("AOE2WAR:STORAGE-FS-OBJECT-ID:V1\0")
     .update(stable({machine:x.machine,filesystemUuid:x.filesystemUuid,
       deviceId:x.deviceId,inode:x.inode,sourceDigest:x.sourceDigest})).digest("hex");
 }
