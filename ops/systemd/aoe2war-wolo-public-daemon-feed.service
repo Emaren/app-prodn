@@ -1,0 +1,26 @@
+[Unit]
+Description=AoE2WAR read-only public-safe WoloChain daemon event projection
+# Display-only collector must never initiate or manage the chain daemon.
+After=wolochaind-mainnet.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0022
+ExecStart=/usr/bin/python3 -I -B /usr/local/libexec/aoe2war/wolo_public_daemon_feed_v1.py collect
+WorkingDirectory=/
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/aoe2war-wolo-public-daemon-v1
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+TimeoutStartSec=15s
