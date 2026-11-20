@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh read-only public WoloChain daemon events for original tile
+
+[Timer]
+OnBootSec=20s
+OnUnitInactiveSec=3s
+AccuracySec=1s
+Unit=aoe2war-wolo-public-daemon-feed.service
+Persistent=false
+
+[Install]
+WantedBy=timers.target
