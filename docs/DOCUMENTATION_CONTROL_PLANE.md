@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-lobby-restore-20261119` at `a78964f4bbc32515243f56f1c0a1fb623047af72`
+Implementation baseline: `session-c/we3-lobby-restore-20261119` at `e8737f33bab3147e035f2955144971a91fe2d453`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

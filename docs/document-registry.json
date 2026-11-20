@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6d1946fa832857e32fe70a7a15142fd695f804170dcb43bad803bb0fe2a77c8b",
+      "sha256": "64e64d200644c959b5fdf779bef5cd86868c50878a0d0175f56684807051adb6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3527,7 +3527,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-lobby-restore-20261119",
-    "commit": "a78964f4bbc32515243f56f1c0a1fb623047af72"
+    "commit": "e8737f33bab3147e035f2955144971a91fe2d453"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
