@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b89ba899435537dbd2b94cf17252a2318f6de822402424f73d5292a887fbbfb8",
+      "sha256": "6b80eae102df1f849168e46d729166511f50a15acc137822b64549a06718b1b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-product-source-only-not-production-admission",
+      "id": "aoe2war.app-prodn.we3-four-plane-storage-review-20261120",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_FOUR_PLANE_STORAGE_REVIEW_20261120.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-20",
+      "sensitivity": "internal",
+      "sha256": "ecacf6593c93a111c1a7e0fbaf3d94f7b580243d767b165da9477c43bb6c98cb",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Four-Plane Storage Explorer and Owner Review Release Contract",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-library-review",
       "id": "aoe2war.app-prodn.we3-library-public-projections-20261119",
       "owner": "aoe2war-web",
@@ -3526,8 +3548,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/storage-os-level2-owner-learning-20261120",
-    "commit": "9f6214a45c4af454c79196a9bdea3ca9a2ee70e6"
+    "branch": "session-c/we3-four-plane-owner-teaching-20261120",
+    "commit": "1d614043a58c1e1d71bd92b4cad336cddd407d21"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
