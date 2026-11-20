@@ -140,7 +140,24 @@ EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
 } | EXACT_WE2_FACTORY_DOCS_REVIEW
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
+# Exact-source admission for the existing WE2 reconciliation gate, not a
+# general WE2 branch or host-side release privilege. The runner is a new,
+# separately reviewed source version; all previous Factory pins remain intact.
+EXACT_WE2_RECON_BRANCH = "we2/production-reconciliation-gate-v1-20261120"
+EXACT_WE2_RECON_BASE = "be935a2aac6c86cd4417dff4d3c12306b30e33b1"
+EXACT_WE2_RECON_SHA256 = {
+    "scripts/aoe2_product_release.py": "5382fdbee174a990aae69c744c582cf7a9337f1b9185c52441c337e9e9f49f61",
+    "scripts/aoe2_production_reconciliation_gate_v1.py": "c9bf78a0c59f2904fcf619a2d92b4d6dd4fd3696a5b9e274d768626c7e51f7e7",
+}
+EXACT_WE2_RECON_CHANGED = frozenset(EXACT_WE2_RECON_SHA256) | frozenset({
+    "tests/test_aoe2_production_reconciliation_gate_v1.py",
+    "tests/test_product_release_recovery.py",
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/production-reconciliation-gate-v1-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -281,6 +298,30 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         return raw
     # One exact reviewed Factory-root pin transition on the sole WE2 branch.
     # This does not admit a general release runner or change root authority.
+    if raw in EXACT_WE2_RECON_SHA256 and base == EXACT_WE2_RECON_BASE:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_RECON_BRANCH:
+            raise BoundaryHold("WE2_RECON_EXACT_BRANCH_OR_BASE")
+        path = checkout / relative_path(raw)
+        if (checkout / "scripts").is_symlink():
+            raise BoundaryHold("WE2_RECON_SCRIPT_DIR_SYMLINK")
+        st = path.lstat()
+        if (path.is_symlink() or not stat.S_ISREG(st.st_mode)
+                or st.st_uid != os.geteuid() or st.st_nlink != 1
+                or stat.S_IMODE(st.st_mode) & 0o022
+                or not 100 <= st.st_size <= 100000):
+            raise BoundaryHold("WE2_RECON_SOURCE_CUSTODY")
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            held = os.fstat(fd)
+            if (held.st_dev,held.st_ino,held.st_size) != (st.st_dev,st.st_ino,st.st_size):
+                raise BoundaryHold("WE2_RECON_SOURCE_RACE")
+            contents=os.read(fd,100001)
+        finally:
+            os.close(fd)
+        if (len(contents)!=st.st_size
+                or hashlib.sha256(contents).hexdigest()!=EXACT_WE2_RECON_SHA256[raw]):
+            raise BoundaryHold("WE2_RECON_SOURCE_SHA_DRIFT")
+        return raw
     if raw == "scripts/aoe2_product_release.py" and base == EXACT_WE2_FACTORY_BASE:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_FACTORY_BRANCH:
             raise BoundaryHold("WE2_FACTORY_RUNNER_BRANCH")
@@ -518,6 +559,19 @@ def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
         if len(raw)!=st.st_size or hashlib.sha256(raw).hexdigest()!=expected:
             raise BoundaryHold("WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT")
 
+def check_exact_we2_reconciliation_source(checkout: Path, repo: str,
+                                         branch: str, base: str,
+                                         changes: list[str]) -> None:
+    if branch != EXACT_WE2_RECON_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_RECON_BASE:
+        raise BoundaryHold("WE2_RECON_SCOPE_BASE_OR_REPO")
+    if (frozenset(changes) != EXACT_WE2_RECON_CHANGED
+            or len(changes) != len(EXACT_WE2_RECON_CHANGED)):
+        raise BoundaryHold("WE2_RECON_EXACT_CHANGED_SCOPE")
+    for source_path in EXACT_WE2_RECON_SHA256:
+        authorize_changed_source(checkout,base,source_path)
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -533,6 +587,8 @@ def main() -> int:
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
         receipt["changed_files"] = changed_source(checkout, base)
         check_exact_we2_factory_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_reconciliation_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
