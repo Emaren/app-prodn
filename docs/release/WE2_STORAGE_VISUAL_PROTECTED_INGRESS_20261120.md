@@ -3,7 +3,7 @@ id: "aoe2war.we2.storage-visual-protected-ingress-20261120"
 title: "Protected Storage OS ingress admission for deployed Explorer"
 type: "runbook"
 status: "draft"
-owner: "we2-protected-production"
+owner: "aoe2war-web"
 systems: ["app-prodn", "vpssentry", "hel1"]
 audience: ["operators", "developers", "ai-agents"]
 source_of_truth: "git"
@@ -13,7 +13,7 @@ review_interval_days: 14
 sensitivity: "internal"
 ---
 
-# WE2 Storage OS — one scoped protected ingress, no website rebuild
+# Protected Storage OS ingress admission for deployed Explorer
 
 ## Exact live R25 Social guard preimage preserved
 
