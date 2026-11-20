@@ -154,7 +154,7 @@ EXACT_WE2_STORAGE_PINS = {
     "tests/test_we2_storage_visual_exact_ingress.py":
       "72013ff895b25562c856c1bacc48946337331a0a1b26851a33e6dfdfd53b6e22",
     "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md":
-      "6343c400ec07347f621e5adbec09a8e7e673cc51a081630a1710a4cc13ca08fd",
+      "ae8bd2acc1d9c89b5c527c9243ed039a07ef4c9b3fe8e1bdade29cf9dc9f7a65",
 }
 EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
     "scripts/product_boundary_guard.py",

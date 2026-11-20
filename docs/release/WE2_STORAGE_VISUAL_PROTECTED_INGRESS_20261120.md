@@ -1,12 +1,16 @@
 ---
-id: aoe2war.we2.storage-visual-protected-ingress-20261120
-title: Protected Storage OS ingress admission for deployed Explorer
-type: runbook
-status: source-candidate-installation-held
-owner: we2-protected-production
-systems: [app-prodn, vpssentry, hel1]
-authority: nonfinancial-read-only-storage-data-only
-reviewed_at: 2026-11-20
+id: "aoe2war.we2.storage-visual-protected-ingress-20261120"
+title: "Protected Storage OS ingress admission for deployed Explorer"
+type: "runbook"
+status: "draft"
+owner: "we2-protected-production"
+systems: ["app-prodn", "vpssentry", "hel1"]
+audience: ["operators", "developers", "ai-agents"]
+source_of_truth: "git"
+authority: "nonfinancial-source-review-only"
+reviewed_at: "2026-11-20"
+review_interval_days: 14
+sensitivity: "internal"
 ---
 
 # WE2 Storage OS — one scoped protected ingress, no website rebuild
