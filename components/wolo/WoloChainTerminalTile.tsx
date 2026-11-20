@@ -39,6 +39,29 @@ const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
 const WOLO_STATUS_POLL_MS = 8000;
 const WOLO_DAEMON_POLL_MS = 3000;
 const BLOCK_FEED_MAX_BYTES = 131072;
+const DAEMON_SAMPLE_MAX_AGE_MS = 15_000;
+const UNAVAILABLE_DAEMON: DaemonLogPayload = {
+  ok: false, label: "daemon.log", lines: ["[daemon] current public daemon feed unavailable"],
+};
+
+function parseDaemonLog(value: unknown): { payload: DaemonLogPayload; expiresAt: number | null } {
+  if (!value || typeof value !== "object") throw new Error("Invalid daemon feed");
+  const feed = value as Record<string, unknown>;
+  if (typeof feed.ok !== "boolean" || typeof feed.label !== "string" || feed.label.length > 80 ||
+      !Array.isArray(feed.lines) || feed.lines.length > 40 ||
+      !feed.lines.every((line): line is string => typeof line === "string" && line.length > 0 && line.length <= 420))
+    throw new Error("Invalid daemon feed");
+
+  let expiresAt = null;
+  if (feed.ok) {
+    const sampledAt = typeof feed.sampledAtUtc === "string" ? Date.parse(feed.sampledAtUtc) : NaN;
+    if (feed.label !== "wolochaind-mainnet.journal" || feed.lines.length === 0 ||
+        !Number.isFinite(sampledAt) || Math.abs(Date.now() - sampledAt) > DAEMON_SAMPLE_MAX_AGE_MS)
+      throw new Error("Unverified daemon observation");
+    expiresAt = sampledAt + DAEMON_SAMPLE_MAX_AGE_MS;
+  }
+  return {payload: {ok: feed.ok, label: feed.label, lines: feed.lines}, expiresAt};
+}
 
 async function readBoundedBlockFeedJson(response: Response): Promise<unknown> {
   if (!response.body) throw new Error("WOLO_BLOCK_STREAM_MISSING");
@@ -334,25 +357,6 @@ export default function WoloChainTerminalTile() {
       }
     }
 
-    async function loadDaemonLog() {
-      try {
-        const response = await fetch("/api/wolo/daemon-log", { cache: "no-store" });
-        const payload = (await response.json().catch(() => ({}))) as DaemonLogPayload;
-
-        if (!cancelled) {
-          setDaemon(payload);
-        }
-      } catch {
-        if (!cancelled) {
-          setDaemon({
-            ok: false,
-            label: "daemon.log",
-            lines: ["[daemon] failed to load daemon log"],
-          });
-        }
-      }
-    }
-
     const loadIfVisible = () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") {
         return;
@@ -360,7 +364,6 @@ export default function WoloChainTerminalTile() {
 
       void loadStatus();
       void loadBlocks();
-      void loadDaemonLog();
     };
 
     loadIfVisible();
@@ -372,16 +375,65 @@ export default function WoloChainTerminalTile() {
     };
 
     const interval = window.setInterval(loadIfVisible, WOLO_STATUS_POLL_MS);
-    const daemonInterval = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") void loadDaemonLog();
-    }, WOLO_DAEMON_POLL_MS);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
-      window.clearInterval(daemonInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active: AbortController | null = null;
+    let deadline: number | undefined;
+    let expiry: number | undefined;
+
+    function stopRequest() {
+      window.clearTimeout(deadline);
+      active?.abort();
+      active = null;
+    }
+    function unavailable() {
+      window.clearTimeout(expiry);
+      setDaemon(UNAVAILABLE_DAEMON);
+    }
+    async function poll() {
+      if (document.visibilityState !== "visible" || active) return;
+      const request = new AbortController();
+      active = request;
+      deadline = window.setTimeout(() => { stopRequest(); unavailable(); }, 5000);
+      try {
+        const response = await fetch("/api/wolo/daemon-log", {cache: "no-store", signal: request.signal});
+        if (!response.ok) throw new Error("Daemon feed unavailable");
+        const {payload, expiresAt} = parseDaemonLog(await response.json());
+        if (active !== request) return;
+        window.clearTimeout(expiry);
+        setDaemon(payload);
+        if (expiresAt !== null) expiry = window.setTimeout(unavailable, Math.max(0, expiresAt - Date.now() + 1));
+      } catch {
+        if (active === request) unavailable();
+      } finally {
+        if (active === request) {
+          window.clearTimeout(deadline);
+          active = null;
+        }
+      }
+    }
+    function visibilityChanged() {
+      if (document.visibilityState === "visible") { void poll(); return; }
+      stopRequest();
+      window.clearTimeout(expiry);
+      setDaemon(null);
+    }
+    void poll();
+    const interval = window.setInterval(poll, WOLO_DAEMON_POLL_MS);
+    document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      stopRequest();
+      window.clearTimeout(expiry);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", visibilityChanged);
     };
   }, []);
 
