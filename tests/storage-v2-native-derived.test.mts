@@ -29,6 +29,12 @@ const rootIds={
  "hel1-volume-105319120":[["HEL1_PRODUCT_ARTIFACT_RETENTION",4]],
 } as const;
 type Plane=keyof typeof policyPins;
+type MutableV2Fixture=Record<string,unknown> & {
+ projection:Record<string,unknown> & {
+  roots:Record<string,unknown>[];
+  items:Record<string,unknown>[];
+ };
+};
 const verifiedOptions={rootPublicPem:publicPem,rootPin:pin,policyPins,sourceRevision:revision,now};
 function payload(id:Plane="mac"){
  const roots=rootIds[id].map(([root_id,source_floor],i)=>({
@@ -99,32 +105,32 @@ test("HEL1 root/data retain signed level-four floors and separate volume identit
 });
 test("source HMAC/source revision/policy/host/UUID/nonce/root-ACK provenance cannot self-promote",()=>{
  for(const [name,mutate] of Object.entries({
-  sourcePurpose:(p:any)=>p.source_signature_domain="WRONG",
-  sourceVerified:(p:any)=>p.source_hmac_independently_verified=false,
-  staleRevision:(p:any)=>p.source_revision_sha="0".repeat(40),
-  wrongPolicy:(p:any)=>p.source_policy_sha256=hex("9"),
-  wrongMacUuid:(p:any)=>p.source_mount_uuid=uuids["hel1-root"],
-  wrongHost:(p:any)=>p.source_host_identity="HEL1",
-  nonceNotFenced:(p:any)=>p.we2_nonce_replay_fenced=false,
-  missingAck:(p:any)=>p.we2_root_admission_ack_sha256=null,
-  sourceRetirement:(p:any)=>p.source_retirement_authorized=true,
-  sourceDoesNotBind:(p:any)=>p.projection.source_envelope_sha256=hex("4"),
-  forgedTimestamp:(p:any)=>p.admitted_at_utc="2026-11-21T02:00:00.000Z",
+  sourcePurpose:(p:MutableV2Fixture)=>p.source_signature_domain="WRONG",
+  sourceVerified:(p:MutableV2Fixture)=>p.source_hmac_independently_verified=false,
+  staleRevision:(p:MutableV2Fixture)=>p.source_revision_sha="0".repeat(40),
+  wrongPolicy:(p:MutableV2Fixture)=>p.source_policy_sha256=hex("9"),
+  wrongMacUuid:(p:MutableV2Fixture)=>p.source_mount_uuid=uuids["hel1-root"],
+  wrongHost:(p:MutableV2Fixture)=>p.source_host_identity="HEL1",
+  nonceNotFenced:(p:MutableV2Fixture)=>p.we2_nonce_replay_fenced=false,
+  missingAck:(p:MutableV2Fixture)=>p.we2_root_admission_ack_sha256=null,
+  sourceRetirement:(p:MutableV2Fixture)=>p.source_retirement_authorized=true,
+  sourceDoesNotBind:(p:MutableV2Fixture)=>p.projection.source_envelope_sha256=hex("4"),
+  forgedTimestamp:(p:MutableV2Fixture)=>p.admitted_at_utc="2026-11-21T02:00:00.000Z",
  })){
-  const p=structuredClone(payload());mutate(p);
+  const p=structuredClone(payload());mutate(p as unknown as MutableV2Fixture);
   assert.throws(()=>verifyWE2NativeV2Derived(seal(p),verifiedOptions),/STORAGE_V2_/,name);
  }
 });
 test("source-derived exact items cannot add private path, forged floor, unsafe bytes or permission",()=>{
  for(const [name,mutate] of Object.entries({
-  privatePath:(x:any)=>x.original_path="/Users/owner/secret",
-  directoryName:(x:any)=>x.path="/var/lib",
-  floorDowngrade:(x:any)=>x.source_floor=1,
-  fakeAlias:(x:any)=>x.alias="ITEM_"+ "0".repeat(20),
-  unsafeNum:(x:any)=>x.allocated_bytes=Number.MAX_SAFE_INTEGER+1,
-  deletion:(x:any)=>x.retirement_authority="ALLOWED",
-  fakeReclaim:(x:any)=>x.proven_unique_reclaim_bytes=4096,
-  missingDigest:(x:any)=>x.source_path_digest_sha256=null,
+  privatePath:(x:Record<string,unknown>)=>x.original_path="/Users/owner/secret",
+  directoryName:(x:Record<string,unknown>)=>x.path="/var/lib",
+  floorDowngrade:(x:Record<string,unknown>)=>x.source_floor=1,
+  fakeAlias:(x:Record<string,unknown>)=>x.alias="ITEM_"+ "0".repeat(20),
+  unsafeNum:(x:Record<string,unknown>)=>x.allocated_bytes=Number.MAX_SAFE_INTEGER+1,
+  deletion:(x:Record<string,unknown>)=>x.retirement_authority="ALLOWED",
+  fakeReclaim:(x:Record<string,unknown>)=>x.proven_unique_reclaim_bytes=4096,
+  missingDigest:(x:Record<string,unknown>)=>x.source_path_digest_sha256=null,
  })){
   const p=structuredClone(payload());mutate(p.projection.items[0]);
   assert.throws(()=>verifyWE2NativeV2Derived(seal(p),verifiedOptions),/STORAGE_V2_/,name);
@@ -132,12 +138,12 @@ test("source-derived exact items cannot add private path, forged floor, unsafe b
 });
 test("sampled category bytes must exactly match the source-bound items, never imply whole-volume reclaim",()=>{
  for(const change of [
-  (p:any)=>p.projection.roots[0].sampled_allocated_bytes+=1024,
-  (p:any)=>p.projection.roots[0].sampled_file_count=8,
-  (p:any)=>p.projection.proven_unique_reclaim_bytes=4096,
-  (p:any)=>p.projection.items[0].allocated_bytes+=5,
-  (p:any)=>p.projection.roots[0].root_id="FINANCIAL_ORIGINALS",
- ]){const p=structuredClone(payload());change(p);
+  (p:MutableV2Fixture)=>p.projection.roots[0].sampled_allocated_bytes=Number(p.projection.roots[0].sampled_allocated_bytes)+1024,
+  (p:MutableV2Fixture)=>p.projection.roots[0].sampled_file_count=8,
+  (p:MutableV2Fixture)=>p.projection.proven_unique_reclaim_bytes=4096,
+  (p:MutableV2Fixture)=>p.projection.items[0].allocated_bytes=Number(p.projection.items[0].allocated_bytes)+5,
+  (p:MutableV2Fixture)=>p.projection.roots[0].root_id="FINANCIAL_ORIGINALS",
+ ]){const p=structuredClone(payload());change(p as unknown as MutableV2Fixture);
   assert.throws(()=>verifyWE2NativeV2Derived(seal(p),verifiedOptions),/STORAGE_V2_/);
  }
 });
