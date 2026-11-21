@@ -41,8 +41,24 @@ class StorageVisualIngress(unittest.TestCase):
         self.assertNotIn('"/mnt/HC_Volume_105319120/aoe2war/os-control"', guard)
         self.assertIn("STORAGE_STORE_EXACT_ROOT_REQUIRED", guard)
         self.assertIn("STORAGE_PARTIAL_ENROLLMENT_DENIED", guard)
-        self.assertNotIn('"AOE2WAR_STORAGE_TEACHING_OWNER_UID"', guard)
+        # The Bridge's source keys remain an exact all-or-nothing group. A
+        # later, separately approved teaching group may exist in source,
+        # but is INERT without complete Bridge AND six distinct teaching
+        # settings, its own witness, and enrolled owner authority.
+        self.assertIn('need(storagePresent.length === storageEnv.length', guard)
+        self.assertIn('TEACHING_PARTIAL_OR_UNOBSERVED_SOURCE_DENIED', guard)
+        self.assertIn('TEACHING_SEGREGATED_HMAC_REQUIRED', guard)
+        self.assertIn('TEACHING_EXACT_WITNESS_AND_ROOT_TIP_REQUIRED', guard)
+        self.assertIn('const teachingEnabled = teachingPresent.length === teachingEnv.length;', guard)
+        self.assertIn('"AOE2WAR_STORAGE_TEACHING_OWNER_UID"', guard)
+        self.assertIn('"AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY"', guard)
+        self.assertIn('"AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET"', guard)
+        self.assertIn('"AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM"', guard)
+        self.assertIn('"AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM_SHA256"', guard)
+        self.assertIn('"AOE2WAR_STORAGE_TEACHING_TIP_PATH"', guard)
         self.assertNotIn('"AOE2WAR_STORAGE_TEACHING_HMAC_KEY"', guard)
+        self.assertIn('process.env.AOE2WAR_OS_BRIDGE_TOKEN !== hmac', guard)
+        self.assertIn('!storageKeys.some(k => process.env[k] === hmac)', guard)
 
     def test_source_scoped_storage_before_legacy_privileged_branches(self):
         route = (ROOT / "app/api/internal/aoe2war-os/bridge/route.ts").read_text()
