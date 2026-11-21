@@ -36,8 +36,14 @@ test("Node guard admits only exact host, loopback, HTTPS, token and scoped JSON"
   assert.match(guard, /request\.headers\?\.\["x-forwarded-proto"\] === "https"/);
   assert.match(guard, /request\.headers\?\.\["x-aoe2war-bridge-scope"\] === "operator_control"/);
   assert.match(guard, /Number\(bridgeLength\) <= 262144/);
-  assert.match(guard, /operatorBridgeWrite;/);
-  assert.match(guard, /storageVisualOnlyWrite \|\|/);
+  // The frozen operator and signed-source lanes keep their own exact conditions.
+  // Separately enrolled owner teaching is additive, NEVER inherited from Bridge.
+  assert.match(guard, /storageVisualOnlyWrite \\|\\|/);
+  assert.match(guard, /operatorBridgeWrite \\|\\| ownerOnlyWrite;/);
+  assert.match(guard, /const ownerOnlyWrite = teachingEnabled &&/);
+  assert.match(guard, /ownerPostLimit > 0/);
+  assert.match(guard, /request\\.headers\\?\\.\\["x-aoe2war-bridge-scope"\\] === "operator_control"/);
+  assert.match(guard, /TEACHING_PARTIAL_OR_UNOBSERVED_SOURCE_DENIED/);
   assert.match(guard, /request\.headers\?\.\["transfer-encoding"\] === undefined/);
 });
 
