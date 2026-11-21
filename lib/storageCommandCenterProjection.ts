@@ -12,7 +12,7 @@ export type StorageReading = {
   freeBytes: number | null;
   usedPercent: number | null;
   reclaimedBytes: number | null;
-  source: "SIGNED_THREE_PLANE_RECEIPT" | "OPERATOR_ESTATE_SNAPSHOT" | "NONE";
+  source: "SIGNED_THREE_PLANE_RECEIPT" | "WE2_NATIVE_V2_SIGNED_PLANE" | "OPERATOR_ESTATE_SNAPSHOT" | "NONE";
   asOf: string | null;
   status: "RECEIPT" | "STALE" | "UNKNOWN";
   classes: string[];
@@ -129,6 +129,18 @@ export function projectPrivateStorage(
           ? signedPlane.top_consumer_classes.filter((v): v is string => typeof v === "string").slice(0,6) : [],
       };
     }
+    // Native WE2-verifier-signed V2 capacity is a source-bound ordinary
+    // available-byte sample, not logical used, unique reclaim or disk fullness.
+    // Legacy V1 server-HMAC receipts are never promoted by this code.
+    const v2=visual.contract==="WE2_NATIVE_V2_ED25519"
+      ? visual.planes.find(p=>p.id===id&&p.nativeV2Source===true&&p.status==="RECEIPT")
+      : undefined;
+    const sample=v2?.capacitySamples?.at(-1);
+    if(sample&&stillRecent(sample.at,now,36*3600_000))return {
+      id,label:NAMES[id],freeBytes:sample.ordinaryFreeBytes,usedPercent:null,
+      reclaimedBytes:null,source:"WE2_NATIVE_V2_SIGNED_PLANE",asOf:sample.at,
+      status:"RECEIPT",classes:v2?.hogs.map(h=>h.label).slice(0,6)??[],
+    };
     // The bridge's estate snapshot is not a signed collector measurement.
     // Never manufacture a Mac number or cross-source used percentage here.
     const free = fallbackFree[id];

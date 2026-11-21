@@ -60,9 +60,9 @@ function segment(start:number,end:number,inside:number,outside:number){
     b.join(" ")+" L "+c.join(" ")+" A "+inside+" "+inside+" 0 "+
     (finish-start>180?1:0)+" 0 "+d.join(" ")+" Z";
 }
-function Sunburst({hogs,status,selected,onSelect}:{
+function Sunburst({hogs,status,selected,onSelect,native}:{
   hogs:VisualHog[];status:ReturnType<typeof signedHogInventory>["status"];
-  selected:string|null;onSelect:(key:string)=>void;
+  selected:string|null;onSelect:(key:string)=>void;native:boolean;
 }){
   const sum=hogs.reduce((a,h)=>a+h.grossBytes,0);
   let cursor=0;
@@ -86,11 +86,13 @@ function Sunburst({hogs,status,selected,onSelect}:{
         {status==="PARTIAL"&&hogs.length>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
       </text>
       <text x="130" y="146" fill="#839bad" textAnchor="middle" fontSize="9" letterSpacing="1.6">
-        {status==="PARTIAL"?(hogs.length>0?"GROSS REPORTED":"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
+        {status==="PARTIAL"?(hogs.length>0?(native?"SIGNED SAMPLE":"GROSS REPORTED"):"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
       </text>
     </svg>
     <p className="mt-1 text-center text-[11px] leading-5 text-slate-400">
-      Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space.
+      {native
+        ?"WE2-signed bounded file samples only; incomplete directories, clones and hardlinks do not add to unique free space."
+        :"Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space."}
     </p>
   </div>;
 }
@@ -123,7 +125,7 @@ function Drive({reading,id,active,onSelect,inventory}:{
       </div>}
     <div className="mt-3 flex justify-between text-[10px] text-slate-400">
       <span>{inventory.categoryCount===null ? (inventory.status==="STALE"?"Category inventory stale":"Category inventory unknown") :
-        inventory.categoryCount+" reported gross categories"}</span><span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
+        inventory.categoryCount+(inventory.plane?.nativeV2Source?" signed bounded sample categories":" reported gross categories")}</span><span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
     </div>
   </button>;
 }
@@ -336,7 +338,8 @@ export default function StorageHogWorkbench(){
             <div><p className="text-[10px] font-black tracking-[.26em] text-cyan-300">CAPACITY MAP</p><h2 className="mt-2 text-2xl font-bold text-white">{reading?.label??active}</h2></div>
             <HardDrive className="h-6 w-6 text-cyan-300"/>
           </div>
-          <div className="mt-2"><Sunburst hogs={hogs} status={activeInventory.status} selected={selected} onSelect={chooseItem}/></div>
+          <div className="mt-2"><Sunburst hogs={hogs} status={activeInventory.status} selected={selected}
+            onSelect={chooseItem} native={sourcePlane?.nativeV2Source===true}/></div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Source observed</div>
@@ -347,7 +350,11 @@ export default function StorageHogWorkbench(){
               <div className="mt-2 text-sm font-semibold text-white">{sourcePlane?.coverage??"UNKNOWN / NOT COMPLETE"}</div>
             </div>
           </div>
-          <p className="mt-4 text-xs leading-5 text-amber-100/80">This map is derived exclusively from authenticated gross categories. It never guesses unmeasured files, calculates unique reclaim from overlapping buckets or scans a host from the browser.</p>
+          <p className="mt-4 text-xs leading-5 text-amber-100/80">
+            {sourcePlane?.nativeV2Source
+              ?"WE2-native V2 independently verifies the origin census and publishes only bounded sampled allocation. This is NOT the whole directory or unique reclaim."
+              :"This map is derived exclusively from authenticated gross categories. It never guesses unmeasured files, calculates unique reclaim from overlapping buckets or scans a host from the browser."}
+          </p>
         </div>
         <div className={PANEL+" p-5 sm:p-7"}>
           <div className="flex items-center justify-between gap-3">
@@ -392,7 +399,7 @@ export default function StorageHogWorkbench(){
           <div><p className="text-[10px] font-black tracking-[.25em] text-amber-300">OWNER CLASSIFICATION · NEXT PHASE L2</p>
             <h2 className="mt-2 text-2xl font-bold text-white">{item?item.label:"Choose a storage consumer"}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              {item?bytes(item.grossBytes)+" reported gross · "+item.key+" · source L"+item.level:
+              {item?bytes(item.grossBytes)+(sourcePlane?.nativeV2Source?" signed bounded sample · ":" reported gross · ")+item.key+" · source L"+item.level:
                 "Select a ranked category or radial wedge to review what belongs in L2, L3, L4 or permanent L5."}
             </p></div>
           <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 px-3 py-2 text-[10px] font-bold text-amber-200">

@@ -46,7 +46,8 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
   const [openLevel,setOpenLevel]=useState<1|2|3|4|5>(2);
   const [dryRun,setDryRun]=useState<string|null>(null);
   const {plane,status:confidence}=inventorySource;
-  const items=INDIVIDUAL_TRANSPORT_ADOPTED&&confidence==="PARTIAL"?plane?.reviewItems:undefined;
+  const items=(INDIVIDUAL_TRANSPORT_ADOPTED||plane?.nativeV2Source===true)&&confidence==="PARTIAL"
+    ?plane?.reviewItems:undefined;
   const inventory=useMemo(()=>{
     const a=[...(items??[])];
     a.sort((x,y)=>sort==="largest"?y.grossBytes-x.grossBytes:
@@ -55,7 +56,11 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
     return a;
   },[items,sort]);
   const focused=inventory.find(x=>x.alias===chosen)??null;
-  const samples=INDIVIDUAL_TRANSPORT_ADOPTED?(plane?.capacitySamples??[]):[];
+  const samples=INDIVIDUAL_TRANSPORT_ADOPTED||plane?.nativeV2Source===true
+    ?(plane?.capacitySamples??[]):[];
+  const native=plane?.nativeV2Source===true;
+  const sampledAllocated=native&&items?items.reduce((sum,i)=>sum+i.grossBytes,0):null;
+  const sampledLogical=native&&items?items.reduce((sum,i)=>sum+(i.logicalBytes??0),0):null;
   const stages=FLOW.map((name,i)=>({
     name,verdict:i===0&&confidence==="PARTIAL"?"PARTIAL":"HOLD",
   }));
@@ -93,7 +98,9 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
         <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
           <div className="flex items-center gap-2 text-xs text-slate-400"><FileSearch className="h-4 w-4"/> Admitted individual files</div>
           <div className="mt-2 text-3xl font-black tabular-nums text-white">{items ? inventory.length : "UNKNOWN"}</div>
-          <div className="mt-1 text-[11px] text-slate-400">No category is an individual file</div>
+          <div className="mt-1 text-[11px] text-slate-400">{native
+            ?"Source-observed opaque files only, never complete whole-volume coverage"
+            :"No category is an individual file"}</div>
         </div>
         <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[.025] p-4">
           <div className="flex items-center gap-2 text-xs text-cyan-200"><ShieldCheck className="h-4 w-4"/> Level 1 certified</div>
@@ -107,10 +114,25 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
           <div className="flex items-center gap-2 text-xs text-slate-400"><HardDrive className="h-4 w-4"/> Allocated / logical</div>
-          <div className="mt-2 text-xl font-black text-white">{confidence} / UNKNOWN</div>
-          <div className="mt-1 text-[11px] text-slate-400">Gross categories can overlap on disk</div>
+          <div className="mt-2 text-xl font-black text-white">{native
+            ?size(sampledAllocated)+" / "+size(sampledLogical)
+            :confidence+" / UNKNOWN"}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{native
+            ?"Bounded sampled ciphertext/file allocation; clones and hardlinks can overlap"
+            :"Gross categories can overlap on disk"}</div>
         </div>
       </div>
+      {native&&<div className="mt-4 rounded-xl border border-cyan-300/15 p-3 text-xs leading-6 text-slate-300">
+        <div className="font-bold text-cyan-200">WE2 independently verified V2 source · bounded sample</div>
+        <div>Filesystem UUID: <span className="break-all font-mono">{plane?.filesystemUuid}</span></div>
+        <div>Signed source envelope: <span className="break-all font-mono">{plane?.sourceEnvelopeSha256}</span></div>
+        <div>WE2 root public key SHA: <span className="break-all font-mono">{plane?.we2RootPublicPemSha256}</span></div>
+        <div>WE2 admission ACK: <span className="break-all font-mono">{plane?.sourceAckSha256}</span></div>
+        <div>Native source replay sequence: <strong>{plane?.sourceReplaySequence??"UNKNOWN"}</strong></div>
+        <div className="mt-1 text-amber-100">Provenance is authentic; whole-disk coverage,
+          dependencies, independent current restores and unique reclaim remain UNKNOWN.
+          Neither an item row nor Level 2 authorizes transfer or deletion.</div>
+      </div>}
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_.75fr]">
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -130,14 +152,17 @@ export default function StoragePremiumInspector({inventorySource,activeId}:{
           {inventory.length===0?
             <div className="mt-4 flex min-h-[190px] flex-col justify-center gap-3 rounded-xl border border-dashed border-amber-300/20 bg-amber-400/[.025] p-5">
               <div className="flex items-center gap-2 text-sm font-bold text-amber-100"><ShieldAlert className="h-5 w-5"/> Exact-file inventory not admitted</div>
-              <p className="max-w-xl text-xs leading-6 text-slate-400">Current C/G signed transport authenticates gross buckets only. The bounded V2 collector is partial; until its individual identity, mount, source and proof schema passes independent admission, no filename, inode, file-size ranking or cleanup target will be invented.</p>
+              <p className="max-w-xl text-xs leading-6 text-slate-400">Only an independently WE2-native-verified and root Ed25519-admitted V2 source may display sampled aliases. Missing source signature, mount identity or signed admission means UNKNOWN. No private path, deletion or physical reclaim is inferred.</p>
             </div>:
             <div className="mt-4 max-h-[330px] space-y-2 overflow-auto">{inventory.map(item=>
               <button type="button" key={item.alias} onClick={()=>{setChosen(item.alias);setDryRun(null);}}
                 className={"flex w-full items-center justify-between gap-2 rounded-xl border p-3 text-left "+
                   (chosen===item.alias?"border-cyan-300/50 bg-cyan-300/[.06]":"border-white/10 hover:border-white/30")}>
                 <span className="min-w-0 truncate font-mono text-xs text-slate-200">{item.alias}</span>
-                <span className="shrink-0 text-xs text-slate-400">L{item.level} · {size(item.grossBytes)}</span>
+                <span className="shrink-0 text-right text-xs text-slate-400">L{item.level}
+                  {" · "}{size(item.grossBytes)} allocated
+                  {native&&item.logicalBytes!==undefined?<span className="block">
+                    {size(item.logicalBytes)} logical · sampled</span>:null}</span>
               </button>)}</div>}
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
