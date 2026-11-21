@@ -144,7 +144,22 @@ test("scoped V1 dispatch isolates storage from every private bridge operation", 
   assert.equal((await POST(bridgeRequest(raw, marker))).status, 409, "unsigned payload reaches signed receiver");
   assert.deepEqual(readdirSync(temp), [], "scoped rejections must leave private control state untouched");
 
-  const control = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "heartbeat" })));
+  const operatorScope = { [scopeHeader]: "operator_control" };
+  const control = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "heartbeat" }), operatorScope));
   assert.equal(control.status, 200);
   assert.equal((await control.json()).heartbeat.bridgeId, wire.bridgeId);
+  const unmarked = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "heartbeat" })));
+  assert.equal(unmarked.status, 403, "unmarked direct POST never enters operator channel");
+  for (const forgedScope of ["unknown", "", "storage_visual, operator_control"]) {
+    const denied = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "heartbeat" }), {
+      [scopeHeader]: forgedScope,
+    }));
+    assert.equal(denied.status, 403);
+  }
+  const badOperatorToken = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "heartbeat" }), {
+    ...operatorScope, "x-aoe2war-os-key": "",
+  }));
+  assert.equal(badOperatorToken.status, 401);
+  const unknownOperator = await POST(bridgeRequest(JSON.stringify({ ...wire, op: "unknown" }), operatorScope));
+  assert.equal(unknownOperator.status, 400);
 });
