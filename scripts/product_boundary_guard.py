@@ -166,7 +166,26 @@ EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|main)$")
+# New exact bridge dual-path review. Preserve the historical storage-source
+# pins unchanged; no branch wildcard, arbitrary exec file or root authorization.
+EXACT_WE2_BRIDGE_BRANCH = "we2/bridge-dual-path-20261121"
+EXACT_WE2_BRIDGE_BASE = "1bb42c53ebd44bc22b07a3b64862d39f457fb529"
+EXACT_WE2_BRIDGE_PINS = {
+    "app/api/internal/aoe2war-os/bridge/route.ts":
+        "ededff41f0a633d089bd92e1059c2569723f79c65b3dc52b7cb69bdfbe3de96f",
+    "scripts/r25_b_guard_production_v1.cjs":
+        "87308f4d23b78d275eadd7705269014f6a2bc4620f5977eece76e7f2efa939fa",
+    "tests/private-storage-visual-bridge.test.mts":
+        "482f56d5b31f50cc0869f617cb5b17b107fb288a5600b60d05cd68a5578e8602",
+    "deploy/aoe2war-bridge-dual-path.nginx.inc":
+        "1d0bf51aa269c7695c4f5cdc2a65219d707064aa058b270aa56b5604a988d19b",
+    "tests/bridge-dual-ingress-contract.test.mts":
+        "c934ffa3666d5a6ce5bd7d745f8cce633280495f596c88a8bf6286172c25a55a",
+}
+EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+}
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -235,6 +254,34 @@ def exact_we2_storage_blob(checkout: Path, raw: str) -> str:
     return raw
 
 
+def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_BRIDGE_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_BRIDGE_UNPINNED_FILE")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("WE2_BRIDGE_SYMLINK_ANCESTOR")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000
+            or stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("WE2_BRIDGE_SOURCE_CUSTODY")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        actual = os.fstat(fd)
+        if (actual.st_dev, actual.st_ino, actual.st_size, actual.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_BRIDGE_SOURCE_CHANGED")
+        blob = os.read(fd, 100001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("WE2_BRIDGE_EXACT_SHA_MISMATCH")
+    return raw
+
+
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
@@ -263,6 +310,10 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_KINGDOM_MENU_SHA256):
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_EXACT_SHA_MISMATCH")
         return raw
+    if (base == EXACT_WE2_BRIDGE_BASE
+            and os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_BRIDGE_BRANCH
+            and raw in EXACT_WE2_BRIDGE_PINS):
+        return exact_we2_bridge_blob(checkout, raw)
     if raw == EXACT_REVIEWED_B_EMBER_GUARD and base == EXACT_WE2_STORAGE_BASE:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_STORAGE_BRANCH:
             raise BoundaryHold("WE2_STORAGE_WRONG_BRANCH")
@@ -591,6 +642,19 @@ def check_exact_we2_storage_source(checkout: Path, repo: str, branch: str,
         exact_we2_storage_blob(checkout, name)
 
 
+def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
+                                  base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE2_BRIDGE_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_BRIDGE_BASE:
+        raise BoundaryHold("WE2_BRIDGE_EXACT_BASE_OR_REPO")
+    if len(changes) != len(EXACT_WE2_BRIDGE_CHANGED) or (
+            frozenset(changes) != EXACT_WE2_BRIDGE_CHANGED):
+        raise BoundaryHold("WE2_BRIDGE_EXACT_CHANGED_SET")
+    for name in EXACT_WE2_BRIDGE_PINS:
+        exact_we2_bridge_blob(checkout, name)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -608,6 +672,8 @@ def main() -> int:
         check_exact_we2_factory_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_storage_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_bridge_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
