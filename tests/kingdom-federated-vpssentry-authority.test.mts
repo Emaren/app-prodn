@@ -11,7 +11,7 @@ test("existing VPSSentry authority is ONE external federation, not a duplicate O
   assert.equal(fed[0].kind, "source-and-consumer-contract-not-new-subordinate-os");
   assert.equal(registry.subordinate_os.length, 15);
   assert.equal(registry.counts.planned_subordinate_os_total, 15);
-  assert.ok(!registry.subordinate_os.some((x: any) => x.id === "vpssentry" || x.id === "bridge"));
+  assert.ok(!registry.subordinate_os.some((x: { id: string }) => x.id === "vpssentry" || x.id === "bridge"));
 });
 
 test("native source identity, transport authority and action owners stay independent", () => {
