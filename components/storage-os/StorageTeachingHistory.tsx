@@ -48,7 +48,15 @@ export default function StorageTeachingHistory({events,plane,item,observedAt,own
             ? "Enrolled owner" : "Historical account attribution unconfirmed"} · {event.grossBytes.toLocaleString()} gross bytes observed{" "}
             <time dateTime={event.sourceObservedAt} title={event.sourceObservedAt}>{new Date(event.sourceObservedAt).toLocaleString()}</time></p>
           <p className="mt-2 whitespace-pre-wrap break-words">{event.note || "No explanation recorded."}</p>
-          <p className="mt-2 break-all text-xs text-slate-400">Receipt {event.digestSha256}</p>
+          <details className="mt-2 rounded-lg border border-white/10 p-2 text-xs text-slate-400">
+            <summary className="cursor-pointer text-cyan-200">Inspect immutable event identity and provenance</summary>
+            <div className="mt-2 break-all">Event ID: {event.id}</div>
+            <div className="mt-1 break-all">Receipt SHA-256: {event.digestSha256}</div>
+            <div className="mt-1 break-all">Source fingerprint: {event.sourceFingerprint}</div>
+            <div className="mt-1 break-all">Previous event: {event.previousId??"GENESIS"}</div>
+            <div className="mt-1 break-all">Previous digest: {event.previousDigest??"GENESIS"}</div>
+            <div className="mt-1">Recorded: {event.at} · L{event.sourceFloor} source floor</div>
+          </details>
         </li>)}
       </ol>
     </details>}

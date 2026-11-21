@@ -10,6 +10,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { constants } from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import {readWE2NativeV2} from "./storageV2We2Derived.ts";
 
 export const VISUAL_SCHEMA = "aoe2war.storage-visual.private.v1";
 export const SIGNED_SCHEMA = "aoe2war.storage-visual.signed.v1";
@@ -32,6 +33,9 @@ export type HogKey =
   | "PYTHON_TOOLCHAINS" | "GO_MODULES" | "BROWSER_CACHES"
   | "HEL1_ROOT_SYSTEM" | "HEL1_DEPLOY_BUILDS" | "HEL1_ROOT_BACKUPS"
   | "HEL1_EVIDENCE_ARCHIVE" | "HEL1_TRAFFIC_DB" | "HEL1_ACTIVE_SWAP"
+  | "M1_RELEASE_CACHE" | "M1_HOMEBREW_DOWNLOAD_CACHE" | "M1_SIMULATOR_GENERATED_CACHE"
+  | "HEL1_HISTORICAL_RUNTIME_4C14" | "HEL1_HISTORICAL_RUNTIME_C089"
+  | "HEL1_PRODUCT_ARTIFACT_RETENTION"
   | "HEL1_FINANCIAL_RESTORE" | "HEL1_SNAPSHOTS" | "HEL1_STAGING"
   | "OTHER_MEASURED"
   | "OWNER_CHATGPT_CONVERSATION_ZIP" | "OWNER_ORIGINAL_PHOTOS"
@@ -39,6 +43,12 @@ export type HogKey =
 
 export const HOG_CATALOG: Record<HogKey,{ label: string; level: Level; planes: readonly PlaneId[] }> = {
   GUARDED_GENERATED:{label:"Source-qualified generated review",level:1,planes:["mac","hel1-root","hel1-volume-105319120"]},
+  M1_RELEASE_CACHE:{label:"Bounded sampled release cache · source L4",level:4,planes:["mac"]},
+  M1_HOMEBREW_DOWNLOAD_CACHE:{label:"Bounded sampled Homebrew download cache · owner L2",level:2,planes:["mac"]},
+  M1_SIMULATOR_GENERATED_CACHE:{label:"Bounded sampled simulator generated cache · owner L2",level:2,planes:["mac"]},
+  HEL1_HISTORICAL_RUNTIME_4C14:{label:"Bounded historical HEL1 runtime 4C14 · L4",level:4,planes:["hel1-root"]},
+  HEL1_HISTORICAL_RUNTIME_C089:{label:"Bounded historical HEL1 runtime C089 · L4",level:4,planes:["hel1-root"]},
+  HEL1_PRODUCT_ARTIFACT_RETENTION:{label:"Bounded HEL1 artifact retention sample · L4",level:4,planes:["hel1-volume-105319120"]},
   CROSSOVER_STEAM_REPLAY:{label:"CrossOver · Steam & Replay Lab",level:5,planes:["mac"]},
   RECOVERY_VAULT:{label:"Recovery vault",level:5,planes:["mac"]},
   MOBILESYNC_BACKUPS:{label:"iPhone & iPad backups",level:5,planes:["mac"]},
@@ -78,7 +88,7 @@ export type VisualHog={key:HogKey;label:string;level:Level;grossBytes:number;ove
 export type VisualEvent={id:string;at:string;kind:VisualEventKind;category:HogKey|null;bytes:number|null;transactionDigest:string|null};
 /** L5 protection is derived by immutable source policy, not a sender-provided downgrade. */
 export type VisualReviewItem={
-  alias:string; category:HogKey; level:Level; grossBytes:number;
+  alias:string; category:HogKey; level:Level; grossBytes:number; logicalBytes?:number;
   fingerprint:string; sourceDigest:string; sourceRevision:string;
   sourceStatus:"GUARDED"|"REVIEW_ONLY"|"PROTECTED"|"MIGRATION_REVIEW";
   proofState:"COMPLETE"|"INCOMPLETE"; overlaps:boolean;
@@ -87,12 +97,16 @@ export type VisualCapacitySample={at:string; ordinaryFreeBytes:number};
 export type VisualPlane={
   id:PlaneId; observedAt:string; coverage:"PARTIAL"|"DISJOINT"; hogs:VisualHog[];
   events:VisualEvent[];status:"RECEIPT"|"STALE";
+  nativeV2Source?:true;sourceEnvelopeSha256?:string;filesystemUuid?:string;
+  sourcePolicySha256?:string;we2RootPublicPemSha256?:string;
+  sourceAckSha256?:string;sourceReplaySequence?:number;
   reviewItems?:VisualReviewItem[];capacitySamples?:VisualCapacitySample[];
 };
 export type StorageVisualView={
   authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY";
   planes:VisualPlane[];
   source:"SIGNED_PRIVATE_RECEIPT"|"NONE";
+  contract?:"WE2_NATIVE_V2_ED25519";
 };
 export const EMPTY_VISUAL:StorageVisualView={
   authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY",planes:[],source:"NONE"
@@ -224,6 +238,8 @@ export function verifyVisualReceipt(
 }
 /** A missing file or missing key is UNKNOWN; corrupted/forged evidence fails closed. */
 export async function readPrivateStorageVisual(clock:Date=new Date()):Promise<StorageVisualView>{
+  const native=await readWE2NativeV2(clock);
+  if(native)return native;
   const key=process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY;
   if(!key)return EMPTY_VISUAL;
   if(!/^[0-9a-f]{64,128}$/i.test(key))throw Error("VISUAL_AUTH_KEY_INVALID");
