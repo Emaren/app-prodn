@@ -218,7 +218,9 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(set(p.EXACT_WE2_BRIDGE_CHANGED),
                          set(p.EXACT_WE2_BRIDGE_PINS) |
                          {"scripts/product_boundary_guard.py",
-                          "tests/test_product_boundary_guard.py"})
+                          "tests/test_product_boundary_guard.py",
+                          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                          "docs/document-registry.json"})
         for name, digest in p.EXACT_WE2_BRIDGE_PINS.items():
             self.assertEqual(hashlib.sha256((root / name).read_bytes()).hexdigest(),
                              digest, name)
