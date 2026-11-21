@@ -152,7 +152,11 @@ export async function POST(request: NextRequest) {
   // WE2 must overwrite this header on every external bridge request before
   // opening ingress. Only the private control transport may remain unmarked.
   const scope = request.headers.get("x-aoe2war-bridge-scope");
-  if (scope !== null) return scopedStoragePost(request, scope);
+  // The Nginx EXACT legacy operator endpoint must overwrite the untrusted
+  // client scope with operator_control. Only the separate storage visual
+  // endpoint may carry storage_visual. No unmarked direct POST is allowed.
+  if (scope === "storage_visual") return scopedStoragePost(request, scope);
+  if (scope !== "operator_control") return storageError(403, "BRIDGE_SCOPE_DENIED");
 
   const body = record(await request.json().catch(() => null));
   if (!body) {
