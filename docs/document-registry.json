@@ -998,7 +998,6 @@
       "title": "Kingdom Brain, Progress and Patrol Contract",
       "type": "reference"
     },
-
     {
       "audience": [
         "developers",
@@ -1999,7 +1998,6 @@
       "systems": [
         "aoe2war"
       ],
-
       "title": "Session A R25 Public Nonfinancial Recovery and Steam v5u Admission",
       "type": "reference"
     },
@@ -3000,7 +2998,6 @@
       "id": "aoe2war.app-prodn.product-single-owner-release-authority",
       "owner": "aoe2war-web",
       "path": "docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md",
-
       "review_interval_days": 30,
       "reviewed_at": "2026-11-17",
       "sensitivity": "internal",
