@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/bridge-dual-path-20261121` at `c1226465465e9999ddc69cb225dbbc8d80b8897c`
+Implementation baseline: `we3/teaching-exact-guard-after-bridge-20261121` at `d9fc1adefa0b38c766ab0c18ae40c2a20fb6e177`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
