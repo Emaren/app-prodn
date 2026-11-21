@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5fa1f54ff9aaee0711637cb1fdbc24b6fca7c1e9ba9dbe47d1f9521508c36250",
+      "sha256": "75a26dddda6ed5362f0d71ee2c7568d867f2f3b12d06d6c54ebb9abe32d45e73",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3573,7 +3573,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we3/teaching-exact-guard-after-bridge-20261121",
-    "commit": "dd5d0a642f03228dcf058ba207e2cc68aabb2488"
+    "commit": "44c63cb648e61eecf05ad08c50e6d37af378b563"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
