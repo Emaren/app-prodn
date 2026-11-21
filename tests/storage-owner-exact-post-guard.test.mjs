@@ -144,7 +144,7 @@ test("exact nginx preserves original owner cookies and does not open generic API
  assert.match(nginx,/location = \/api\/admin\/storage-os\/dry-run/);
  assert.equal((nginx.match(/proxy_set_header Cookie \$http_cookie;/g)||[]).length,2);
  assert.equal((nginx.match(/proxy_set_header X-Forwarded-Proto https;/g)||[]).length,2);
- assert.doesNotMatch(nginx,/^\\s*location \\^~ \\/api\\//m);
+ assert.doesNotMatch(nginx,/^\s*location \^~ \/api\//m);
  assert.doesNotMatch(nginx,/proxy_pass http:\/\/127\.0\.0\.1:(?!3032)/);
  assert.match(dryRun,/const owner=teachingOwnerAccess\(admin\.user\.uid\)/);
  assert.match(dryRun,/if\(!owner\.mayRecord\)return hold\(403/);
