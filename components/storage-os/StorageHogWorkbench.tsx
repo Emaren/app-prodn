@@ -4,6 +4,7 @@ import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
+import StorageReceiptTimeline from "./StorageReceiptTimeline";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
 import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
@@ -485,6 +486,8 @@ export default function StorageHogWorkbench(){
         </div>
       </section>
         </>}
+      <StorageReceiptTimeline events={events} ledgerStatus={ledgerStatus}
+        ownerBinding={access?.ownerBinding??null}/>
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>
