@@ -69,12 +69,25 @@ class StorageVisualIngress(unittest.TestCase):
         self.assertIn('wire.op !== "storage_visual"', route)
         self.assertIn("acceptStorageVisualSubmission(payload)", route)
 
-    def test_guard_keeps_owner_teaching_write_denied_pending_anchor(self):
+    def test_owner_teaching_requires_separate_enrollment_not_bridge_ingress(self):
         guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()
+        teaching = (ROOT / "app/api/admin/storage-os/teaching/route.ts").read_text()
+        dry_run = (ROOT / "app/api/admin/storage-os/dry-run/route.ts").read_text()
         self.assertIn('request.url === "/api/internal/aoe2war-os/bridge"', guard)
         self.assertIn('request.headers?.["x-aoe2war-bridge-scope"] === "storage_visual"', guard)
-        self.assertNotIn('path === "/api/admin/storage-os/teaching"', guard)
-        self.assertIn('request.headers?.["x-forwarded-proto"] === "https"', guard)
+        self.assertIn('request.headers?.["x-aoe2war-bridge-scope"] === "operator_control"', guard)
+        self.assertIn('const ownerOnlyWrite = teachingEnabled &&', guard)
+        self.assertIn('const teachingEnabled = teachingPresent.length === teachingEnv.length;', guard)
+        self.assertIn('request.url === "/api/admin/storage-os/teaching" ? 1600', guard)
+        self.assertIn('request.url === "/api/admin/storage-os/dry-run" ? 512', guard)
+        self.assertIn('request.headers?.["sec-fetch-site"] === "same-origin"', guard)
+        self.assertIn('operatorBridgeWrite || ownerOnlyWrite;', guard)
+        self.assertIn('/run/aoe2war-storage-independent-tip/witness.sock', guard)
+        self.assertIn('const admin=await requireAdmin(request);', teaching)
+        self.assertIn('teachingOwnerAccess(admin.user.uid)', teaching)
+        self.assertIn('teachingOwnerAccess(admin.user.uid)', dry_run)
+        self.assertIn('OWNER_FEEDBACK_ONLY_NO_DELETE', teaching)
+        self.assertIn('authority:"NO_DELETE"', dry_run)
 
 
 if __name__ == "__main__":
