@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6244267743d969320fb4eb5b299a009c83321b692581ffb5e9981079752e0182",
+      "sha256": "891f6d7f792f022036010a7a3f779d154870f82578e7bea9bc6229ec823daca3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "bb2b861c9506e8eee3d23f3f9e7b69a2fbbec5e3"
+    "branch": "session-c/we1-kingdom-fleet-authority-registry-20261121",
+    "commit": "2075482ea1a58f94aa964b783ddb42d99f7498d7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

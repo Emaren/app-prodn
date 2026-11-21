@@ -706,5 +706,55 @@
       "no cyclic blocking edges or duplicate write leases",
       "bounded retained receipt, least-privilege visibility"
     ]
-  }
+  },
+  "federated_nonfinancial_host_observers": [
+    {
+      "id": "aoe2war.federation.vpssentry-bridge-storage.v1",
+      "version": 1,
+      "kind": "source-and-consumer-contract-not-new-subordinate-os",
+      "authority": "NONFINANCIAL_TELEMETRY_ONLY",
+      "status": "VPSSENTRY_WEB_LIVE_BRIDGE_HOST_ENROLLMENT_HOLD",
+      "canonical_owners": {
+        "infrastructure_measurement": "VPSSentry OS (existing vps-sentry timer and root-owned HEL1 status)",
+        "mac_observation": "VPSSentry Mac Storage Pulse, original UID501 Mac source HMAC",
+        "hel1_root_observation": "HEL1_ESTATE_OBSERVER, independent HEL1 signer (not yet admitted)",
+        "hel1_mount_observation": "HEL1_ESTATE_OBSERVER, separate exact volume identity, same trusted HEL1 source role",
+        "transport": "Bridge OS: original Operator Bridge bearer plus source-specific signed Storage Visual ingress; no second controller",
+        "classification": "Storage OS: L1-L5 protection/teaching and real source receipt decisions",
+        "maintenance_scheduler": "Housekeeping OS: original scheduler and retention control",
+        "release_executor": "WE2 Factory, exact-source protected build, install and rollback",
+        "event_record": "Central Command existing event ledger, one durable event per observed result"
+      },
+      "source_of_truth": {
+        "hel1_agent": "/var/lib/vps-sentry/public/status.json",
+        "web_adapter": "Emaren/vps-sentry-web#12 /api/ops/kingdom-os/fleet",
+        "production_explorer": "https://aoe2war.com/admin/storage-os/explorer",
+        "bridge_source": "Emaren/app-prodn#1439 exact head 9cf670724c82e29861e539c03c4d3165893da8f3",
+        "sender_source": "Emaren/VPSSentry#109 exact head 4f7ebf7e3624a868429f7c7ab80ca568f5e4a4f2",
+        "private_receiver_dir": "/var/lib/aoe2war-storage-visual-web-v1",
+        "private_store_source": "UID990 mode0700 requires independent owner/WE2 host installation"
+      },
+      "guardrails": {
+        "source_identity_per_plane": true,
+        "require_signed_and_admitted_source": true,
+        "no_offline_to_live_inference": true,
+        "one_action_controller": true,
+        "one_persisted_real_event_per_result": true,
+        "no_new_daemon_or_scheduler": true,
+        "no_new_web_login": true,
+        "no_auto_cleanup_or_financial_writes": true,
+        "bridge_six_field_installation": "HOLD_ATOMIC_ENV_SOURCE_AUTHORITY_NOT_ENROLLED",
+        "original_financial_seven_gates": "HOLD",
+        "v6_or_dormant_p256_owner_signer_required": false
+      },
+      "adoption": {
+        "vpssentry_web_12": "LIVE_BUT_FLEET_M1_INTEL_STALE_OR_UNVERIFIED",
+        "explorer_1438": "LIVE_T10_SEALED_PRESERVED",
+        "bridge_1439": "SOURCE_QUALIFIED_NOT_HOST_INSTALLED",
+        "sender_109": "SOURCE_QUALIFIED_NOT_HOST_INSTALLED",
+        "host_enrollment": "HOLD_UNTIL_OWNER_INTERACTIVE_ROOT_AUTHORIZATION_AND_ROOT_ENV_PREIMAGE",
+        "synthetic_ack_permitted": false
+      }
+    }
+  ]
 }
