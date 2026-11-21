@@ -94,6 +94,12 @@ EXACT_REVIEWED_B_EMBER_SHA256 = "8edbc84bcb02933ca6955a9abe7f417172247108be8f8ec
 # source, only for the original reviewed #1415 branch and canonical base.
 # This is a SOURCE REVIEW CANDIDATE, not a second reviewer endorsement,
 # root permission or live website deployment authority. No wildcard scripts.
+# WE3 post-Bridge exact owner teaching guard: one immutable source review
+# branch/base/hash, NOT a host admission, credential enrollment or new signer.
+EXACT_WE3_TEACH_BRANCH = "we3/teaching-exact-guard-after-bridge-20261121"
+EXACT_WE3_TEACH_BASE = "9cf670724c82e29861e539c03c4d3165893da8f3"
+EXACT_WE3_TEACH_GUARD_SHA256 = "8d08af137e001374ecb61c81f1b2977aff35c2736048f97cccd5ebd8dd647471"
+
 EXACT_REVIEWED_KINGDOM_MENU_BRANCH = "session-c/we3-kingdom-traders-menu-visibility-20261118"
 EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
@@ -283,6 +289,31 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
     return raw
 
 
+def exact_we3_owner_teaching_guard(checkout: Path, raw: str) -> str:
+    if raw != EXACT_REVIEWED_B_EMBER_GUARD:
+        raise BoundaryHold("WE3_TEACH_UNREVIEWED_EXECUTABLE")
+    target=checkout/relative_path(raw)
+    if (checkout/"scripts").is_symlink() or target.is_symlink():
+        raise BoundaryHold("WE3_TEACH_GUARD_SYMLINK")
+    st=target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink!=1 or
+            st.st_uid!=os.geteuid() or stat.S_IMODE(st.st_mode)&0o022 or
+            not 100<=st.st_size<=100_000):
+        raise BoundaryHold("WE3_TEACH_GUARD_SOURCE_CUSTODY")
+    fd=os.open(target,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        live=os.fstat(fd)
+        if (live.st_dev,live.st_ino,live.st_size,live.st_mtime_ns)!=(
+                st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns):
+            raise BoundaryHold("WE3_TEACH_GUARD_SOURCE_RACE")
+        actual=os.read(fd,100001)
+    finally:
+        os.close(fd)
+    if len(actual)!=st.st_size or hashlib.sha256(actual).hexdigest()!=EXACT_WE3_TEACH_GUARD_SHA256:
+        raise BoundaryHold("WE3_TEACH_GUARD_EXACT_SHA_MISMATCH")
+    return raw
+
+
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
@@ -315,6 +346,10 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             and os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_BRIDGE_BRANCH
             and raw in EXACT_WE2_BRIDGE_PINS):
         return exact_we2_bridge_blob(checkout, raw)
+    if raw == EXACT_REVIEWED_B_EMBER_GUARD and base == EXACT_WE3_TEACH_BASE:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE3_TEACH_BRANCH:
+            raise BoundaryHold("WE3_TEACH_GUARD_WRONG_BRANCH")
+        return exact_we3_owner_teaching_guard(checkout, raw)
     if raw == EXACT_REVIEWED_B_EMBER_GUARD and base == EXACT_WE2_STORAGE_BASE:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_STORAGE_BRANCH:
             raise BoundaryHold("WE2_STORAGE_WRONG_BRANCH")
