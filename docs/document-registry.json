@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "83457281e95f77c475684aed5a9f4db8ef6b44f3986a2b149d971dfbf8de7831",
+      "sha256": "71790329904fb298fe37015e3a776467c9f8456fe5728797be7e67da3d3f65ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2623,9 +2623,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WE3_FOUR_PLANE_STORAGE_REVIEW_20261120.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-11-20",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "f81d54401f56c95c3ad7c4dcf0f1ca986ed65a39a270f76668e35f6ec7025582",
+      "sha256": "89ef45549ee40f53bd053a7a92a26974283494e5a4ba96f4ecd41cbbc7bf0c6e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3573,7 +3573,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "cb3dc7ab36dc2e1c60855c4b3cc4564d99457fe7"
+    "commit": "f04eb2dcc63a21582e120537b29dd2f3995d80a6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
