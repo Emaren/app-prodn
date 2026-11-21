@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-four-plane-owner-teaching-20261120` at `f04eb2dcc63a21582e120537b29dd2f3995d80a6`
+Implementation baseline: `session-c/we3-four-plane-owner-teaching-20261120` at `42dfd3b2341c3611e63ffef932c3d46f47b12b44`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

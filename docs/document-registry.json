@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "71790329904fb298fe37015e3a776467c9f8456fe5728797be7e67da3d3f65ad",
+      "sha256": "730fb4b360920661f9f7ccaa3524583ff9fe438894cb0f0164bac245c4a9821c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -998,6 +998,7 @@
       "title": "Kingdom Brain, Progress and Patrol Contract",
       "type": "reference"
     },
+
     {
       "audience": [
         "developers",
@@ -1998,6 +1999,7 @@
       "systems": [
         "aoe2war"
       ],
+
       "title": "Session A R25 Public Nonfinancial Recovery and Steam v5u Admission",
       "type": "reference"
     },
@@ -2625,7 +2627,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "89ef45549ee40f53bd053a7a92a26974283494e5a4ba96f4ecd41cbbc7bf0c6e",
+      "sha256": "5beeae7fb8ca1f4ffce5b4ac18fb62f5ecbde21f9bc6f86147f721347a262a38",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2998,6 +3000,7 @@
       "id": "aoe2war.app-prodn.product-single-owner-release-authority",
       "owner": "aoe2war-web",
       "path": "docs/release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md",
+
       "review_interval_days": 30,
       "reviewed_at": "2026-11-17",
       "sensitivity": "internal",
@@ -3573,7 +3576,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "f04eb2dcc63a21582e120537b29dd2f3995d80a6"
+    "commit": "42dfd3b2341c3611e63ffef932c3d46f47b12b44"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
