@@ -88,6 +88,13 @@ export function verifyIntelEdDerived(envelope:unknown,
     normalized.filevault_on!==true||
     normalized.source_retirement_authorized===true)
   throw Error("INTEL_WE2_PROJECTION_SOURCE_MISMATCH");
+ if(normalized.objects!==undefined&&normalized.objects!==null){
+  if(normalized.objects_source_envelope_sha256!==p.source_envelope_sha256||
+     normalized.objects_source_nonce_sha256!==p.source_nonce_sha256||
+     normalized.objects_source_sequence!==p.source_replay_sequence||
+     normalized.objects_independently_verified!==true)
+    throw Error("INTEL_WE2_ITEM_SOURCE_LINK_HOLD");
+ }
  const sig=Buffer.from(x.signature_base64,"base64");
  if(sig.length!==64||!verify(null,intelEdUiPreimage(p),
     createPublicKey(rootPem),sig))

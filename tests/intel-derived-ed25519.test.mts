@@ -112,3 +112,69 @@ test("production Intel reader never treats legacy HMAC as a signed Ed25519 sourc
   else process.env.AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED=previous;
  }
 });
+
+function sourceObjectRows(){
+  return Array.from({length:23},(_,i)=>({
+    alias:"INTEL_"+i.toString(16).toUpperCase().padStart(24,"0"),
+    namespace:i<21?"M1-ARCHIVE":"HEL1-RECOVERY",kind:"AGE_CIPHERTEXT",
+    allocated_bytes:1024*(i+1),logical_bytes:2048*(i+1),
+    restore_state:i<6?"HISTORICAL_RESTORE_PROOF_PRESENT":i===6?
+      "KNOWN_FAILED_DECRYPTION":"RECOVERY_UNVERIFIED",
+    historical_independent_restore_receipt_sha256:i<6?"f".repeat(64):null,
+    source_sha256:null,sha256_content_verified_now:false,
+    hardlink_or_shared_block_uncertainty:true,retirement_permitted:false,
+    proven_unique_reclaim_bytes:null,
+  }));
+}
+function itemProjection(){
+ const p=payload();
+ p.projection={...projected(),objects:sourceObjectRows(),
+  objects_source_envelope_sha256:sha,
+  objects_source_nonce_sha256:"b".repeat(64),
+  objects_source_sequence:7,objects_independently_verified:true} as ReturnType<typeof projected>;
+ return p;
+}
+test("WE2 independently signed Intel object projection preserves 6 historical PASS, 16 UNKNOWN, one FAILED",()=>{
+ const admitted=verifyIntelEdDerived(seal(itemProjection()),rootPem,rootPin,sourcePin,NOW);
+ const view=verifyIntelColdProjection(admitted.projection,NOW);
+ assert.equal(view.objects?.length,23);
+ assert.equal(view.objects?.filter(o=>o.restore==="HISTORICAL_RESTORE_PROOF_PRESENT").length,6);
+ assert.equal(view.objects?.filter(o=>o.restore==="RECOVERY_UNVERIFIED").length,16);
+ assert.equal(view.objects?.filter(o=>o.restore==="KNOWN_FAILED_DECRYPTION").length,1);
+ assert.equal(view.objects?.[0].restoreReceiptSha256,"f".repeat(64));
+ assert.equal(view.objects?.[6].restoreReceiptSha256,null);
+ assert.equal(view.objects?.[6].protectionLevel,null);
+ assert.equal(view.objects?.every(o=>o.deletionAuthorized===false&&o.uniqueReclaimBytes===null),true);
+ assert.equal(view.objects?.filter(o=>o.namespace==="HEL1-RECOVERY").length,2);
+});
+test("independent WE2 provenance must bind original Intel Ed25519 envelope, nonce and source sequence",()=>{
+ const p=itemProjection();
+ p.projection={...p.projection,objects_source_nonce_sha256:"c".repeat(64)};
+ assert.throws(()=>verifyIntelEdDerived(seal(p),rootPem,rootPin,sourcePin,NOW),
+  /INTEL_WE2_ITEM_SOURCE_LINK_HOLD/);
+ const q=itemProjection();
+ q.projection={...q.projection,objects_independently_verified:false};
+ assert.throws(()=>verifyIntelEdDerived(seal(q),rootPem,rootPin,sourcePin,NOW),
+  /INTEL_WE2_ITEM_SOURCE_LINK_HOLD/);
+});
+test("unbound paths, forged levels, vanished independent restore proof and unauthorized deletion HOLD",()=>{
+ for(const change of [
+   {private_path:"/Users/owner/private"}, {protection_level:1},
+   {retirement_permitted:true},{proven_unique_reclaim_bytes:1024},
+   {historical_independent_restore_receipt_sha256:null},
+   {alias:"INTEL_UNTRUSTED"},
+ ]) {
+  const p=itemProjection();
+  const rows=sourceObjectRows();
+  rows[0]={...rows[0],...change};
+  p.projection={...p.projection,objects:rows};
+  const admitted=verifyIntelEdDerived(seal(p),rootPem,rootPin,sourcePin,NOW);
+  assert.throws(()=>verifyIntelColdProjection(admitted.projection,NOW),
+   /INTEL_OBJECT_(FIELDS_OR_PATH|IDENTITY_OR_PROTECTION|INDEPENDENT_PROOF_MISSING)/);
+ }
+});
+test("a signed, current vault without an independently admitted item manifest never becomes zero items",()=>{
+ const view=verifyIntelColdProjection(
+  verifyIntelEdDerived(seal(),rootPem,rootPin,sourcePin,NOW).projection,NOW);
+ assert.equal(view.objects,null);
+});

@@ -27,6 +27,14 @@ export type ColdTenant={
   failureDomainEscrow:"PASS"|"HOLD";
   cleanup:"LOCKED";reclaimableBytes:null;
 };
+export type ColdArchiveObject={
+  alias:string;namespace:"M1-ARCHIVE"|"HEL1-RECOVERY";
+  allocatedBytes:number;logicalBytes:number;
+  restore:"HISTORICAL_RESTORE_PROOF_PRESENT"|"RECOVERY_UNVERIFIED"|"KNOWN_FAILED_DECRYPTION";
+  restoreReceiptSha256:string|null;contentSha256VerifiedNow:boolean;
+  protectionLevel:null;sharedBlockUncertainty:true;
+  deletionAuthorized:false;uniqueReclaimBytes:null;
+};
 export type IntelColdView={
   schema:typeof COLD_SCHEMA;source:"SIGNED_PRIVATE_RECEIPT"|"NONE";
   health:ColdHealth;observedAt:string|null;
@@ -36,6 +44,7 @@ export type IntelColdView={
   capacity:{availableBytes:number|null;reserveBytes:number;headroomAboveReserve:number|null};
   incident:{knownV1Incomplete:boolean;status:"NOT_RECOVERABLE_NO_RECLAIM"};
   tenants:ColdTenant[];
+  objects:ColdArchiveObject[]|null;
   authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL";
   reason:string;
 };
@@ -51,7 +60,7 @@ function unknown(reason:string):IntelColdView{
       identity:"NOT_ENROLLED",quotaBytes:null,committedObjects:null,
       invalidObjects:null,lastTransfer:null,lastRestore:null,
       failureDomainEscrow:"HOLD",cleanup:"LOCKED",reclaimableBytes:null})),
-    authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL",reason};
+    objects:null,authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL",reason};
 }
 export const EMPTY_INTEL_COLD=unknown("NO_SIGNED_INTEL_VAULT_STATUS");
 const object=(v:unknown):Record<string,unknown>=>{
@@ -108,6 +117,62 @@ export function verifyLegacyIntelHmacFixture(
   if(!timingSafeEqual(expected,Buffer.from(signed.hmac_sha256,"hex")))
     throw Error("INTEL_EVIDENCE_SIGNATURE_INVALID");
   return verifyIntelColdProjection(payload,clock);
+}
+/** The optional source-item extension is admitted ONLY inside WE2's separate
+ * Ed25519-signed derived receipt with explicit original-envelope provenance.
+ * A missing extension is UNKNOWN inventory, never zero items or zero bytes.
+ */
+export function parseIntelArchiveObjects(raw:unknown):ColdArchiveObject[]|null{
+  if(raw===undefined||raw===null)return null;
+  if(!Array.isArray(raw)||raw.length!==23)throw Error("INTEL_OBJECT_COUNT_HOLD");
+  const seen=new Set<string>(),counts={PASS:0,UNKNOWN:0,FAILED:0};
+  const out:ColdArchiveObject[]=[];
+  for(const value of raw){
+    const x=object(value);
+    if(Object.keys(x).sort().join("|")!==
+       ["alias","namespace","kind","logical_bytes","allocated_bytes",
+       "restore_state","historical_independent_restore_receipt_sha256",
+       "sha256_content_verified_now","source_sha256",
+       "hardlink_or_shared_block_uncertainty","retirement_permitted",
+       "proven_unique_reclaim_bytes"].sort().join("|"))
+      throw Error("INTEL_OBJECT_FIELDS_OR_PATH_HOLD");
+    if(typeof x.alias!=="string"||!/^INTEL_[A-F0-9]{24}$/.test(x.alias)||
+       seen.has(x.alias)||(x.namespace!=="M1-ARCHIVE"&&x.namespace!=="HEL1-RECOVERY")||
+       x.kind!=="AGE_CIPHERTEXT"||
+       !nonnegative(x.logical_bytes)||!nonnegative(x.allocated_bytes)||
+       x.retirement_permitted!==false||x.proven_unique_reclaim_bytes!==null||
+       x.hardlink_or_shared_block_uncertainty!==true||
+       typeof x.sha256_content_verified_now!=="boolean"||
+       !(x.source_sha256===null||sha(x.source_sha256))||
+       (x.sha256_content_verified_now===true&&!sha(x.source_sha256)))
+      throw Error("INTEL_OBJECT_IDENTITY_OR_PROTECTION_HOLD");
+    const restore=x.restore_state;
+    if(restore!=="HISTORICAL_RESTORE_PROOF_PRESENT"&&restore!=="RECOVERY_UNVERIFIED"&&
+       restore!=="KNOWN_FAILED_DECRYPTION")
+      throw Error("INTEL_OBJECT_RESTORE_CLASS_HOLD");
+    if(restore==="HISTORICAL_RESTORE_PROOF_PRESENT"){
+      if(!sha(x.historical_independent_restore_receipt_sha256))
+        throw Error("INTEL_OBJECT_INDEPENDENT_PROOF_MISSING");
+      counts.PASS++;
+    }else{
+      if(x.historical_independent_restore_receipt_sha256!==null)
+        throw Error("INTEL_OBJECT_UNVERIFIED_PROOF_FORGERY");
+      if(restore==="KNOWN_FAILED_DECRYPTION")counts.FAILED++;else counts.UNKNOWN++;
+    }
+    seen.add(x.alias);
+    out.push({alias:x.alias,namespace:x.namespace,
+      allocatedBytes:x.allocated_bytes as number,logicalBytes:x.logical_bytes as number,
+      restore:restore as ColdArchiveObject["restore"],
+      restoreReceiptSha256:x.historical_independent_restore_receipt_sha256 as string|null,
+      contentSha256VerifiedNow:x.sha256_content_verified_now,
+      protectionLevel:null,sharedBlockUncertainty:true,
+      deletionAuthorized:false,uniqueReclaimBytes:null});
+  }
+  if(counts.PASS!==6||counts.UNKNOWN!==16||counts.FAILED!==1||
+    out.filter(x=>x.namespace==="M1-ARCHIVE").length!==21||
+    out.filter(x=>x.namespace==="HEL1-RECOVERY").length!==2)
+    throw Error("INTEL_OBJECT_PROOF_CLASSES_OR_NAMESPACE_HOLD");
+  return out;
 }
 export function verifyIntelColdProjection(input:unknown,clock:Date=new Date()):IntelColdView{
   const x=object(input);
@@ -173,7 +238,7 @@ export function verifyIntelColdProjection(input:unknown,clock:Date=new Date()):I
     capacity:{availableBytes:x.available_bytes as number,reserveBytes:RESERVE,
       headroomAboveReserve:Math.max(0,(x.available_bytes as number)-RESERVE)},
     incident:{knownV1Incomplete:true,status:"NOT_RECOVERABLE_NO_RECLAIM"},
-    tenants,authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL",
+    tenants,objects:parseIntelArchiveObjects(x.objects),authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL",
     reason:health==="ONLINE"?"FRESH_SIGNED_SOURCE":health==="STALE"
       ?"SIGNED_SOURCE_STALE":"RECEIVER_HEALTH_OR_RESERVE_HOLD"};
 }

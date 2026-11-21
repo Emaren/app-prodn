@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial-product-source-only-not-production-admission"
-reviewed_at: "2026-11-20"
+reviewed_at: "2026-11-21"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -33,6 +33,14 @@ URL: `https://aoe2war.com/admin/storage-os/explorer`. Preserve its radial alloca
 WE2 independently pins the original Intel Ed25519 public PEM SHA-256, checks the original signed preimage/domain, FileVault ON, fixed APFS volume UUID `33F21AD8-71B5-31A5-99C2-BD30EC2A90DF`, host key fingerprint, port 2222, protected fresh source nonce/sequence, source envelope digest, six historical restoration evidence classes and a root-owned anti-replay ledger. Only **after** verified native Ed25519 source and durably anchored WE2 acceptance may an independent root-only WE2 Ed25519 signer produce the **derived** `aoe2war.storage-intel.we2-admitted-ui.signed.v1` envelope. Its domain `AOE2WAR:INTEL:WE2-ADMITTED-UI:V1\0` binds the original source signer identity, source envelope SHA, nonce, replay sequence/tip SHA, verifier source SHA, root admission ACK SHA, host/volume identity, original observation and bounded normalized projection. PRODUCT validates WE2's **separate pinned public key** and the original Intel public key fingerprint, signature, signed source freshness and all identity fields. The app never receives Intel's private key.
 
 Production admission requires `AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED=WE2_ED25519_DERIVED_V1`, `AOE2WAR_INTEL_ED25519_SOURCE_PUBLIC_PEM_SHA256`, and WE2-derived public PEM/pin. An accepted root-signed file `state/intel-we2-ed25519-admitted-ui.v1.json` must be admitted into the exact private web store. The old HMAC `state/intel-cold-status.v1.json` cannot activate Intel, even if well-formed. Until root source verification, replay ledger, native signer Keychain enrollment and exact C/G admission exist, Intel remains **HOLD / UNKNOWN**, not zero, not ONLINE, and not recoverable. No per-file transfer or delete authority is created.
+
+## Fourth-plane Intel archival object display — gated root-signed extension
+
+The **same** Intel pane may present a bounded opaque-item inventory only when WE2's independent root Ed25519-signed derived UI projection includes an explicitly source-linked object set. Original 2026-11-21 Intel owner-local WE4 v1 evidence has **23 ciphertext objects**: 21 M1-ARCHIVE and two HEL1-RECOVERY. The source verifier distinguishes six **HISTORICAL_RESTORE_PROOF_PRESENT** objects (a matching independent historical receipt), sixteen **RECOVERY_UNVERIFIED**, and one **KNOWN_FAILED_DECRYPTION**. A historical restore PASS does not certify this object as independently recoverable now, nor does it authorize source retirement.
+
+The optional UI projection field `objects` is either omitted (UNKNOWN) or an exact 23-element list. Each entry includes only these canonical fields: `alias` (opaque `INTEL_`+24 uppercase hex), `namespace`, `kind=AGE_CIPHERTEXT`, `allocated_bytes`, `logical_bytes`, `restore_state`, `historical_independent_restore_receipt_sha256`, `sha256_content_verified_now`, `source_sha256`, `hardlink_or_shared_block_uncertainty=true`, `retirement_permitted=false`, `proven_unique_reclaim_bytes=null`. WE2 strips raw filesystem path, device and inode from the UI projection; PRODUCT rejects all unexpected keys, duplicated aliases, invalid receipt digests, false retirement authorization, and forged proof counts. The root signer must also bind `objects_source_envelope_sha256`, `objects_source_nonce_sha256`, `objects_source_sequence`, and `objects_independently_verified=true` to its **previously admitted original** WE4 Ed25519 envelope and protected nonce/sequence ledger. These are mandatory when `objects` is present; root self-assertion without physical source checking is not admission.
+
+Only then can the UI show alias, namespace, vault volume UUID, source observation time, actual ciphertext logical/allocated bytes, the precise historical PASS / UNKNOWN / FAILED status and receipt digest. Protection level stays **UNKNOWN** because ciphertext restore status is not an owner Level 1–5 decision. Unique physical reclaim remains UNKNOWN because clones and hardlinks are not proven. There is still no archive sender, automated transfer or deletion executor. Missing or stale signed item evidence is **UNKNOWN**, not an empty vault or inferred zero. No private filesystem paths or private signing credentials are carried into the browser.
 
 ## Per-item Intel YES / NO: additive, independently gated
 

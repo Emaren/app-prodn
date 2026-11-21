@@ -125,7 +125,11 @@ test("website source requires admin; has no live SSH, key, cleanup or filesystem
   assert.doesNotMatch(api,/child_process|ssh\s|spawn\(|exec\(|delete|cleanupExecutor/i);
   assert.match(ui,/No delete authority/);
   assert.match(ui,/independent source contract/);
-  assert.match(ui,/individual inode, logical\/allocated size/);
+  assert.match(ui,/Optional verified ciphertext items may report/);
+  assert.match(ui,/UNADMITTED per-object source proof/);
+  assert.match(ui,/HISTORICAL RESTORE PASS/);
+  assert.match(ui,/RECOVERY UNKNOWN/);
+  assert.match(ui,/FAILED DECRYPTION/);
   assert.match(wrapper,/Four independently verified storage planes/);
   assert.match(wrapper,/<IntelColdStoragePanel snapshot=/);
   assert.match(wrapper,/active===\"intel\"/);
