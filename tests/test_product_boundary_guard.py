@@ -150,7 +150,7 @@ class BoundaryTests(unittest.TestCase):
         # that exact prior source, not the new branch's current blob.
         historical = subprocess.check_output([
             "git", "-C", str(root), "show",
-            p.EXACT_WE2_STORAGE_BASE + ":" + name], timeout=15)
+            p.EXACT_WE2_BRIDGE_BASE + ":" + name], timeout=15)
         self.assertEqual(hashlib.sha256(historical).hexdigest(),
                          p.EXACT_WE2_STORAGE_PINS[name])
         for item, digest in p.EXACT_WE2_STORAGE_PINS.items():
