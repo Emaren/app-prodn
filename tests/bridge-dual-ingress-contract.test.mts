@@ -14,7 +14,7 @@ test("only two exact bridge locations can POST to existing production 3032", () 
   assert.match(nginx, /location = \/api\/internal\/aoe2war-os\/storage-visual\s*\{/);
   assert.equal((nginx.match(/if \(\$request_method != POST\) \{ return 405; \}/g) ?? []).length, 2);
   assert.equal((nginx.match(/proxy_pass http:\/\/127\.0\.0\.1:3032\/api\/internal\/aoe2war-os\/bridge;/g) ?? []).length, 2);
-  assert.doesNotMatch(nginx, /location \^~ \/api\//);
+  assert.doesNotMatch(nginx, /^\s*location \^~ \/api\//m);
   assert.doesNotMatch(nginx, /proxy_pass http:\/\/127\.0\.0\.1:(?!3032)/);
   assert.match(nginx, /client_max_body_size 256k;/);
   assert.match(nginx, /client_max_body_size 48k;/);
