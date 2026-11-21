@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we3/teaching-exact-guard-after-bridge-20261121` at `d9fc1adefa0b38c766ab0c18ae40c2a20fb6e177`
+Implementation baseline: `we3/teaching-exact-guard-after-bridge-20261121` at `dd5d0a642f03228dcf058ba207e2cc68aabb2488`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
