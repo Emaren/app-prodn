@@ -6,6 +6,7 @@ import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import {constants} from "node:fs";
 import {promises as fs} from "node:fs";
 import path from "node:path";
+import {assertIndependentTip,enrolledOwnerBinding,witnessIndependentTip} from "./storageIndependentLedgerTip.ts";
 import {
   STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,teachingDisposition,strongestRecordedProtection,isTeachingLevel,isTeachingPlane,
   isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,
@@ -125,7 +126,11 @@ export async function readTeachingEvents():Promise<TeachingEvent[]>{
   const secret=key();
   let dir:string;
   try{dir=await ledgerDir(false);}
-  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return [];throw e;}
+  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT"){
+    if(process.env.NODE_ENV==="production")
+      await assertIndependentTip("teaching",[],enrolledOwnerBinding());
+    return [];
+  }throw e;}
   const names=(await fs.readdir(dir)).filter(n=>n!==".write-lock").sort();
   if(names.length>MAX_EVENTS||names.some(n=>!FILE.test(n)))
     throw Error("TEACHING_EVENT_NAMES_HOLD");
@@ -150,6 +155,8 @@ export async function readTeachingEvents():Promise<TeachingEvent[]>{
       events.push(x);prior=x;
     }finally{await fh.close();}
   }
+  if(process.env.NODE_ENV==="production")
+    await assertIndependentTip("teaching",events,enrolledOwnerBinding());
   return events;
 }
 export function latestTeachingEvent(events:TeachingEvent[],plane:TeachingPlane,category:string){
@@ -167,6 +174,13 @@ export async function appendTeachingEvent(input:{
      typeof input.overlaps!=="boolean"||!Number.isFinite(Date.parse(input.sourceObservedAt))||
      typeof input.note!=="string"||input.note.length>160)
     throw Error("TEACHING_FIELDS_INVALID");
+  if(process.env.NODE_ENV==="production"){
+    if(process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET!==
+      "/run/aoe2war-storage-independent-tip/witness.sock")
+      throw Error("TEACHING_INDEPENDENT_WITNESS_REQUIRED");
+    if(input.ownerBinding!==enrolledOwnerBinding())
+      throw Error("TEACHING_OWNER_BINDING_HOLD");
+  }
   const dir=await ledgerDir(true),lock=path.join(dir,".write-lock");
   try{await fs.mkdir(lock,{mode:0o700});}catch{throw Error("TEACHING_BUSY_HOLD");}
   try{
@@ -205,6 +219,8 @@ export async function appendTeachingEvent(input:{
     finally{await fh.close();}
     const d=await fs.open(dir,constants.O_RDONLY);
     try{await d.sync();}finally{await d.close();}
+    if(process.env.NODE_ENV==="production")
+      await witnessIndependentTip("teaching",[...old,event],input.ownerBinding);
     return event;
   }finally{await fs.rmdir(lock);}
 }

@@ -264,9 +264,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-11-06",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "c8a54e19e88597cc83f6707ef81380e7f0b1adcf6673a36fee15e4485f1836bd",
+      "sha256": "43465fefb9e33282015abc658eb165afbdbe1472123918a66ff43d82b708e912",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -592,9 +592,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CLAN_HALLS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "2dd70c6d383eda322feb7e5e1354d3e2f17a4daf5515858ad1da69fa785a3c2a",
+      "sha256": "52ba89a10a06f3e06347a3d17edf283f9cb16da9f14fdfb3900dbdecafba8be3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7ce0d57d4862bf34ad6eeab060e0ab08cea594032dea38a067269f1b02f4a3c2",
+      "sha256": "6244267743d969320fb4eb5b299a009c83321b692581ffb5e9981079752e0182",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -867,9 +867,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "restricted",
-      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
+      "sha256": "0ebffce0683529ca72c22bac08dde780bba8723a3c2b037ef0ae951355bcf5f9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1647,9 +1647,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "df26dfda7f1620730dea4c285b41a0a83655480262577587ed50e675fcc42cef",
+      "sha256": "2110dea5cde66306cfb0ca6c484fde5d6e12c985b128096015231cf1f87e97ba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-product-source-only-not-production-admission",
+      "id": "aoe2war.app-prodn.we3-four-plane-storage-review-20261120",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_FOUR_PLANE_STORAGE_REVIEW_20261120.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-21",
+      "sensitivity": "internal",
+      "sha256": "5beeae7fb8ca1f4ffce5b4ac18fb62f5ecbde21f9bc6f86147f721347a262a38",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Four-Plane Storage Explorer and Owner Review Release Contract",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-library-review",
       "id": "aoe2war.app-prodn.we3-library-public-projections-20261119",
       "owner": "aoe2war-web",
@@ -3550,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/storage-protected-ingress-20261120",
-    "commit": "3a66cf9eec49c0f71756eacde5fafe29ac07c319"
+    "branch": "session-c/we3-four-plane-owner-teaching-20261120",
+    "commit": "bb2b861c9506e8eee3d23f3f9e7b69a2fbbec5e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

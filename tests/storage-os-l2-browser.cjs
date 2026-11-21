@@ -73,11 +73,16 @@ async function main(){
      await page.waitForLoadState("load",{timeout:30000});
      const explorer=page.locator('main:visible').first();
      await explorer.getByRole("heading",{name:/Storage Explorer/}).waitFor({state:"visible",timeout:30000});
-     const cards=explorer.locator('section[aria-label="Three independent storage volumes"]');
-     assert.equal(await cards.getByRole("button").count(),3,"exactly three source planes");
-     for(const name of [/M1.*Development Mac/,/HEL1.*Root/,/HEL1.*Data volume/]){
+     const cards=explorer.locator('section[aria-label="Four independently verified storage planes"]');
+     assert.equal(await cards.getByRole("button").count(),4,"three source planes plus gated Intel vault");
+     for(const name of [/M1.*Development Mac/,/HEL1.*Root/,/HEL1.*Data volume/,/Intel.*Cold vault/]){
        assert.equal(await cards.getByRole("button",{name}).count(),1,"missing storage drive "+name);
      }
+     await cards.getByRole("button",{name:/Intel.*Cold vault/}).click();
+     await explorer.getByText(/No current verified Intel tenant inventory/).waitFor({state:"visible",timeout:15000});
+     assert.equal(await explorer.getByText(/Intel classification and automated cleanup: HOLD/).count(),1);
+     assert.equal(await explorer.getByText(/Signed free space is not signed used space/).count(),1);
+     await cards.getByRole("button",{name:/M1.*Development Mac/}).click();
      await explorer.getByText(/No current signed hog inventory for this drive/).waitFor({state:"visible",timeout:15000});
      assert.equal(await explorer.getByText("Category inventory unknown",{exact:true}).count(),3);
      await explorer.getByRole("button",{name:/HEL1 · Data volume/}).click();

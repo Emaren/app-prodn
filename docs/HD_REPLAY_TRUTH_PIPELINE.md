@@ -8,12 +8,17 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-21"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # HD Replay Truth Pipeline and Operator Runbook
+
+## 2026-11-21 UTC — bounded WE3 replay-authority source review
+
+Read-only source scope: inspected `app/api/replay/upload/route.ts` and reviewed the distinct archived, parsed, statistics-ready, result-trusted and betting-eligible lifecycle contracts below. Parsed game presentation must continue to preserve UNKNOWN winner or watcher early-end states. This is not a new full-corpus audit, result adjudication, market settlement, source retirement, FINANCIAL release or migration permit. Frozen historical proof figures remain tied to their original timestamps.
+
 
 ## Review scope — 2026-10-21 UTC
 
