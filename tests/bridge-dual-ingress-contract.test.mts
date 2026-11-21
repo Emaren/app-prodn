@@ -36,7 +36,7 @@ test("Node guard admits only exact host, loopback, HTTPS, token and scoped JSON"
   assert.match(guard, /request\.headers\?\.\["x-forwarded-proto"\] === "https"/);
   assert.match(guard, /request\.headers\?\.\["x-aoe2war-bridge-scope"\] === "operator_control"/);
   assert.match(guard, /Number\(bridgeLength\) <= 262144/);
-  assert.match(guard, /operatorControlWrite;/);
+  assert.match(guard, /operatorBridgeWrite;/);
   assert.match(guard, /storageVisualOnlyWrite \|\|/);
   assert.match(guard, /request\.headers\?\.\["transfer-encoding"\] === undefined/);
 });
