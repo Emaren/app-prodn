@@ -283,6 +283,8 @@ class BoundaryTests(unittest.TestCase):
                          "9cf670724c82e29861e539c03c4d3165893da8f3")
         self.assertEqual(p.EXACT_WE3_TEACH_BRANCH,
                          "we3/teaching-exact-guard-after-bridge-20261121")
+        self.assertTrue(p.BRANCH.fullmatch(p.EXACT_WE3_TEACH_BRANCH))
+        self.assertFalse(p.BRANCH.fullmatch("we3/unreviewed-authority"))
         self.assertEqual(hashlib.sha256((root/guard).read_bytes()).hexdigest(),
                          p.EXACT_WE3_TEACH_GUARD_SHA256)
         with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":p.EXACT_WE3_TEACH_BRANCH}):
