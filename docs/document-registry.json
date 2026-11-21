@@ -264,9 +264,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-11-06",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "c8a54e19e88597cc83f6707ef81380e7f0b1adcf6673a36fee15e4485f1836bd",
+      "sha256": "43465fefb9e33282015abc658eb165afbdbe1472123918a66ff43d82b708e912",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -592,9 +592,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CLAN_HALLS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "2dd70c6d383eda322feb7e5e1354d3e2f17a4daf5515858ad1da69fa785a3c2a",
+      "sha256": "52ba89a10a06f3e06347a3d17edf283f9cb16da9f14fdfb3900dbdecafba8be3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e7063940a3777780141fa84cf1a9b6c880c91d0ff329419d85aae713e36e6ca5",
+      "sha256": "83457281e95f77c475684aed5a9f4db8ef6b44f3986a2b149d971dfbf8de7831",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -867,9 +867,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "restricted",
-      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
+      "sha256": "0ebffce0683529ca72c22bac08dde780bba8723a3c2b037ef0ae951355bcf5f9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1647,9 +1647,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "df26dfda7f1620730dea4c285b41a0a83655480262577587ed50e675fcc42cef",
+      "sha256": "2110dea5cde66306cfb0ca6c484fde5d6e12c985b128096015231cf1f87e97ba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3573,7 +3573,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "0af042f01a46f1192d08f07ea9b477889b6ac1ce"
+    "commit": "cb3dc7ab36dc2e1c60855c4b3cc4564d99457fe7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
