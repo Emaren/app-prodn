@@ -55,3 +55,29 @@ test("home Hero Studio does not ingest page-specific hero screens", () => {
   assert.match(heroService, /page-hero-/);
   assert.match(heroService, /startsWith/);
 });
+
+
+test("restricted production Page Hero admin GET uses only published public view", () => {
+  assert.match(api, /const gate = await requireAdmin\(request\)/);
+  assert.match(api, /if \(isNonfinancialPublicReadProfile\(\)\)/);
+  assert.match(api, /loadPublishedPageHeroAdminSnapshot\(gate\.prisma, surface\.key\)/);
+  assert.match(api, /PAGE_HERO_PUBLISHED_VIEW_UNAVAILABLE/);
+  const published = pageHeroes.split("export async function loadPublishedPageHeroAdminSnapshot(", 2)[1]
+    ?.split("export async function loadPageHeroAdminSnapshot(", 1)[0];
+  assert.ok(published, "published-only snapshot is a dedicated function");
+  assert.match(published, /readPublishedPageHeroChain\(prisma, selectedSurface\.key\)/);
+  assert.match(published, /library: \[\]/);
+  assert.match(published, /readOnly: true/);
+  assert.doesNotMatch(published, /managedMediaAsset|heroPlaylist\.findUnique|upsert|\$executeRaw|\$transaction/);
+});
+
+test("restricted production Page Hero admin POST never reaches legacy writes", () => {
+  const post = api.split("export async function POST(", 2)[1];
+  assert.ok(post);
+  const beforeBody = post.split("const body = ", 1)[0];
+  assert.match(beforeBody, /requireAdmin/);
+  assert.match(beforeBody, /if \(isNonfinancialPublicReadProfile\(\)\)/);
+  assert.match(beforeBody, /PAGE_HERO_EDITOR_PROTECTED/);
+  assert.match(beforeBody, /status: 503/);
+  assert.doesNotMatch(beforeBody, /heroPlaylist\.|managedMediaAsset\.|assignPageHeroAssets\(/);
+});
