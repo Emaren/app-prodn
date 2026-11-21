@@ -180,7 +180,7 @@ EXACT_WE2_BRIDGE_PINS = {
     "deploy/aoe2war-bridge-dual-path.nginx.inc":
         "1d0bf51aa269c7695c4f5cdc2a65219d707064aa058b270aa56b5604a988d19b",
     "tests/bridge-dual-ingress-contract.test.mts":
-        "c934ffa3666d5a6ce5bd7d745f8cce633280495f596c88a8bf6286172c25a55a",
+        "11b027c6631bd9daf7a0444febe127b5ee6214a80f9736e8544f10bcbfee83a7",
 }
 EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
