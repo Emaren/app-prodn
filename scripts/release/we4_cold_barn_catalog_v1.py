@@ -646,6 +646,70 @@ def review_explicit_hel1_owner_copy_nomination(
 
 
 
+
+# This is a review fingerprint of the single owner-selected object, NOT a
+# cryptographic host/source admission. Owner signed COPY approval is external.
+OWNER_FIRST_HEL1_4C14_FINGERPRINT = {
+    "generation": "4c14cbc7c518",
+    "source_sha": "4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7",
+    "build_id": "w-tDoD2iUw6P2P4oTw3Ti",
+    "fs_uuid": "64f6fb02-4fed-4836-a33b-86e8993afdfa",
+    "root_dev": 2049,
+    "root_inode": 4493824,
+    "gross_allocated_bytes": 1584885760,
+    "regular_files_hashed": 45036,
+    "entries": 51438,
+    "file_content_manifest_sha256":
+        "60ba8c3561bed95b8f72dcb97f805516a55c5963a0f6c182ea94536c4f6f6647",
+}
+OWNER_FIRST_HEL1_4C14_PRIVATE_MANIFEST_SHA256 = (
+    "d96aa4edf0dcf2a117b2cb46a1e4ee4a69da8bdcf22db779610adff5043c50bc"
+)
+
+
+def review_owner_pinned_first_4c14_copy_only(
+    runtimes: dict, source_docket: dict, two_hot_dossier: dict,
+) -> dict:
+    """Strict single-owner exception; no generic oldest-generation fallback.
+
+    An exact match only reaches non-executable source qualification. It cannot
+    authenticate a one-use nonce, owner hot pins, a receiver or an L4 permit.
+    """
+    denied = {
+        "schema": "aoe2war.we4.first-4c14-exact-copy-only.review.v1",
+        "status": "HOLD_OWNER_PINNED_SOURCE_FINGERPRINT_DRIFT",
+        "requested_generation": "4c14cbc7c518",
+        "candidate": None,
+        "copy_only_class": "HEL1_HISTORICAL_FACTORY_RUNTIME/COPY_ONLY_NO_RETIRE",
+        "owner_hot_pinset_authentication": False,
+        "existing_receiver_copy_class_authorized": False,
+        "one_use_owner_COPY_permit_verified": False,
+        "retirement_permission": False,
+        "apply": False, "new_copies": 0, "new_deletions": 0,
+    }
+    if not isinstance(source_docket, dict):
+        return denied
+    target = source_docket.get("target")
+    evidence = source_docket.get("source_evidence")
+    if not isinstance(target, dict) or not isinstance(evidence, dict):
+        return denied
+    if (any(type(target.get(k)) is not type(value) or target.get(k) != value
+            for k, value in OWNER_FIRST_HEL1_4C14_FINGERPRINT.items()) or
+            target.get("host") != "HEL1" or target.get("fs") != "/dev/sda1" or
+            evidence.get("integrity_manifest_sha256") !=
+                OWNER_FIRST_HEL1_4C14_PRIVATE_MANIFEST_SHA256):
+        return denied
+    result = review_explicit_hel1_owner_copy_nomination(
+        runtimes, source_docket, two_hot_dossier,
+        owner_selected_generation=OWNER_FIRST_HEL1_4C14_FINGERPRINT["generation"],
+    )
+    return {**denied, "status": result["status"],
+            "candidate": result["candidate"],
+            "original_source_review": result,
+            "owner_signed_copy_authority": "NOT_VALIDATED",
+            "exact_source_fingerprint_matches_review_pin": result["candidate"] is not None}
+
+
 def stage_retention_gate(receipt: dict) -> dict:
     if not isinstance(receipt, dict) or receipt.get("schema") != "aoe2war.we2.factory-historical-transport-retention-receipt.v1":
         raise ValueError("untrusted factory receipt")
