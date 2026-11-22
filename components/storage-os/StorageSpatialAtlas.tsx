@@ -101,8 +101,7 @@ function Mosaic({surface,scale,mode,compact,onSelect}:{surface:AtlasSurface;scal
          const category=g.category,sty=KIND_STYLES[category.kind];
          return <button key={category.id+":"+i} type="button" onClick={()=>onSelect(category)}
           className={"group relative aspect-square min-h-[12px] rounded-[3px] border text-transparent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white "+
-            "transition-transform duration-150 motion-reduce:transition-none hover:brightness-125 "+
-            (mode==="diamonds"?"[&>span]:rotate-45":"")}
+            "transition-transform duration-150 motion-reduce:transition-none hover:brightness-125 "+""}
           style={{borderColor:sty.edge,backgroundColor:"rgba(5,16,30,.5)"}}
           title={category.label+" · "+formatAtlasBytes(category.grossBytes)+" GROSS · "+category.coverage}
           aria-label={"Inspect "+category.label+", "+formatAtlasBytes(category.grossBytes)+" gross; "+category.coverage}>
@@ -163,7 +162,7 @@ function DetailPanel({category,onClose}:{category:AtlasCategory|null;onClose:()=
    <p className="mt-2 text-xs leading-6 text-slate-300">Only source-supplied bounded aliases can form directory children.
      There is no browser filesystem traversal, and grey UNKNOWN is not clickable as a deletion candidate.</p>
  </div>;
- return <section aria-label="Selected source category" className="min-w-0 rounded-[22px] border border-cyan-300/30 bg-[#0b1a29] p-4 sm:p-5">
+ return <section aria-label="Selected source category" aria-live="polite" className="min-w-0 rounded-[22px] border border-cyan-300/30 bg-[#0b1a29] p-4 sm:p-5">
    <div className="flex items-center justify-between gap-3">
      <p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-200">CATEGORY / DRILLDOWN</p>
      <button type="button" onClick={onClose} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs text-slate-100 focus-visible:outline-2 focus-visible:outline-cyan-200">

@@ -20,7 +20,13 @@ const ui=readFileSync("components/storage-os/StorageSpatialAtlas.tsx","utf8");
 const endpoint=readFileSync("app/api/admin/storage-os/atlas/route.ts","utf8");
 const visual=readFileSync("lib/storageAtlasMosaic.ts","utf8");
 const now=new Date("2026-11-22T04:10:00Z");
-function signedModel(hogs:any[]=[],source:"SIGNED_PRIVATE_RECEIPT"|"NONE"="SIGNED_PRIVATE_RECEIPT",
+import type {StorageCommandCenter} from "../lib/storageCommandCenterProjection.ts";
+import type {VisualHog} from "../lib/storageVisualPrivate.ts";
+import type {IntelColdView} from "../lib/intelColdStorageEvidence.ts";
+type TestResponse={status:number;headers:Record<string,string>;
+  body:{surfaces:AtlasSurface[];detail?:string}};
+
+function signedModel(hogs:VisualHog[]=[],source:"SIGNED_PRIVATE_RECEIPT"|"NONE"="SIGNED_PRIVATE_RECEIPT",
   extras:Record<string,unknown>={}){
  return {
   schema:"aoe2war.private-storage-command-center.v1",
@@ -34,7 +40,7 @@ function signedModel(hogs:any[]=[],source:"SIGNED_PRIVATE_RECEIPT"|"NONE"="SIGNE
     {id:"hel1-volume-105319120",status:"UNKNOWN",source:"NONE",freeBytes:null,usedPercent:null},
     {id:"mac",status:"UNKNOWN",source:"NONE",freeBytes:null,usedPercent:null}
   ]
- } as any;
+ } as unknown as StorageCommandCenter;
 }
 const hog=(key:string,bytes:number,overlaps=false,level=3)=>({
  key,label:key,grossBytes:bytes,overlaps,level
@@ -64,10 +70,10 @@ function routeModule(auth:"missing"|"ordinary"|"admin",badSource=false){
    if(id==="@/lib/storageAtlasMosaic")return {projectStorageAtlas};
    throw Error("UNEXPECTED_API_MODULE:"+id);
  };
- const mod={exports:{} as Record<string,any>};
+ const mod={exports:{} as Record<string,unknown>};
  new Script("(function(require,module,exports){"+compiler.outputText+"\n})",{
    filename:"atlas-private-route.mjs"}).runInThisContext()(stub,mod,mod.exports);
- return {get:mod.exports.GET as (x:unknown)=>Promise<any>,
+ return {get:mod.exports.GET as (x:unknown)=>Promise<TestResponse>,
    reads:()=>observedReads,originalEnv:process.env.AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED};
 }
 test("five real admin pages share one engine and protect server render",()=>{
@@ -195,7 +201,7 @@ test("Intel absent/stale source never invents objects or a certified restored ar
    capacity:{availableBytes:200*1024**3},
    objects:[{alias:"INTEL_ABC",allocatedBytes:2*1024**3,
      protectionLevel:null,restore:"HISTORICAL_RESTORE_PROOF_PRESENT"}]
- } as any;
+ } as unknown as IntelColdView;
  const stale=projectStorageAtlas(null,intel,now).surfaces[3];
  assert.equal(stale.coverage,"STALE");
  assert.equal(stale.categories.length,0);
@@ -208,6 +214,27 @@ test("Intel absent/stale source never invents objects or a certified restored ar
  assert.equal(current.categories[0].allowedToDelete,false);
  assert.equal(current.categories[0].uniqueReclaimBytes,null);
  assert.equal(current.totalBytes,null);
+});
+test("unqualified V1 cannot inject V2-only directory aliases or cross-device categories",()=>{
+ const raw=signedModel([hog("HEL1_PRODUCT_ARTIFACT_RETENTION",5*1024**3)],"SIGNED_PRIVATE_RECEIPT",{
+   nativeV2Source:true,reviewItems:[{alias:"FAKE_NONSOURCE",category:"HEL1_PRODUCT_ARTIFACT_RETENTION",
+    grossBytes:5*1024**3,level:4,overlaps:false}]
+ });
+ // Legacy V1 lacks independently admitted WE2 Native V2 contract.
+ const p=projectStorageAtlas(raw,null,now);
+ assert.equal(p.surfaces[0].source,"SERVER_HMAC_ONLY");
+ assert.equal(p.surfaces[0].categories[0].directories.length,0);
+ assert.equal(p.surfaces[1].categories.length,0);
+ assert.equal(p.surfaces[2].categories.length,0);
+ assert.equal(p.surfaces[3].categories.length,0);
+});
+test("fresh source observation timestamps remain distinguished from browser polling",()=>{
+ const raw=signedModel([hog("HEL1_ROOT_SYSTEM",5*1024**3)]);
+ const p=projectStorageAtlas(raw,null,now);
+ assert.equal(p.polledAt,"2026-11-22T04:10:00.000Z");
+ assert.equal(p.surfaces[0].sourceObservedAt,"2026-11-22T04:09:00Z");
+ assert.equal(p.surfaces[0].sourceAgeSeconds,60);
+ assert.equal(p.surfaces[0].uniqueReclaimBytes,null);
 });
 test("1GiB / 100MiB and massive datasets render bounded groups, no 1 tile per inode",()=>{
  assert.equal(ATLAS_SCALES.gib,1024**3);

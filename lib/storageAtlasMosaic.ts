@@ -103,7 +103,8 @@ function visualCategories(plane:VisualPlane,source:AtlasTrust,current:boolean):A
  const valid=rows.filter(x=>cleanBytes(x.grossBytes)!==null&&x.grossBytes>0);
  return valid.map(h=>{
    // Only source-reviewed *already-published* aliases. No raw protected paths.
-   const aliases=(plane.nativeV2Source?plane.reviewItems:undefined)?.filter(
+   const aliases=(source==="NATIVE_SOURCE_SIGNED"&&plane.nativeV2Source?
+     plane.reviewItems:undefined)?.filter(
      i=>i.category===h.key&&cleanBytes(i.grossBytes)!==null
    ).slice(0,12)??[];
    return {
