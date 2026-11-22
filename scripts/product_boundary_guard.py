@@ -164,6 +164,22 @@ EXACT_WE1_BIRTH_OPTIONAL_DOCSV2 = frozenset({
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 })
 
+# Separately reviewed post-#1473 source admission; does NOT amend the
+# qualified #1473 blob pins or authorize historical L4 retirement.
+EXACT_WE1_THREE_HOT_BRANCH = "we1/three-hot-post-t10-review-20261122"
+EXACT_WE1_THREE_HOT_BASE = "4ae531a18198f9b438a43221f6e5f5d4c911fac1"
+EXACT_WE1_THREE_HOT_PINS = {
+    'scripts/aoe2_product_release.py': 'd7c7f29350e6693e013bbbde38a4ce457d81275470581a2c3ba35f785770c73b',
+    'scripts/aoe2_factory_retention_post_t10.py': '98c01f04d7126e65fbc2e156c76cda745631cdf6244284a76332cff3f3323276',
+    'tests/test_factory_retention_post_t10.py': '8de2a5b12978d8537aaedb7184609c4048d0ce01f1c33243dda1eb8d48cb21ac',
+}
+EXACT_WE1_THREE_HOT_CHANGED = frozenset(EXACT_WE1_THREE_HOT_PINS) | {
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+}
+EXACT_WE1_THREE_HOT_OPTIONAL_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -272,7 +288,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/factory-birth-after-atlas-20261122|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/factory-birth-after-atlas-20261122|we1/three-hot-post-t10-review-20261122|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -496,6 +512,10 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
                 hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_B_BROWSER_SHA256):
             raise BoundaryHold("B_BROWSER_EXACT_SHA_MISMATCH")
         return raw
+    if (base == EXACT_WE1_THREE_HOT_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE1_THREE_HOT_BRANCH
+            and raw in EXACT_WE1_THREE_HOT_PINS):
+        return _exact_we1_three_hot_blob(checkout, raw)
     # New exact post-T10 source review, distinct from the frozen v3 runner.
     if (base == EXACT_WE2_FACTORY_RETENTION_BASE and
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_RETENTION_BRANCH
@@ -961,6 +981,58 @@ def check_exact_we1_factory_birth_source(
         _exact_we1_birth_blob(checkout, raw)
 
 
+
+def _exact_we1_three_hot_blob(checkout: Path, raw: str) -> str:
+    if raw not in EXACT_WE1_THREE_HOT_PINS:
+        raise BoundaryHold("THREE_HOT_UNREVIEWED_SOURCE")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("THREE_HOT_SYMLINK_SOURCE")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 120000 or
+            stat.S_IMODE(st.st_mode) & 0o022 or
+            st.st_dev != checkout.stat().st_dev):
+        raise BoundaryHold("THREE_HOT_SOURCE_CUSTODY")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(fd)
+        data = os.read(fd, 120001)
+        after = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns) != (
+                after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns):
+            raise BoundaryHold("THREE_HOT_SOURCE_READ_RACE")
+    finally:
+        os.close(fd)
+    if (len(data) != st.st_size or
+            hashlib.sha256(data).hexdigest() != EXACT_WE1_THREE_HOT_PINS[raw]):
+        raise BoundaryHold("THREE_HOT_SOURCE_SHA256_DRIFT")
+    return raw
+
+
+def check_exact_we1_three_hot_source(
+        checkout: Path, repo: str, branch: str,
+        base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE1_THREE_HOT_BRANCH:
+        raise BoundaryHold("THREE_HOT_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("THREE_HOT_REPO")
+    if base != EXACT_WE1_THREE_HOT_BASE:
+        raise BoundaryHold("THREE_HOT_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+            not EXACT_WE1_THREE_HOT_CHANGED.issubset(files) or
+            not files.issubset(EXACT_WE1_THREE_HOT_CHANGED |
+                               EXACT_WE1_THREE_HOT_OPTIONAL_DOCS)):
+        raise BoundaryHold("THREE_HOT_CHANGED_FILES")
+    for raw in EXACT_WE1_THREE_HOT_PINS:
+        _exact_we1_three_hot_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -992,6 +1064,9 @@ def main() -> int:
         if branch == EXACT_WE1_BIRTH_BRANCH:
             check_exact_we1_factory_birth_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_WE1_THREE_HOT_BRANCH:
+            check_exact_we1_three_hot_source(
+                checkout, repo_name, branch, base, receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
