@@ -146,6 +146,8 @@ EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
 EXACT_WE1_BIRTH_BRANCH = "we1/factory-birth-after-atlas-20261122"
 EXACT_WE1_BIRTH_BASE = "f833d7e633cee4b36f1427fa45d76081fa0796ef"
 EXACT_WE1_BIRTH_PINS = {
+    "tests/test_product_release.py":
+        "ff83bb82cff676d62cdddfc62454ed6ef68133d569995ca93f068871c0900410",
     "scripts/aoe2_product_release.py":
         "07e5e9aa346e23336402e8e3985a08d1e4b03f632d83283973918aee2cadfbcb",
     "scripts/aoe2_factory_retention_post_t10.py":
@@ -153,7 +155,7 @@ EXACT_WE1_BIRTH_PINS = {
     "tests/test_factory_birth_original.py":
         "6774ff367112102e732f745b8cce956a547173b93db6cb5dd9131ee938e2c9b1",
     "tests/test_product_boundary_guard.py":
-        "aa30ee677cfd6006c8875c452c7fbddb8cb60c0cc60783b36a946c64b72012a8",
+        "348ddc9899d61d92b7a6814d10289f542b2cda4db5d99d7483852d95c8893eb1",
 }
 EXACT_WE1_BIRTH_CHANGED = frozenset(EXACT_WE1_BIRTH_PINS) | {
     "scripts/product_boundary_guard.py",

@@ -817,6 +817,7 @@ class BoundaryTests(unittest.TestCase):
             "scripts/aoe2_product_release.py",
             "scripts/aoe2_factory_retention_post_t10.py",
             "tests/test_factory_birth_original.py",
+            "tests/test_product_release.py",
             "tests/test_product_boundary_guard.py",
         })
         self.assertIsNotNone(policy.BRANCH.fullmatch(bp))
