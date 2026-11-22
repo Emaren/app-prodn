@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5fd50122f01f225d03e20092dd8985d29e0d4940b71bbd2f46c67dbe41a587f5",
+      "sha256": "8d9209084619f6d9699b77a87f77342ef49cf7b35376a735c8dc3c421bdd5fac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3621,7 +3621,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we1/scan-org-learning-source-20261122",
-    "commit": "c459448598bc141d207c556d7f8fff77d53c9ff3"
+    "commit": "bcb44905e0fb84ae85315b7b559e62822f03682c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
