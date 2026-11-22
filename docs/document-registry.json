@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2e0422f5c62f1c7555e8bea9e23c9c87a96bee1c561eabd9de1b2161bac3e79",
+      "sha256": "5fd50122f01f225d03e20092dd8985d29e0d4940b71bbd2f46c67dbe41a587f5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1910,6 +1910,30 @@
       ],
       "title": "Rivalries and the War Vault",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "source-only-read-only-operations",
+      "id": "aoe2war.app-prodn.scan-organization-os",
+      "owner": "aoe2war-web",
+      "path": "docs/SCAN_ORGANIZATION_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "0e9bcab654b728f08175d7ba763262d905ba9eae187b1d4e2ec010a51af67e68",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "aoe2war",
+        "vpssentry"
+      ],
+      "title": "Scan OS Learning, Organization OS and Measured Maturity",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3596,8 +3620,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we1-storage-owner-session-dbceb-20261122",
-    "commit": "fe8f450c11ce3b3d2a80be65afc64e774b88fc06"
+    "branch": "we1/scan-org-learning-source-20261122",
+    "commit": "c459448598bc141d207c556d7f8fff77d53c9ff3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
