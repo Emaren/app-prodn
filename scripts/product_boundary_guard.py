@@ -99,6 +99,23 @@ EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
 EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
 
+# C/WE1 one-object Prisma DOCUMENT review. Never permits schema/migrations/SQL.
+# This exact reviewed payload is a schema REFERENCE, not a DB write permit.
+EXACT_C_PRISMA_DOC_PATH = "prisma/README.md"
+EXACT_C_PRISMA_DOC_BRANCH = "session-c/we1-prisma-readme-protected-review-20261122"
+EXACT_C_PRISMA_DOC_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
+EXACT_C_PRISMA_DOC_SHA256 = "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816"
+EXACT_C_PRISMA_DOC_TEST_SHA256 = "6f8a5d8962865db91d02d98d3a317cffccfc3633db02c14cc87fa07b995a32de"
+EXACT_C_PRISMA_DOC_REQUIRED = frozenset({
+    EXACT_C_PRISMA_DOC_PATH,
+    "scripts/product_boundary_guard.py",
+    "tests/test_c_prisma_doc_admission.py",
+})
+EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2 = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -285,6 +302,13 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == EXACT_C_PRISMA_DOC_PATH:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_PRISMA_DOC_BRANCH:
+            raise BoundaryHold("C_PRISMA_WRONG_BRANCH")
+        if base != EXACT_C_PRISMA_DOC_BASE:
+            raise BoundaryHold("C_PRISMA_WRONG_BASE")
+        _exact_c_prisma_source_blob(checkout, raw, EXACT_C_PRISMA_DOC_SHA256)
+        return raw
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_REVIEWED_KINGDOM_MENU_BRANCH:
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_WRONG_BRANCH")
@@ -656,6 +680,54 @@ def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
         exact_we2_bridge_blob(checkout, name)
 
 
+def _exact_c_prisma_source_blob(checkout: Path, relative: str, expected: str) -> None:
+    """Bounded regular-file verification; no symlink, hardlink, unsafe mode or source drift."""
+    if relative not in {EXACT_C_PRISMA_DOC_PATH, "tests/test_c_prisma_doc_admission.py"}:
+        raise BoundaryHold("C_PRISMA_UNREVIEWED_SOURCE_PATH")
+    target = checkout
+    for name in relative.split("/"):
+        target = target / name
+        if target.is_symlink():
+            raise BoundaryHold("C_PRISMA_SYMLINK_ANCESTOR")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 20_000 or
+            stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("C_PRISMA_SINGLE_FILE_REQUIRED")
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if ((live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) !=
+                (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)):
+            raise BoundaryHold("C_PRISMA_SOURCE_CHANGED_DURING_READ")
+        content = os.read(fd, 20_001)
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        if relative == EXACT_C_PRISMA_DOC_PATH:
+            raise BoundaryHold("C_PRISMA_SHA256_DRIFT")
+        raise BoundaryHold("C_PRISMA_TEST_SHA256_DRIFT")
+
+
+def check_exact_c_prisma_doc_source(checkout: Path, repo: str, branch: str,
+                                    base: str, changes: list[str]) -> None:
+    """One C-reviewed documentation-only source transition, never a general Prisma rule."""
+    if branch != EXACT_C_PRISMA_DOC_BRANCH or repo != "Emaren/app-prodn":
+        raise BoundaryHold("C_PRISMA_SOURCE_BRANCH_OR_REPO")
+    if base != EXACT_C_PRISMA_DOC_BASE:
+        raise BoundaryHold("C_PRISMA_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+            not EXACT_C_PRISMA_DOC_REQUIRED.issubset(files) or
+            not files.issubset(EXACT_C_PRISMA_DOC_REQUIRED |
+                               EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2)):
+        raise BoundaryHold("C_PRISMA_CHANGED_FILE_SET")
+    _exact_c_prisma_source_blob(checkout, EXACT_C_PRISMA_DOC_PATH,
+                                EXACT_C_PRISMA_DOC_SHA256)
+    _exact_c_prisma_source_blob(checkout, "tests/test_c_prisma_doc_admission.py",
+                                EXACT_C_PRISMA_DOC_TEST_SHA256)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -676,6 +748,9 @@ def main() -> int:
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_bridge_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_PRISMA_DOC_BRANCH:
+            check_exact_c_prisma_doc_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
