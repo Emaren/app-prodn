@@ -147,11 +147,11 @@ EXACT_WE1_BIRTH_BRANCH = "we1/factory-birth-after-atlas-20261122"
 EXACT_WE1_BIRTH_BASE = "f833d7e633cee4b36f1427fa45d76081fa0796ef"
 EXACT_WE1_BIRTH_PINS = {
     "scripts/aoe2_product_release.py":
-        "8c210e35045ce0b01fd85e9de62459aeb0691cd9c76ecc4e65b42f8289259416",
+        "07e5e9aa346e23336402e8e3985a08d1e4b03f632d83283973918aee2cadfbcb",
     "scripts/aoe2_factory_retention_post_t10.py":
-        "85f22c2472b5532981127d9540282eca3ce885d0fcbcaff35554acd3e996d7cd",
+        "4fcb8b8c221eeeb9eaee7d1e5623a625379706ffa6a62fae19720561f1d69e4a",
     "tests/test_factory_birth_original.py":
-        "8a282a6214d098139fe2b0403b2ffb99a157c04215c6fcb443beaf3f9045fb21",
+        "6774ff367112102e732f745b8cce956a547173b93db6cb5dd9131ee938e2c9b1",
     "tests/test_product_boundary_guard.py":
         "aa30ee677cfd6006c8875c452c7fbddb8cb60c0cc60783b36a946c64b72012a8",
 }
