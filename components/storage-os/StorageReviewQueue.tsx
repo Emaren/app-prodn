@@ -69,7 +69,7 @@ export default function StorageReviewQueue({plane,observedAt,hogs,events,ownerBi
           className="mt-3 inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10">
           Inspect category · owner chooses <ArrowUpRight className="h-3 w-3"/>
         </button>
-        <p className="mt-2 text-[10px] font-bold text-slate-500">REVIEW ONLY · NO FILE IDENTITY · NO DELETION AUTHORITY</p>
+        <p className="mt-2 text-[10px] font-bold text-slate-400">REVIEW ONLY · NO FILE IDENTITY · NO DELETION AUTHORITY</p>
       </article>)}
     </div>}
   </section>;

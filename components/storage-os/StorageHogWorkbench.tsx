@@ -4,6 +4,9 @@ import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
+import StorageBaeViews,{BaeModeSwitch} from "./StorageBaeViews";
+import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,validMode,type BaeMode} from "./storageBaeEvidence";
+import StorageTransportLaneStatus from "./StorageTransportLaneStatus";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
 import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
@@ -60,9 +63,9 @@ function segment(start:number,end:number,inside:number,outside:number){
     b.join(" ")+" L "+c.join(" ")+" A "+inside+" "+inside+" 0 "+
     (finish-start>180?1:0)+" 0 "+d.join(" ")+" Z";
 }
-function Sunburst({hogs,status,selected,onSelect,native}:{
+function Sunburst({hogs,status,selected,onSelect,native,notScanned}:{
   hogs:VisualHog[];status:ReturnType<typeof signedHogInventory>["status"];
-  selected:string|null;onSelect:(key:string)=>void;native:boolean;
+  selected:string|null;onSelect:(key:string)=>void;native:boolean;notScanned:boolean;
 }){
   const sum=hogs.reduce((a,h)=>a+h.grossBytes,0);
   let cursor=0;
@@ -86,13 +89,15 @@ function Sunburst({hogs,status,selected,onSelect,native}:{
         {status==="PARTIAL"&&hogs.length>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
       </text>
       <text x="130" y="146" fill="#839bad" textAnchor="middle" fontSize="9" letterSpacing="1.6">
-        {status==="PARTIAL"?(hogs.length>0?(native?"SIGNED SAMPLE":"GROSS REPORTED"):"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
+        {notScanned?"NOT SCANNED":status==="PARTIAL"?(hogs.length>0?(native?"SIGNED SAMPLE":"GROSS REPORTED"):"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
       </text>
     </svg>
     <p className="mt-1 text-center text-[11px] leading-5 text-slate-400">
-      {native
-        ?"WE2-signed bounded file samples only; incomplete directories, clones and hardlinks do not add to unique free space."
-        :"Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space."}
+      {notScanned
+        ?"HEL1 directory allocation census is NOT SCANNED. Capacity observations are not storage-hog inventory."
+        :native
+          ?"WE2-signed bounded file samples only; incomplete directories, clones and hardlinks do not add to unique free space."
+          :"Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space."}
     </p>
   </div>;
 }
@@ -104,6 +109,8 @@ function Drive({reading,id,active,onSelect,inventory}:{
   const Icon=id==="mac"?Laptop2:id==="hel1-root"?Server:Database;
   const free=reading?.status==="RECEIPT"?reading.freeBytes:null;
   const used=reading?.status==="RECEIPT"?reading.usedPercent:null;
+  const notScanned=id!=="mac"&&inventory.status==="PARTIAL"&&
+    inventory.categoryCount===0&&inventory.plane?.coverage==="PARTIAL";
   return <button type="button" onClick={onSelect} aria-pressed={active}
     className={"relative overflow-hidden rounded-3xl border p-5 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
       (active?"border-cyan-300/50 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/25")}>
@@ -114,18 +121,20 @@ function Drive({reading,id,active,onSelect,inventory}:{
       </span>
     </div>
     <div className="mt-5 flex items-end justify-between gap-3">
-      <div><div className="text-[10px] uppercase tracking-widest text-slate-400">Available</div>
-        <div className="mt-1 text-3xl font-black tabular-nums text-white">{bytes(free)}</div></div>
-      <div className="text-right"><div className="text-[11px] text-slate-400">Used</div>
-        <div className="text-xl font-semibold tabular-nums text-slate-200">{used===null?"Unknown":used.toFixed(1)+"%"}</div></div>
+      <div className="min-w-0"><div className="text-[10px] uppercase tracking-widest text-slate-300">Available</div>
+        <div className="mt-1 break-words text-xl font-black tabular-nums text-white sm:text-2xl">{bytes(free)}</div></div>
+      <div className="min-w-0 text-right"><div className="text-[11px] text-slate-300">Used · certified</div>
+        <div className="break-words text-xs font-semibold tabular-nums text-slate-200 sm:text-sm">{used===null?"Not certified":used.toFixed(1)+"%"}</div></div>
     </div>
     {used===null?<div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>:
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
         <div className="h-full rounded-full bg-cyan-400" style={{width:used+"%"}}/>
       </div>}
-    <div className="mt-3 flex justify-between text-[10px] text-slate-400">
-      <span>{inventory.categoryCount===null ? (inventory.status==="STALE"?"Category inventory stale":"Category inventory unknown") :
-        inventory.categoryCount+(inventory.plane?.nativeV2Source?" signed bounded sample categories":" reported gross categories")}</span><span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
+    <div className="mt-3 flex flex-wrap justify-between gap-2 text-[10px] text-slate-300">
+      <span>{notScanned?"Signed gross categories: 0 · NOT SCANNED FOR HOGS":
+        inventory.categoryCount===null?(inventory.status==="STALE"?"Hog inventory: STALE":"Hog inventory: UNKNOWN") :
+        inventory.categoryCount+(inventory.plane?.nativeV2Source?" signed bounded sample categories":" reported gross categories")}</span>
+      <span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
     </div>
   </button>;
 }
@@ -143,9 +152,9 @@ function IntelDrive({snapshot,active,onSelect}:{snapshot:IntelColdView|null;acti
     </div>
     <div className="mt-5 flex items-end justify-between gap-3">
       <div><div className="text-[10px] uppercase tracking-widest text-slate-400">Available</div>
-        <div className="mt-1 text-3xl font-black tabular-nums text-white">{bytes(free)}</div></div>
-      <div className="text-right"><div className="text-[11px] text-slate-400">Used</div>
-        <div className="text-xl font-semibold text-slate-200">UNKNOWN</div></div>
+        <div className="mt-1 break-words text-xl font-black tabular-nums text-white sm:text-2xl">{bytes(free)}</div></div>
+      <div className="text-right"><div className="text-[11px] text-slate-300">Used · certified</div>
+        <div className="text-xs font-semibold text-slate-200 sm:text-sm">Not certified</div></div>
     </div>
     <div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>
     <div className="mt-3 flex justify-between gap-2 text-[10px] text-slate-400">
@@ -242,6 +251,9 @@ export default function StorageHogWorkbench(){
     ? {plane:undefined,status:"UNKNOWN" as const,categoryCount:null,currentUntil:null}
     : inventories[IDS.indexOf(activeTeaching)];
   const sourcePlane=activeInventory.plane;
+  const hel1HogsNotScanned=active!=="mac"&&active!=="intel"&&
+    activeInventory.status==="PARTIAL"&&activeInventory.categoryCount===0&&
+    sourcePlane?.coverage==="PARTIAL";
   const reading=active==="intel"?undefined:data?.planes.find(p=>p.id===active);
   const live=activeInventory.status==="PARTIAL";
   const teachingDeadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,chosen,now) : null;
@@ -300,8 +312,26 @@ export default function StorageHogWorkbench(){
     }catch(e){setNotice(e instanceof Error?e.message:"SAVE FAILED");}
     finally{setSaving(false);}
   };
+  // B is the exact existing Basic default, including for server hydration.
+  // The mode preference is browser-only; it grants no new auth or sources.
+  const [mode,setMode]=useState<BaeMode>(BAE_DEFAULT_MODE);
+  useEffect(()=>{
+    try{
+      const selected=window.localStorage.getItem(BAE_STORAGE_KEY);
+      if(validMode(selected))setMode(selected);
+    }catch{/* Basic stays the fail-safe fallback when storage is disabled. */}
+  },[]);
+  const changeMode=(next:BaeMode)=>{
+    setMode(next);
+    try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{/* no account/POST fallback */}
+  };
   const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length+
     (intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"?1:0);
+  if(mode!=="B")return <StorageBaeViews mode={mode} onModeChange={changeMode}
+    data={data} intel={intel} ledgerStatus={ledgerStatus} error={error}
+    intelError={intelError} now={now} ownerBinding={access?.ownerBinding??null}
+    onRefresh={()=>{void refresh();void refreshIntel();}}
+    onInspect={id=>{choosePlane(id);changeMode("B");}}/>;
   return <main className="min-h-screen bg-[#070e18] text-slate-100">
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_at_24%_8%,rgba(34,211,238,.12),transparent_48%),radial-gradient(ellipse_at_80%_0%,rgba(167,139,250,.07),transparent_52%)]"/>
     <div className="relative mx-auto max-w-[1550px] space-y-5 px-4 py-7 sm:px-7 lg:px-9">
@@ -313,6 +343,7 @@ export default function StorageHogWorkbench(){
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Find the biggest consumers. Teach Storage OS what to keep. Retire exact files only through a separately authorized, independently verified cleanup lane.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <BaeModeSwitch mode={mode} onChange={changeMode}/>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-[11px] font-bold text-slate-300"><LockKeyhole className="h-4 w-4"/> PRIVATE / NO AUTO-DELETE</span>
           <button type="button" onClick={()=>void refresh()} className="rounded-full border border-cyan-300/30 p-3 text-cyan-200 hover:bg-cyan-300/10" aria-label="Refresh accepted storage receipts"><RefreshCw className="h-4 w-4"/></button>
         </div>
@@ -339,7 +370,8 @@ export default function StorageHogWorkbench(){
             <HardDrive className="h-6 w-6 text-cyan-300"/>
           </div>
           <div className="mt-2"><Sunburst hogs={hogs} status={activeInventory.status} selected={selected}
-            onSelect={chooseItem} native={sourcePlane?.nativeV2Source===true}/></div>
+            onSelect={chooseItem} native={sourcePlane?.nativeV2Source===true}
+            notScanned={hel1HogsNotScanned}/></div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Source observed</div>
@@ -347,7 +379,7 @@ export default function StorageHogWorkbench(){
             </div>
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Coverage</div>
-              <div className="mt-2 text-sm font-semibold text-white">{sourcePlane?.coverage??"UNKNOWN / NOT COMPLETE"}</div>
+              <div className="mt-2 text-sm font-semibold text-white">{hel1HogsNotScanned?"NOT SCANNED FOR HOGS":sourcePlane?.coverage??"UNKNOWN / NOT COMPLETE"}</div>
             </div>
           </div>
           <p className="mt-4 text-xs leading-5 text-amber-100/80">
@@ -362,7 +394,9 @@ export default function StorageHogWorkbench(){
             <SlidersHorizontal className="h-5 w-5 text-slate-400"/>
           </div>
           {hogs.length===0?<div className="mt-6 flex min-h-[330px] flex-col justify-center rounded-2xl border border-dashed border-white/15 p-6 text-sm leading-6 text-amber-100/90">
-            {live?"The signed observation reported no gross categories for this drive.":
+            {hel1HogsNotScanned
+              ?"NOT SCANNED FOR HOGS. The signed HEL1 capacity observation contains zero category measurements because its producer has not run a bounded directory-allocation census. This is not an empty filesystem."
+              :live?"The signed observation reported no gross categories for this drive.":
               activeInventory.status==="STALE"?"The last signed category inventory has expired. Awaiting a new host observation.":
               "No current signed hog inventory for this drive."}
           </div>:
@@ -461,6 +495,16 @@ export default function StorageHogWorkbench(){
         </div>
       </section>
         </>}
+      <StorageTransportLaneStatus
+        plane={active}
+        sourceEvidence={data?.planes.some(p=>p.id===active&&p.status==="RECEIPT"&&
+          (p.source==="SIGNED_THREE_PLANE_RECEIPT"||p.source==="WE2_NATIVE_V2_SIGNED_PLANE"))
+          ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
+        observedAt={active==="intel"?null:data?.planes.find(p=>p.id===active)?.asOf??null}
+        intelEvidence={intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"
+          ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
+        ownerLedgerVerified={ledgerStatus==="VERIFIED"&&!!access?.ownerBinding}
+      />
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>
