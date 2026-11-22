@@ -13,7 +13,7 @@ review_interval_days: 14
 sensitivity: "internal"
 ---
 
-# Storage Classification & Disposition OS v1 — WE1
+# Storage Classification and Disposition OS v1
 
 **Controlling original**: [Storage OS](STORAGE_OS.md) (including the immutable L4 human-only and L5 never-delete floors). **Exact registry**: `config/storage-disposition-policy.v1.json`. This draft is a **source-controlled policy proposal** and read-only cross-product vocabulary, not an installed signer, new delete controller, production scanner, signed permit or source-owned standing mutation grant. Do not merge or apply until normal PRODUCT/DocsV2, original source-owner and approved authority gates pass. Scan OS #1455 remains merged, unchanged and `PLAN_ONLY_NO_EXECUTION`.
 
