@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-storage-owner-session-dbceb-20261122` at `fe8f450c11ce3b3d2a80be65afc64e774b88fc06`
+Implementation baseline: `we1/factory-birth-after-atlas-20261122` at `564855d21ff47461405697e42cd3a07987e789f1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
