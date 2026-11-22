@@ -123,7 +123,7 @@ class FactoryBirthContract(unittest.TestCase):
         records=[object_record(k,identity=k.startswith("M1_"),
                                proof=k.startswith("M1_"))
                  for k in sorted(M.BIRTH_CLASS["T5"])]
-        records[0]["identity"]["inode"]+=1 if records[0]["identity"] else 0
+        records[1]["identity"]["inode"] += 1
         b=certificate(records=records)
         self.assertNotEqual(a["canonical_sha256"],b["canonical_sha256"])
     def test_wrong_factory_class_is_denied(self):
@@ -172,7 +172,9 @@ class FactoryBirthContract(unittest.TestCase):
         with self.assertRaisesRegex(M.RetentionHold,"BIRTH_FILE_IDENTITY"):
             certificate(records=rows)
     def test_unverified_local_digest_is_hold(self):
-        rows=[object_record(k) for k in sorted(M.BIRTH_CLASS["T5"])]
+        rows=[object_record(k,identity=k.startswith("M1_"),
+                            proof=k.startswith("M1_"))
+              for k in sorted(M.BIRTH_CLASS["T5"])]
         rows[1]["verified_source_sha256"]=None
         r=certificate(records=rows)
         self.assertEqual(r["unknown_holds"],2)
