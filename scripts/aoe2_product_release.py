@@ -810,7 +810,7 @@ def record_factory_generated_birth(approval, release_work, *, kind, name,
         acknowledged_bytes=acknowledged_bytes)
     suffix = kind.lower() + "-" + name.replace(".", "_")
     receipt = Path(release_work) / ("factory-birth-generated-" + suffix + "-v1.json")
-    raw = canonical(report) + b"\\n"
+    raw = canonical(report) + b"\n"
     seal_once(receipt, raw)
     transport.checked_file(receipt)
     need(receipt.read_bytes() == raw, "GENERATED_BIRTH_ORIGINAL_READBACK")
