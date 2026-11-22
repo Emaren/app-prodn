@@ -16,7 +16,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 TEST_ENABLED = os.environ.get("RUN_VERIFIED_WATCHER_SQL_PG_TESTS") == "1"
 BIN = Path(os.environ.get("AOE2WAR_TEST_PG_BIN", "/opt/homebrew/bin"))
-ORIGINAL = (ROOT / "tests/fixtures/verified-watcher-steam-rating-original.sql").read_text().split("\n", 1)[1].strip()
+ORIGINAL = (ROOT / "tests/fixtures/verified-watcher-steam-rating-original.txt").read_text().split("\n", 1)[1].strip()
 SOURCE = (ROOT / "lib/verifiedWatcherSteamRatings.ts").read_text()
 MODERN = SOURCE.split("const rows = await prisma.$queryRaw<DbRow[]>(Prisma.sql" + chr(96), 1)[1].split(chr(96) + ");", 1)[0].strip()
 
