@@ -33,7 +33,6 @@ export type PlacementItem = {
   source:string;
 };
 const observation="2026-11-22T23:32:03Z";
-const legacyFactory="2026-11-22T10:30:00Z";
 const oldCache="2026-11-22T10:20:00Z";
 const item=(v:Omit<PlacementItem,
  "apfsExclusiveReclaimBytes"|"expectedReclaimBytes"|"actualReclaimedBytes"|
