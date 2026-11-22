@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we3/steam-ratings-sql-20261122` at `e67f02e4023003aca3648a6bc46fc8042b6061fb`
+Implementation baseline: `session-c/we3-verified-watcher-steam-sql-20261122` at `7c9a81c9137ec4642b9c1420e9a8f510e0f28430`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

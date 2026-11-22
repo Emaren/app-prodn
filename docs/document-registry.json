@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5ec4d025edcaf88da324d56873a6e83777ab1317d555fd1002b3bbac130063b2",
+      "sha256": "402346d3bafaed64fc3da2a9f032b06f37320bd1963c9023d7f4eb9147a528f9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3596,8 +3596,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we3/steam-ratings-sql-20261122",
-    "commit": "e67f02e4023003aca3648a6bc46fc8042b6061fb"
+    "branch": "session-c/we3-verified-watcher-steam-sql-20261122",
+    "commit": "7c9a81c9137ec4642b9c1420e9a8f510e0f28430"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
