@@ -21,7 +21,7 @@ test("all 166 exact page templates and 292 handler templates match Git HEAD",()=
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);
   assert.equal(phases.length,166);
-  assert.equal(new Set(phases).size,161);
+  assert.equal(new Set(phases).size,166);
   assert.deepEqual([...phases].sort(),inventory.pages.map(p=>p.href).sort());
   assert.deepEqual(renaissance.modules.map(m=>m.href).sort(),phases.filter(h=>h==="/renaissance"||h.startsWith("/renaissance/")).sort());
 });
