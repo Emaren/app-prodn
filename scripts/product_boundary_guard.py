@@ -140,6 +140,30 @@ EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
     "docs/document-registry.json",
 })
 
+# WE1 exact protected admission of *original* Factory #1462 + #1464
+# retention source. The old R1/F1 SHA pins stay immutable. This source
+# review is NOT owner Ed25519 cryptographic permit or a root installation.
+EXACT_WE1_ORIGINAL_RETENTION_BRANCH = "we1/factory-retention-original-authority-20261122"
+EXACT_WE1_ORIGINAL_RETENTION_BASE = "8a3298a5e792b07c5e2616d832afa69cfd22a6e6"
+EXACT_WE1_ORIGINAL_RETENTION_SOURCE = {
+    "scripts/aoe2_product_retention.py":
+        "41eeed1e8efca1253aff4d0b02dd5f8ec3320eb9962bcac33faa5fdb007ae80b",
+    "tests/test_product_retention.py":
+        "6add4ed4bd90878afdf71845b6b4987229d324e3413815b54d9b8a18cdb3320f",
+    "tests/test_product_boundary_guard.py":
+        "d1893418ddb4c7a6e4582b3258a10754d0bb3a3429288256c6f62e2ed62f4662",
+}
+EXACT_WE1_ORIGINAL_RETENTION_CHANGED = frozenset({
+    "scripts/aoe2_product_retention.py",
+    "tests/test_product_retention.py",
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+})
+EXACT_WE1_ORIGINAL_RETENTION_OPTIONAL_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -248,7 +272,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/factory-retention-original-authority-20261122|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -347,6 +371,11 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if (base == EXACT_WE1_ORIGINAL_RETENTION_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE1_ORIGINAL_RETENTION_BRANCH
+            and raw == "scripts/aoe2_product_retention.py"):
+        _exact_we1_original_retention_blob(checkout, raw)
+        return raw
     if raw == "scripts/scan_os.py":
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_SCAN_OS_BRANCH:
             raise BoundaryHold("C_SCAN_WRONG_BRANCH")
@@ -876,6 +905,60 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+def _exact_we1_original_retention_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_WE1_ORIGINAL_RETENTION_SOURCE.get(raw)
+    if expected is None:
+        raise BoundaryHold("ORIGINAL_RETENTION_UNREVIEWED_SOURCE")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("ORIGINAL_RETENTION_SYMLINK")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000 or
+            stat.S_IMODE(st.st_mode) & 0o022 or st.st_dev != checkout.stat().st_dev):
+        raise BoundaryHold("ORIGINAL_RETENTION_SOURCE_CUSTODY")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns) != (
+                st.st_dev, st.st_ino, st.st_size,
+                st.st_mtime_ns, st.st_ctime_ns):
+            raise BoundaryHold("ORIGINAL_RETENTION_RACE")
+        rawbytes = os.read(fd, 100001)
+        after = os.fstat(fd)
+        if (after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns) != (
+                before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns):
+            raise BoundaryHold("ORIGINAL_RETENTION_READ_CHANGED")
+    finally:
+        os.close(fd)
+    if len(rawbytes) != st.st_size or hashlib.sha256(rawbytes).hexdigest() != expected:
+        raise BoundaryHold("ORIGINAL_RETENTION_SHA256_MISMATCH")
+
+
+def check_exact_we1_original_retention_source(checkout: Path, repo: str,
+                                             branch: str, base: str,
+                                             changes: list[str]) -> None:
+    if branch != EXACT_WE1_ORIGINAL_RETENTION_BRANCH:
+        raise BoundaryHold("ORIGINAL_RETENTION_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("ORIGINAL_RETENTION_SOURCE_REPO")
+    if base != EXACT_WE1_ORIGINAL_RETENTION_BASE:
+        raise BoundaryHold("ORIGINAL_RETENTION_SOURCE_BASE")
+    files = set(changes)
+    if (len(changes) != len(files) or
+            not EXACT_WE1_ORIGINAL_RETENTION_CHANGED.issubset(files) or
+            not files.issubset(EXACT_WE1_ORIGINAL_RETENTION_CHANGED |
+                               EXACT_WE1_ORIGINAL_RETENTION_OPTIONAL_DOCS)):
+        raise BoundaryHold("ORIGINAL_RETENTION_CHANGED_FILES")
+    for raw in EXACT_WE1_ORIGINAL_RETENTION_SOURCE:
+        _exact_we1_original_retention_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -903,6 +986,9 @@ def main() -> int:
                 checkout,repo_name,branch,base,receipt["changed_files"])
         if branch == EXACT_C_SCAN_OS_BRANCH:
             check_exact_c_scan_os_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_WE1_ORIGINAL_RETENTION_BRANCH:
+            check_exact_we1_original_retention_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
