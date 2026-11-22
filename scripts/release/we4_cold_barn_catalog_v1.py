@@ -447,6 +447,95 @@ def nominate_one_cold_copy_on_promotion(
             ]}
 
 
+
+FACTORY_ZIP_INVENTORY = "aoe2war.we4.m1-full-16-zip-factory-disposition.v1"
+
+def review_exact_factory_zip_for_retention(inventory: dict, sha256: str) -> dict:
+    """Source-owned, non-mutating one-ZIP decision for the original Factory producer.
+
+    A verified digest and historic cold copy do not grant an L4 delete.
+    Called on one complete source-receipt manifest; never infers the state of
+    the other files, imports signer authority or turns gross bytes into APFS gain.
+    The original Factory must source-admit actual hot pins and expiry separately.
+    """
+    result = {
+        "schema": "aoe2war.we4.factory-one-zip-retention.plan-only.v1",
+        "status": "HOLD_UNVERIFIED_INVENTORY",
+        "zip_sha256": sha256,
+        "candidate": None,
+        "owner_source": "WE2_FACTORY_ORIGINAL_PRODUCER_REVIEW_REQUIRED",
+        "original_or_copy_status": "UNDETERMINED",
+        "exact_one_item_copy_permission": "NOT_VALIDATED",
+        "exact_one_item_L4_retirement_permission": "NOT_VALIDATED",
+        "independent_fresh_restore": False,
+        "expected_unique_APFS_gain_bytes": None,
+        "apply": False, "new_archives": 0, "new_deletions": 0,
+        "producer_policy": {
+            "identity": ["source_sha", "build_id", "archive_sha256_full_reread"],
+            "verified_duplicate": "REUSE_EXISTING_CONTENT_ADDRESSED_ZIP",
+            "after_T10": "NOMINATE_ONE_UNPINNED_SOURCE_ONLY_AFTER_SIGNED_HOT_COLD_PROOFS",
+            "automatic_age_expiry": False,
+        },
+    }
+    if not isinstance(sha256, str) or HEX64.fullmatch(sha256) is None:
+        return {**result, "status": "HOLD_INVALID_ZIP_IDENTITY"}
+    if not isinstance(inventory, dict) or inventory.get("schema") != FACTORY_ZIP_INVENTORY:
+        return result
+    rows = inventory.get("rows")
+    if (not isinstance(rows, list) or len(rows) != 16 or inventory.get("zip_count") != 16
+            or inventory.get("source_full_sha256_reread_for_each_zip") is not True
+            or inventory.get("source_sha_build_id_crosschecked_per_artifact_and_linux_build_receipt") is not True
+            or inventory.get("source_root_dev") != 16777234):
+        return {**result, "status": "HOLD_INCOMPLETE_OR_UNVERIFIED_ZIP_CENSUS"}
+    ids = set()
+    for item in rows:
+        if not isinstance(item, dict):
+            return result
+        digest, source, build = (item.get("archive_sha256_full_reread"),
+                                 item.get("source_sha"), item.get("build_id"))
+        if (not isinstance(digest, str) or HEX64.fullmatch(digest) is None
+                or digest in ids or item.get("zip_basename") != digest + ".zip"
+                or item.get("zip_artifact_digest_matches_exact_filename") is not True
+                or item.get("linux_receipt_source_and_manifest_verified") is not True
+                or not isinstance(source, str) or HEX40.fullmatch(source) is None
+                or not isinstance(build, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", build)
+                or item.get("source_dev") != 16777234
+                or item.get("source_nlink") != 1
+                or type(item.get("source_allocated_blocks_bytes")) is not int
+                or item["source_allocated_blocks_bytes"] <= 0):
+            return {**result, "status": "HOLD_SOURCE_METADATA_OR_DUPLICATE_IDENTITY"}
+        ids.add(digest)
+    matches = [item for item in rows if item["archive_sha256_full_reread"] == sha256]
+    if len(matches) != 1:
+        return {**result, "status": "HOLD_EXACT_ZIP_NOT_FOUND"}
+    item = matches[0]
+    candidate = {k: item[k] for k in (
+        "zip_basename", "archive_sha256_full_reread", "source_sha", "build_id",
+        "source_ino", "source_dev", "source_allocated_blocks_bytes")}
+    result = {**result, "candidate": candidate}
+    role = item.get("known_runtime_service_or_rollback_role")
+    if role != "NO_DIRECT_ACTIVE_WEB_APPEARANCE_SOCIAL_OR_TWO_HOT_MATCH_IN_KNOWN_SET":
+        return {**result, "status": "HOLD_PROTECTED_OR_UNADMITTED_HOT_ROLE"}
+    if item.get("prior_historical_independent_restoration_asserted") is True:
+        if item.get("prior_original_retirement_allowed") is False:
+            return {**result, "status": "HOLD_EXPLICIT_HISTORICAL_L4_RETIREMENT_DENIAL",
+                    "original_or_copy_status": "HISTORICAL_COLD_COPY_RESTORED_ORIGINAL_PRESERVED",
+                    "required_next_proof": [
+                        "fresh current original-vs-copy and rollback dependency exclusion",
+                        "current receiver full ciphertext readback and independent isolated restore",
+                        "separate exact human source L4 retirement permission",
+                        "same APFS pre/post free-space measurement",
+                    ]}
+        return {**result, "status": "HOLD_EXACT_OWNER_PERMISSION_UNVERIFIED"}
+    return {**result, "status": "HOLD_SOURCE_CLASS_COPY_AND_INDEPENDENT_RESTORE_MISSING",
+            "required_next_proof": [
+                "original source and current rollback/source dependencies",
+                "approved original M1 Factory ZIP source class and exact owner COPY grant",
+                "durable receiver nonce ACK, full ciphertext hash, isolated original restore",
+                "separate human source L4 retirement permission",
+            ]}
+
+
 def stage_retention_gate(receipt: dict) -> dict:
     if not isinstance(receipt, dict) or receipt.get("schema") != "aoe2war.we2.factory-historical-transport-retention-receipt.v1":
         raise ValueError("untrusted factory receipt")
