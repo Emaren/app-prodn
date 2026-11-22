@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7463186954753b50ea60531839a602b47e725eb377546da4ad3a15b6890c81bf",
+      "sha256": "fc6f5f6f7389de91969f873c8108157075ab4a4b2036a2863bc9c1c22a10ebe7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3595,7 +3595,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-bae-advanced-extreme-20261122",
-    "commit": "1646d95a458adffbbcca2d66397ebe8673f4864e"
+    "commit": "f329a0b236df19a76397eca61727dffa9e3b5664"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

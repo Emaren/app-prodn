@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-bae-advanced-extreme-20261122` at `1646d95a458adffbbcca2d66397ebe8673f4864e`
+Implementation baseline: `session-c/we3-bae-advanced-extreme-20261122` at `f329a0b236df19a76397eca61727dffa9e3b5664`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
