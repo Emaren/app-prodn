@@ -5,6 +5,9 @@ import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
 import StorageReceiptTimeline from "./StorageReceiptTimeline";
+import StorageBaeViews,{BaeModeSwitch} from "./StorageBaeViews";
+import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,validMode,type BaeMode} from "./storageBaeEvidence";
+import StorageTransportLaneStatus from "./StorageTransportLaneStatus";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
 import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
@@ -305,8 +308,26 @@ export default function StorageHogWorkbench(){
     }catch(e){setNotice(e instanceof Error?e.message:"SAVE FAILED");}
     finally{setSaving(false);}
   };
+  // Existing Basic UI remains the first, server-rendered default. Local
+  // persistence is read only after hydration to avoid a cookie/account API.
+  const [mode,setMode]=useState<BaeMode>(BAE_DEFAULT_MODE);
+  useEffect(()=>{
+    try{
+      const saved=window.localStorage.getItem(BAE_STORAGE_KEY);
+      if(validMode(saved))setMode(saved);
+    }catch{ /* private browsing / disabled storage: Basic remains default */ }
+  },[]);
+  const changeMode=(next:BaeMode)=>{
+    setMode(next);
+    try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{ /* UI still works */ }
+  };
   const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length+
     (intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"?1:0);
+  if(mode!=="B")return <StorageBaeViews mode={mode} onModeChange={changeMode}
+    data={data} intel={intel} ledgerStatus={ledgerStatus} error={error}
+    intelError={intelError} now={now} ownerBinding={access?.ownerBinding??null}
+    onRefresh={()=>{void refresh();void refreshIntel();}}
+    onInspect={id=>{choosePlane(id);changeMode("B");}}/>;
   return <main className="min-h-screen bg-[#070e18] text-slate-100">
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_at_24%_8%,rgba(34,211,238,.12),transparent_48%),radial-gradient(ellipse_at_80%_0%,rgba(167,139,250,.07),transparent_52%)]"/>
     <div className="relative mx-auto max-w-[1550px] space-y-5 px-4 py-7 sm:px-7 lg:px-9">
@@ -318,6 +339,7 @@ export default function StorageHogWorkbench(){
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Find the biggest consumers. Teach Storage OS what to keep. Retire exact files only through a separately authorized, independently verified cleanup lane.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <BaeModeSwitch mode={mode} onChange={changeMode}/>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-[11px] font-bold text-slate-300"><LockKeyhole className="h-4 w-4"/> PRIVATE / NO AUTO-DELETE</span>
           <button type="button" onClick={()=>void refresh()} className="rounded-full border border-cyan-300/30 p-3 text-cyan-200 hover:bg-cyan-300/10" aria-label="Refresh accepted storage receipts"><RefreshCw className="h-4 w-4"/></button>
         </div>
@@ -488,6 +510,17 @@ export default function StorageHogWorkbench(){
         </>}
       <StorageReceiptTimeline events={events} ledgerStatus={ledgerStatus}
         ownerBinding={access?.ownerBinding??null}/>
+      <StorageTransportLaneStatus
+        plane={active}
+        sourceEvidence={active==="intel"
+          ? "UNAVAILABLE"
+          :activeInventory.status==="PARTIAL"?"SIGNED_CAPACITY_ONLY"
+          :activeInventory.status==="STALE"?"STALE":"UNAVAILABLE"}
+        observedAt={active==="intel"?null:sourcePlane?.observedAt??null}
+        intelEvidence={intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"
+          ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
+        ownerLedgerVerified={ledgerStatus==="VERIFIED"&&!!access?.ownerBinding}
+      />
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>
