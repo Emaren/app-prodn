@@ -170,6 +170,11 @@ def select_local(catalog, goal):
 
 
 def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
+    # Includes catalog admission, cache read, metadata probes, hashing and
+    # checkpoint writes. Python process startup and final receipt seal excluded.
+    start_wall = time.perf_counter_ns()
+    start_cpu = time.process_time_ns()
+    start_usage = resource.getrusage(resource.RUSAGE_SELF)
     require(profile in PROFILES, "PROFILE")
     source_root = Path(source_root)
     require(source_root.is_absolute() and
@@ -200,15 +205,12 @@ def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
                 previous.get("goal") == goal and
                 previous.get("scope_identity") == scope_identity,
                 "STATE_SCOPE_DRIFT")
-    start_wall = time.perf_counter_ns()
-    start_cpu = time.process_time_ns()
-    start_usage = resource.getrusage(resource.RUSAGE_SELF)
     now = dt.datetime.now(dt.timezone.utc)
     capacity = os.statvfs(source_root)
     capacity_free = capacity.f_bavail * capacity.f_frsize
     original_rows = previous.get("items", {}) if previous is not None else {}
     rows = dict(original_rows)
-    visited = hashed = reused = read_bytes = 0
+    visited = hashed = reused = read_bytes = cache_refs = 0
     missing = []
     changed = []
     if profile != "HOT":
@@ -230,7 +232,9 @@ def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
             unchanged = (old_id == identity and
                          older.get("state") == "HASHED_LOCAL_NOT_SIGNED" and
                          type(older.get("sha256")) is str and
-                         len(older["sha256"]) == 64 and previous is not None and
+                         len(older["sha256"]) == 64 and
+                         all(c in "0123456789abcdef" for c in older["sha256"]) and
+                         previous is not None and
                          0 <= (now - dt.datetime.fromisoformat(
                              previous["at_utc"].replace("Z", "+00:00"))).total_seconds()
                          <= STALE_SECONDS)
@@ -249,8 +253,11 @@ def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
         require(previous is None or
                 set(original_rows).issubset({s["source_path"] for s in selected}),
                 "HOT_UNRECOGNIZED_CACHED_SOURCE")
-        reused = len([v for v in original_rows.values()
-                      if v.get("state") == "HASHED_LOCAL_NOT_SIGNED"])
+        cache_refs = len([v for v in original_rows.values()
+                          if v.get("state") == "HASHED_LOCAL_NOT_SIGNED"])
+    require((time.perf_counter_ns() - start_wall) <=
+            max(s["budget_seconds"] for s in selected) * 1_000_000_000,
+            "ORIGINAL_BUDGET_EXCEEDED")
     cpu_ns = time.process_time_ns() - start_cpu
     wall_ns = time.perf_counter_ns() - start_wall
     end_usage = resource.getrusage(resource.RUSAGE_SELF)
@@ -275,7 +282,12 @@ def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
         "os_oublock_operations_delta": end_usage.ru_oublock - start_usage.ru_oublock,
         "content_bytes_read": read_bytes, "physical_io_bytes_read": None,
         "files_metadata_visited": visited, "files_hashed": hashed,
-        "cached_hashes_reused": reused, "missing_sources": missing,
+        "cached_hashes_reused": reused,
+        "cached_references_unverified": cache_refs,
+        "measurement_window": "OBSERVATION_ENTER_TO_POST_SCAN_PRE_RECEIPT_SEAL",
+        "fs_uuid": None,
+        "fs_dev": rootstat.st_dev,
+        "missing_sources": missing,
         "changed_sources": changed,
         "source_coverage_fraction": None if profile == "HOT"
                                     else (len(selected) - len(missing)) / len(selected),
@@ -284,10 +296,12 @@ def perform(catalog, *, goal, profile, source_root, state_dir, reason=""):
         "decisions_enabled": ["SOURCE_CHANGE_REVIEW_REQUIRED"] if changed
                              else ["MISSING_SOURCE_INVESTIGATION_REQUIRED"] if missing
                              else ["NO_MUTATION_DECISION"],
-        "status": ("CACHED_UNVERIFIED" if profile == "HOT" else
+        "status": ("CACHED_UNVERIFIED" if profile == "HOT" and previous is not None
+                   else "CAPACITY_ONLY_NO_SOURCE_CACHE" if profile == "HOT" else
                    "PARTIAL_SOURCE_UNKNOWN" if missing else
                    "BOUNDED_LOCAL_SOURCE_MEASURED_NOT_SIGNED"),
         "deep_reason": reason if profile == "DEEP" else None,
+        "deep_owner_grant_verified": False,
         "mutation_authorized": False,
         "original_source_crypto_verified": False,
         "scope_is_whole_drive": False,
