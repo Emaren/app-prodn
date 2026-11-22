@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2e0422f5c62f1c7555e8bea9e23c9c87a96bee1c561eabd9de1b2161bac3e79",
+      "sha256": "a980015ff42785d57d3fd9a693d89c0691de026ca508c8e4db6cc6545183d825",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3596,8 +3596,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we1-storage-owner-session-dbceb-20261122",
-    "commit": "fe8f450c11ce3b3d2a80be65afc64e774b88fc06"
+    "branch": "we1/factory-birth-after-atlas-20261122",
+    "commit": "564855d21ff47461405697e42cd3a07987e789f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
