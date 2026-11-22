@@ -200,5 +200,29 @@ class FactoryBirthContract(unittest.TestCase):
             certificate(records=rows)
 
 
+    def test_invalid_original_birth_seals_honest_hold_and_same_bytes(self):
+        import aoe2_product_release as R
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            a={"sourceSha":SOURCE,"buildId":BUILD,"runId":101}
+            rows=[object_record(k,identity=k.startswith("M1_"),
+                                proof=k.startswith("M1_"))
+                  for k in sorted(M.BIRTH_CLASS["T8"])]
+            rows[1]["path"]="/tmp/unit-fixture-is-not-original-m1"
+            report=R.record_factory_birth(a,root,"T8",SHA,rows)
+            self.assertEqual(report["status"],
+                 "UNCLASSIFIED_HOLD_ORIGINAL_SOURCE_METADATA_NOT_ADMITTED")
+            self.assertEqual(report["unknown_holds"],2)
+            self.assertFalse(report["copy_authorized"])
+            self.assertFalse(report["retire_authorized"])
+            destination=root/"factory-birth-T8-HOLD-v1.json"
+            receipt=destination.read_bytes()
+            self.assertEqual(json.loads(receipt)["schema"],
+                             "aoe2war.factory.object-birth-hold.v1")
+            R.record_factory_birth(a,root,"T8",SHA,rows)
+            self.assertEqual(destination.read_bytes(),receipt)
+            self.assertFalse((root/"factory-birth-T8-v1.json").exists())
+
+
 if __name__=="__main__":
     unittest.main()
