@@ -19,7 +19,7 @@ import sqlite3
 import stat
 from typing import Any
 
-SCHEMA = "aoe2war.we4.intel-cold-barn.catalog.v1"
+SCHEMA = "aoe2war.we4.intel-cold-barn.catalog.v2"
 PLAN = "aoe2war.we4.factory-hot-demotion.plan-only.v1"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
@@ -32,7 +32,9 @@ ACTIVE = {
 }
 SAFE_FIELDS = (
     "object_id", "namespace", "origin_machine", "application", "source_sha",
-    "build_id", "archive_date_utc", "archive_sha256_receipt_claim",
+    "build_id", "generation", "source_filesystem", "receiver_object_id",
+    "receiver_ack_state", "restored_at_utc", "original_source_bytes",
+    "archive_date_utc", "archive_sha256_receipt_claim",
     "receiver_receipt_sha256", "receiver_status_claim", "restore_proof_sha256",
     "restore_status", "source_original_sha256", "logical_bytes",
     "allocated_bytes", "inode", "historical_source_identity_match",
@@ -194,11 +196,31 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
             build = None
             source = None
         receipt_digest = receipt.get("receipt_sha256") if receipt else None
+        exact_runtime = runtime_src.get(source) if source else None
+        generation = (exact_runtime["generation"] if exact_runtime and
+                      exact_runtime.get("build_id") == build else None)
+        # An archive namespace reveals its owner, NOT its original filesystem.
+        # Current historical receipts do not independently attest a source UUID.
+        source_filesystem = None
+        known_hmac = bool(proof and (
+            proof.get("receiver_receipt_HMAC_verified") is True or
+            proof.get("intel_v2_receipt_hmac_verified") is True or
+            proof.get("receiver_hmac_verified") is True))
+        ack_state = ("HISTORICAL_HMAC_VERIFIED" if ack_evidenced and known_hmac else
+                     "RECEIVER_READBACK_RECEIPT_CLAIM" if ack_evidenced else "NO_AUTHENTICATED_RECEIVER_ACK")
+        source_bytes = (proof.get("restored_original_zip_bytes") if proof and
+                        type(proof.get("restored_original_zip_bytes")) is int and
+                        proof["restored_original_zip_bytes"] > 0 else None)
         record = {
             "object_id": identifier, "namespace": ns,
             "origin_machine": "HEL1" if ns == "HEL1-RECOVERY" else "M1",
             "application": archive_application(name, ns),
             "source_sha": source, "build_id": build,
+            "generation": generation, "source_filesystem": source_filesystem,
+            "receiver_object_id": identifier,
+            "receiver_ack_state": ack_state,
+            "restored_at_utc": proof.get("observed_utc") if proof else None,
+            "original_source_bytes": source_bytes,
             "archive_date_utc": receipt.get("observed_at") or receipt.get("observed_utc") if receipt else None,
             "archive_sha256_receipt_claim": cipher_sha if ack_evidenced else None,
             "receiver_receipt_sha256": receipt_digest if receipt else None,
@@ -237,7 +259,9 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
 
 SQL_SCHEMA = """CREATE TABLE archives (
  object_id TEXT PRIMARY KEY, namespace TEXT NOT NULL, origin_machine TEXT,
- application TEXT, source_sha TEXT, build_id TEXT, archive_date_utc TEXT,
+ application TEXT, source_sha TEXT, build_id TEXT, generation TEXT,
+ source_filesystem TEXT, receiver_object_id TEXT, receiver_ack_state TEXT,
+ restored_at_utc TEXT, original_source_bytes INTEGER, archive_date_utc TEXT,
  archive_sha256_receipt_claim TEXT, receiver_receipt_sha256 TEXT,
  receiver_status_claim TEXT, restore_proof_sha256 TEXT, restore_status TEXT,
  source_original_sha256 TEXT, logical_bytes INTEGER, allocated_bytes INTEGER,
@@ -249,6 +273,10 @@ CREATE INDEX by_build_id ON archives(build_id);
 CREATE INDEX by_digest ON archives(archive_sha256_receipt_claim);
 CREATE INDEX by_restore ON archives(restore_status);
 CREATE INDEX by_date ON archives(archive_date_utc);
+CREATE INDEX by_generation ON archives(generation);
+CREATE INDEX by_original_filesystem ON archives(source_filesystem);
+CREATE INDEX by_receiver_ack ON archives(receiver_ack_state);
+CREATE INDEX by_receiver_object ON archives(receiver_object_id);
 """
 
 def output_index(index: dict, json_path: Path, sqlite_path: Path) -> None:
@@ -278,6 +306,7 @@ def output_index(index: dict, json_path: Path, sqlite_path: Path) -> None:
 
 def query(db_path: Path, field: str, value: str) -> list[dict]:
     accepted = {"object_id","origin_machine","application","source_sha","build_id",
+                "generation","source_filesystem","receiver_object_id","receiver_ack_state",
                 "archive_sha256_receipt_claim","restore_status","source_class"}
     if field not in accepted or not 1 <= len(value) <= 250:
         raise ValueError("unsafe query")
