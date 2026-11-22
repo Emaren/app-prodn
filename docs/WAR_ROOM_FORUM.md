@@ -8,12 +8,31 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # War Room Forum
+
+## November 22, 2026 — WE3 source-scoped forum contract review
+
+Rechecked actual app/forum/page.tsx and app/forum/thread/[slug]/page.tsx
+against this contract. The index redirects legacy query-thread selection
+to the dedicated canonical thread. The detail route reads a session viewer
+if present, loads the shared ledger through the current Prisma accessor,
+and has an explicit editorial fallback on failed reads. An archive fallback
+is NOT proof of live community publishing or migration. No signed-in
+owner or ordinary citizen session was imitated or exported.
+
+**Release safety correction:** the old direct git pull, Prisma migration,
+npm build and systemctl restart sequence in this document predates current
+protected Factory/owner permits and is RETIRED. Protected source review,
+independent Linux artifact, DocsV2, scoped one-use human authorization,
+T7–T10 and genuine browser acceptance are required instead. Forum
+schema changes require a SEPARATE database and owner-approved migration;
+do not infer database authority from a content page.
+
 
 ## Product contract
 
@@ -139,16 +158,10 @@ completion state.
 
 ## Deploy
 
-Run the normal production sequence:
-
-```bash
-cd /var/www/AoE2HDBets/app-prodn
-git pull --ff-only origin main
-npx prisma migrate deploy
-npm run build
-sudo systemctl restart aoe2hdbets-web.service
-systemctl is-active aoe2hdbets-web.service
-```
+The historical direct-install commands previously listed here are now
+**retired**. Do not perform an unreviewed git pull, migration, build or
+service restart. Use the normal source-qualified Factory release gate and
+the separate database-schema authorization process.
 
 Then verify:
 

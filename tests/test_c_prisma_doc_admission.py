@@ -21,6 +21,11 @@ class CPrismaReviewedDocTests(unittest.TestCase):
         (self.root/"prisma").mkdir()
         (self.root/"tests").mkdir()
         (self.root/"scripts").mkdir()
+        (self.root/"docs").mkdir()
+        for reviewed in policy.EXACT_C_PRISMA_WE3_DOC_SHA256:
+            target=self.root/reviewed
+            target.parent.mkdir(parents=True,exist_ok=True)
+            target.write_bytes((ROOT/reviewed).read_bytes())
         self.doc=self.root/"prisma/README.md"
         self.doc.write_bytes((ROOT/"prisma/README.md").read_bytes())
         self.testfile=self.root/"tests/test_c_prisma_doc_admission.py"
@@ -85,6 +90,29 @@ class CPrismaReviewedDocTests(unittest.TestCase):
             with self.subTest(repo=repo,base=b,branch=who,changes=changes):
                 with self.assertRaisesRegex(policy.BoundaryHold,"C_PRISMA_"):
                     policy.check_exact_c_prisma_doc_source(self.root,repo,who,b,changes)
+    def test_three_we3_reviewed_document_blobs_are_exact(self):
+        self.assertEqual(set(policy.EXACT_C_PRISMA_WE3_DOC_SHA256),
+            {"DEPLOY.md","docs/PARSER_OBSERVATORY.md","docs/WAR_ROOM_FORUM.md"})
+        for item,expected in policy.EXACT_C_PRISMA_WE3_DOC_SHA256.items():
+            with self.subTest(item=item):
+                data=(self.root/item).read_bytes()
+                self.assertEqual(hashlib.sha256(data).hexdigest(),expected)
+        self.assertIsNone(policy.check_exact_c_prisma_doc_source(
+            self.root,"Emaren/app-prodn",policy.EXACT_C_PRISMA_DOC_BRANCH,
+            policy.EXACT_C_PRISMA_DOC_BASE,
+            sorted(policy.EXACT_C_PRISMA_DOC_REQUIRED)))
+    def test_modified_we3_review_document_denied(self):
+        for item in policy.EXACT_C_PRISMA_WE3_DOC_SHA256:
+            with self.subTest(item=item):
+                f=self.root/item;original=f.read_bytes()
+                f.write_bytes(original+b"\nchanged later\n")
+                with self.assertRaisesRegex(policy.BoundaryHold,"C_PRISMA_REVIEWED_DOC_SHA256_DRIFT"):
+                    policy.check_exact_c_prisma_doc_source(
+                        self.root,"Emaren/app-prodn",
+                        policy.EXACT_C_PRISMA_DOC_BRANCH,
+                        policy.EXACT_C_PRISMA_DOC_BASE,
+                        sorted(policy.EXACT_C_PRISMA_DOC_REQUIRED))
+                f.write_bytes(original)
     def test_tampered_tests_rejected(self):
         self.testfile.write_bytes(self.testfile.read_bytes()+b"\n#future-test\n")
         with self.assertRaisesRegex(policy.BoundaryHold,"C_PRISMA_TEST_SHA256_DRIFT"):

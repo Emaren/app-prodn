@@ -105,12 +105,17 @@ EXACT_C_PRISMA_DOC_PATH = "prisma/README.md"
 EXACT_C_PRISMA_DOC_BRANCH = "session-c/we1-prisma-readme-protected-review-20261122"
 EXACT_C_PRISMA_DOC_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
 EXACT_C_PRISMA_DOC_SHA256 = "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816"
-EXACT_C_PRISMA_DOC_TEST_SHA256 = "6f8a5d8962865db91d02d98d3a317cffccfc3633db02c14cc87fa07b995a32de"
+EXACT_C_PRISMA_DOC_TEST_SHA256 = "fde644a3adbf3b7a4d9bd26de66ffa5387b6cf93680b6d6d7ada4f8c13e45afc"
+EXACT_C_PRISMA_WE3_DOC_SHA256 = {
+    "DEPLOY.md": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
+    "docs/PARSER_OBSERVATORY.md": "4002ace1b36a2ffbb18985df402c8382a7cac41a5b959f3b6db89479e0d07171",
+    "docs/WAR_ROOM_FORUM.md": "e0fdc110a01c2eb05ee833d952cb6323dc12b5d5f5ffaab05cb4803a73526612",
+}
 EXACT_C_PRISMA_DOC_REQUIRED = frozenset({
     EXACT_C_PRISMA_DOC_PATH,
     "scripts/product_boundary_guard.py",
     "tests/test_c_prisma_doc_admission.py",
-})
+}) | frozenset(EXACT_C_PRISMA_WE3_DOC_SHA256)
 EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2 = frozenset({
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
@@ -682,16 +687,18 @@ def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
 
 def _exact_c_prisma_source_blob(checkout: Path, relative: str, expected: str) -> None:
     """Bounded regular-file verification; no symlink, hardlink, unsafe mode or source drift."""
-    if relative not in {EXACT_C_PRISMA_DOC_PATH, "tests/test_c_prisma_doc_admission.py"}:
+    if relative not in ({EXACT_C_PRISMA_DOC_PATH, "tests/test_c_prisma_doc_admission.py"} |
+                        set(EXACT_C_PRISMA_WE3_DOC_SHA256)):
         raise BoundaryHold("C_PRISMA_UNREVIEWED_SOURCE_PATH")
     target = checkout
     for name in relative.split("/"):
         target = target / name
         if target.is_symlink():
             raise BoundaryHold("C_PRISMA_SYMLINK_ANCESTOR")
+    limit = 100_000 if relative in EXACT_C_PRISMA_WE3_DOC_SHA256 else 20_000
     st = target.lstat()
     if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
-            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 20_000 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= limit or
             stat.S_IMODE(st.st_mode) & 0o022):
         raise BoundaryHold("C_PRISMA_SINGLE_FILE_REQUIRED")
     fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -700,12 +707,14 @@ def _exact_c_prisma_source_blob(checkout: Path, relative: str, expected: str) ->
         if ((live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) !=
                 (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)):
             raise BoundaryHold("C_PRISMA_SOURCE_CHANGED_DURING_READ")
-        content = os.read(fd, 20_001)
+        content = os.read(fd, limit + 1)
     finally:
         os.close(fd)
     if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
         if relative == EXACT_C_PRISMA_DOC_PATH:
             raise BoundaryHold("C_PRISMA_SHA256_DRIFT")
+        if relative in EXACT_C_PRISMA_WE3_DOC_SHA256:
+            raise BoundaryHold("C_PRISMA_REVIEWED_DOC_SHA256_DRIFT")
         raise BoundaryHold("C_PRISMA_TEST_SHA256_DRIFT")
 
 
@@ -726,6 +735,8 @@ def check_exact_c_prisma_doc_source(checkout: Path, repo: str, branch: str,
                                 EXACT_C_PRISMA_DOC_SHA256)
     _exact_c_prisma_source_blob(checkout, "tests/test_c_prisma_doc_admission.py",
                                 EXACT_C_PRISMA_DOC_TEST_SHA256)
+    for reviewed, expected in EXACT_C_PRISMA_WE3_DOC_SHA256.items():
+        _exact_c_prisma_source_blob(checkout, reviewed, expected)
 
 
 def main() -> int:
