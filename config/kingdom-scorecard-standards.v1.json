@@ -1,0 +1,377 @@
+{
+  "schema": "aoe2war.kingdom.scorecard.standards.v1",
+  "version": "2026-11-22.v1",
+  "effective_at_utc": "2026-11-22T00:00:00Z",
+  "established_by": "Emaren/app-prodn/issues/1467#issuecomment-7082171302",
+  "authority": "SOURCE_ONLY_GRADE_DEFINITIONS_NOT_SIGNED_EVIDENCE",
+  "root_maturity_rubric": "config/scan-os-maturity-rubric.v1.json",
+  "units": "integer_points_0_to_100",
+  "score_mode": "only_complete_independently_admitted_five_gate_cohort",
+  "unknown_value": null,
+  "gate_points": 20,
+  "composite": "DISABLED_DIRECTIONAL_AND_NECESSITY_FACETS_NOT_INTERCHANGEABLE",
+  "standard_upgrade": "NEW_VERSION_AND_EFFECTIVE_AT_PRESERVE_OLD_GRADE_STANDARD_FINGERPRINT",
+  "security_and_recovery_veto": "NO_GREEN_WITH_FAILED_CRITICAL_EVIDENCE",
+  "dimensions": [
+    {
+      "id": "strength",
+      "title": "Implementation strength",
+      "direction": "higher_is_better",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Correct, resilient, measured, maintainable, operator-tested against all five requirements",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "STRENGTH_1",
+          "description": "Functional contract verified by original source tests",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STRENGTH_2",
+          "description": "Real negative/adversarial failure tests pass",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STRENGTH_3",
+          "description": "Measured resource/performance budget met",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STRENGTH_4",
+          "description": "Live execution matches exact source and immutable build",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STRENGTH_5",
+          "description": "Recovery and rollback exercised for affected function",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "necessity",
+      "title": "Current necessity",
+      "direction": "higher_means_more_necessary",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Function is essential to five independently documented current operating requirements",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "NECESSITY_1",
+          "description": "Serves a required live product capability",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "NECESSITY_2",
+          "description": "Protects irreplaceable source/data",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "NECESSITY_3",
+          "description": "Required for current release or recovery",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "NECESSITY_4",
+          "description": "Has an actual source-bound consumer",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "NECESSITY_5",
+          "description": "Removal demonstrably breaks a critical requirement",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "relevance",
+      "title": "Current priority relevance",
+      "direction": "higher_means_more_relevant_now",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Directly advances all five currently source-recorded owner priorities",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "RELEVANCE_1",
+          "description": "Addresses highest active owner issue",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RELEVANCE_2",
+          "description": "Resolves observed rather than assumed blocker",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RELEVANCE_3",
+          "description": "Next action is currently executable",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RELEVANCE_4",
+          "description": "Outcome owner-visible or measurable",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RELEVANCE_5",
+          "description": "Still needed within current dated priority window",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "redundancy_risk",
+      "title": "Duplicative implementation risk",
+      "direction": "higher_is_worse",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Every one of five independently verified duplicated-value risks is present; 100 is worst",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "REDUNDANCY_RISK_1",
+          "description": "Duplicates canonical producer storage bytes",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "REDUNDANCY_RISK_2",
+          "description": "Duplicates an existing privileged service",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "REDUNDANCY_RISK_3",
+          "description": "Duplicates authoritative records instead of referencing them",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "REDUNDANCY_RISK_4",
+          "description": "Has no separately justified domain boundary",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "REDUNDANCY_RISK_5",
+          "description": "Causes repeated scans or unneeded synchronous I/O",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "storage_efficiency",
+      "title": "Storage efficiency",
+      "direction": "higher_is_better",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Useful retained working set demonstrably fits qualified budget with five protections",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "STORAGE_EFFICIENCY_1",
+          "description": "Native used/ordinary free from same mounted source",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STORAGE_EFFICIENCY_2",
+          "description": "Original protected minimum and scratch reserve preserved",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STORAGE_EFFICIENCY_3",
+          "description": "Allocated and unique disjoint bytes correctly separated",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STORAGE_EFFICIENCY_4",
+          "description": "Recoverable cold class has full independent restore",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "STORAGE_EFFICIENCY_5",
+          "description": "Observed housekeeping avoids reaccumulation and harm",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "cost_complexity_risk",
+      "title": "Marginal cost/complexity risk",
+      "direction": "higher_is_worse",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Every one of five independently measured unnecessary-overhead risks is present; 100 is worst",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "COST_COMPLEXITY_RISK_1",
+          "description": "Requires redundant privileged runtime",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "COST_COMPLEXITY_RISK_2",
+          "description": "Repeats known unchanged expensive scans",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "COST_COMPLEXITY_RISK_3",
+          "description": "Creates parallel state reconciliation burden",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "COST_COMPLEXITY_RISK_4",
+          "description": "Introduces source-independent auth/secret footprint",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "COST_COMPLEXITY_RISK_5",
+          "description": "Adds unbounded operational support or failure load",
+          "meaning_of_verified_true": "Independently confirmed risk present",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "recovery",
+      "title": "Recovery confidence",
+      "direction": "higher_is_better",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Exact identity, transport, independent restore, safe rollback and nonce closure verified",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "RECOVERY_1",
+          "description": "Exact object source/build/dataset identity preserved",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RECOVERY_2",
+          "description": "Recipient durable ACK and content reread verified",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RECOVERY_3",
+          "description": "Independent isolated restoration demonstrated",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RECOVERY_4",
+          "description": "Current rollback dependency/FD exclusion verified",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "RECOVERY_5",
+          "description": "Separately authorized original retirement and replay ledger verified",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Security and permissions",
+      "direction": "higher_is_better",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Least privilege, cryptographic authorization, replay resistance, denial tests and audited install proven",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "SECURITY_1",
+          "description": "Original source and byte admission cryptographically proven",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "SECURITY_2",
+          "description": "Least-privilege original host boundary verified",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "SECURITY_3",
+          "description": "Expired/replayed/forged owner operations denied",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "SECURITY_4",
+          "description": "Financial/private/custody isolation audited",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "SECURITY_5",
+          "description": "Signed root/public release independently observed",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    },
+    {
+      "id": "operator_value",
+      "title": "Operator usability",
+      "direction": "higher_is_better",
+      "effective_at_utc": "2026-11-22T00:00:00Z",
+      "meaning_of_100": "Owner can understand, act, recover, inspect and safely navigate without manual SHA repetition",
+      "gate_points": 20,
+      "gates": [
+        {
+          "gate_id": "OPERATOR_VALUE_1",
+          "description": "Status and UNKNOWN blockers legible",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "OPERATOR_VALUE_2",
+          "description": "One next action linked to source owner issue",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "OPERATOR_VALUE_3",
+          "description": "Desktop/mobile and accessibility acceptance genuine",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "OPERATOR_VALUE_4",
+          "description": "One-login authorized experience verified without manual SHA",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        },
+        {
+          "gate_id": "OPERATOR_VALUE_5",
+          "description": "Evidence/standard/history drilldown useful in real session",
+          "meaning_of_verified_true": "Independently confirmed requirement met",
+          "requires": "ORIGINAL_INDEPENDENT_EVIDENCE_VERIFIER"
+        }
+      ]
+    }
+  ]
+}
