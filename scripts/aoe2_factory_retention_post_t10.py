@@ -209,9 +209,15 @@ def object_birth_certificate(*, source_sha: str, build_id: str,
     output = []
     for entry in sorted(records, key=lambda x: x["kind"]):
         if set(entry) != {"kind", "path", "expected_sha256", "identity",
-                          "verified_source_sha256", "observed_at_utc"}:
+                          "verified_source_sha256", "observed_at_utc",
+                          "generation_source_sha", "generation_build_id"}:
             raise RetentionHold("BIRTH_RECORD_FIELDS")
         kind, path = entry["kind"], entry["path"]
+        gen_source, gen_build = (entry["generation_source_sha"],
+                                 entry["generation_build_id"])
+        if (type(gen_source) is not str or not HEX40.fullmatch(gen_source)
+                or type(gen_build) is not str or not BUILD.fullmatch(gen_build)):
+            raise RetentionHold("BIRTH_OBJECT_GENERATION_IDENTITY")
         if (type(path) is not str or not 10 <= len(path) <= 384
                 or not path.startswith("/") or ".." in path.split("/")
                 or "\x00" in path or "\n" in path or "\r" in path):
@@ -248,7 +254,9 @@ def object_birth_certificate(*, source_sha: str, build_id: str,
                                     r"(?:\.[0-9]+)?Z", observed)):
             raise RetentionHold("BIRTH_OBSERVATION_CLOCK")
         object_id = sha(canonical({"source": source_sha, "run": github_run_id,
-                                   "phase": phase, "kind": kind, "path": path}))
+                                   "phase": phase, "kind": kind, "path": path,
+                                   "object_source": gen_source,
+                                   "object_build": gen_build}))
         status = ("VERIFIED_LOCAL_FILE_HOLD_RECOVERY"
                   if identity is not None and verified_sha is not None
                   else "UNCLASSIFIED_HOLD_MISSING_FILE_OR_RESTORE_EVIDENCE")
@@ -257,6 +265,8 @@ def object_birth_certificate(*, source_sha: str, build_id: str,
                 "object": object_id, "identity": identity})),
             "kind": kind, "surface": BIRTH_SURFACES[kind],
             "path": path, "source_sha": source_sha, "build_id": build_id,
+            "generation_source_sha": gen_source,
+            "generation_build_id": gen_build,
             "run_id": github_run_id, "file_identity": identity,
             "expected_sha256": expected, "verified_source_sha256": verified_sha,
             "source_producer": "ORIGINAL_FACTORY_T5_T8_T10",
