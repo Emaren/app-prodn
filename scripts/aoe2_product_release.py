@@ -700,6 +700,73 @@ def event(path, approval, name, state="pass", extra=None, at="NOW"):
                          at=at, historical=(at != "NOW"))
 
 
+def _factory_birth_object(kind, path, *, source, build, expected_sha256=None,
+                          verified_sha256=None):
+    """Original producer's exact path, with M1 identity reused from prior IO.
+
+    HEL1 generation remote inode/allocated bytes stay UNKNOWN until an
+    independently source-owned host adapter attests; NEVER guess or scan.
+    """
+    path = Path(path)
+    identity = observed = None
+    if kind.startswith("M1_"):
+        try:
+            info = transport.checked_file(path)
+        except FileNotFoundError:
+            verified_sha256 = None
+        else:
+            need(info.st_uid == 501 and info.st_nlink == 1 and
+                 not stat.S_IMODE(info.st_mode) & 0o022 and
+                 info.st_dev > 0 and info.st_ino > 0,
+                 "BIRTH_ORIGINAL_SOURCE_CUSTODY")
+            identity = {
+                "device": info.st_dev, "inode": info.st_ino,
+                "logical_bytes": info.st_size,
+                "allocated_bytes": info.st_blocks * 512,
+                "uid": info.st_uid, "mode": stat.S_IMODE(info.st_mode),
+                "nlink": info.st_nlink, "mtime_ns": info.st_mtime_ns,
+            }
+            observed = dt.datetime.fromtimestamp(
+                info.st_mtime_ns / 1_000_000_000, dt.timezone.utc
+            ).isoformat().replace("+00:00", "Z")
+    return {
+        "kind": kind, "path": str(path),
+        "generation_source_sha": source, "generation_build_id": build,
+        "expected_sha256": expected_sha256,
+        "verified_source_sha256": verified_sha256,
+        "identity": identity, "observed_at_utc": observed,
+    }
+
+
+def record_factory_birth(approval, release_work, phase, evidence_sha256, objects):
+    """Mandatory source-owned append-once certificate of T5/T8/T10 births.
+
+    Extends original Factory receipt lifecycle; no new ledger/privilege/runtime.
+    Missing remote identities and restore evidence remain explicit HOLD.
+    """
+    from aoe2_factory_retention_post_t10 import object_birth_certificate, canonical
+    report = object_birth_certificate(
+        source_sha=approval["sourceSha"], build_id=approval["buildId"],
+        github_run_id=approval["runId"], phase=phase,
+        evidence_sha256=evidence_sha256, records=objects,
+    )
+    receipt = Path(release_work) / ("factory-birth-" + phase + "-v1.json")
+    seal_once(receipt, canonical(report) + b"\n")
+    transport.checked_file(receipt)
+    need(hashlib.sha256(receipt.read_bytes()).hexdigest()
+         == hashlib.sha256(canonical(report) + b"\n").hexdigest(),
+         "BIRTH_RECEIPT_READBACK")
+    print(json.dumps({
+        "phase": phase + "-BIRTH", "state": "registered",
+        "sourceSha": approval["sourceSha"], "buildId": approval["buildId"],
+        "receiptSha256": report["canonical_sha256"],
+        "originalObjects": len(report["records"]),
+        "unknownHoldCount": report["unknown_holds"],
+        "copyAuthorized": False, "retireAuthorized": False,
+    }), flush=True)
+    return report
+
+
 def prepare_artifacts(approval, work, log, invocation=None):
     cache = transport.private_dir(work / "cache")
     stage = transport.private_dir(work / approval["sourceSha"][:12])
@@ -809,6 +876,19 @@ def deliver(approval, stage, proof, log, invocation=None):
         "proofSha256": proof["runtime_archive_sha256"], "elapsedMs": elapsed,
         "bytes": incoming, "verification": "pass",
     })
+    record_factory_birth(approval, Path(log).parent, "T5",
+        proof["runtime_archive_sha256"], [
+            _factory_birth_object(
+                "M1_STAGED_TAR", stage / "runtime.tar.gz",
+                source=approval["sourceSha"], build=approval["buildId"],
+                expected_sha256=proof["runtime_archive_sha256"],
+                verified_sha256=proof["runtime_archive_sha256"]),
+            _factory_birth_object(
+                "HEL1_TRANSPORT_TAR", remote + "/runtime.tar.gz",
+                source=approval["sourceSha"], build=approval["buildId"],
+                expected_sha256=proof["runtime_archive_sha256"],
+                verified_sha256=proof["runtime_archive_sha256"]),
+        ])
     if invocation is not None:
         invocation.remote_state = "transferred" if runtime_copied else "cached"
         invocation.remote_cache_bytes = 0 if runtime_copied else incoming
@@ -1026,6 +1106,18 @@ def release(approval, remote, proof, log, work, invocation=None):
             invocation.record("ROLLBACK VERIFIED", proof=digest)
         if "T8" not in accepted:
             event(log, approval, "T8", extra={"proofSha256": digest})
+        record_factory_birth(approval, work, "T8", digest, [
+            _factory_birth_object(
+                "M1_T8_WITNESS", work / "public-evidence-T8-v1.json",
+                source=selected["previous_source"],
+                build=selected["previous_build"],
+                expected_sha256=digest, verified_sha256=digest),
+            _factory_birth_object(
+                "HEL1_ROLLBACK_GENERATION",
+                "/var/lib/aoe2war-web-prod-" + selected["previous_source"][:12],
+                source=selected["previous_source"],
+                build=selected["previous_build"]),
+        ])
         event(log, approval, "reactivate", "running")
         approved_controller("reactivate", manifest, approval)
     if invocation is not None and "T8" in accepted and not any(
@@ -1048,6 +1140,19 @@ def release(approval, remote, proof, log, work, invocation=None):
     before = hashlib.sha256(log.read_bytes()).hexdigest()
     event(log, approval, "T10", extra={"proofSha256": before})
     seal_acceptance(approval, log, work, journal, invocation=invocation)
+    seal_file = work / "release-seal-v1.json"
+    transport.checked_file(seal_file)
+    need(seal_file.stat().st_size <= 16384, "BIRTH_T10_SEAL_SIZE")
+    t10_sha = hashlib.sha256(seal_file.read_bytes()).hexdigest()
+    record_factory_birth(approval, work, "T10", t10_sha, [
+        _factory_birth_object("M1_T10_SEAL", seal_file,
+                              source=source, build=approval["buildId"],
+                              expected_sha256=t10_sha,
+                              verified_sha256=t10_sha),
+        _factory_birth_object("HEL1_LIVE_GENERATION",
+                              "/var/lib/aoe2war-web-prod-" + source[:12],
+                              source=source, build=approval["buildId"]),
+    ])
     if invocation is not None:
         publish_invocation(invocation, approval, work, journal)
 
