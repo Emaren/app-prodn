@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-storage-owner-session-dbceb-20261122` at `fe8f450c11ce3b3d2a80be65afc64e774b88fc06`
+Implementation baseline: `we1/scan-org-learning-source-20261122` at `c459448598bc141d207c556d7f8fff77d53c9ff3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **158**
+- Authoritative repository documents: **159**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 13
 - `reference`: 83
-- `runbook`: 50
+- `runbook`: 51
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 50
+- `draft`: 51
 - `generated`: 1
 - `historical`: 13
 - `superseded`: 3
@@ -134,6 +134,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Replay Truth OS](REPLAY_TRUTH_OS.md) | `runbook` | `active` | `operational-procedure` |
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |
+| [Scan OS Learning, Organization OS and Measured Maturity](SCAN_ORGANIZATION_OS.md) | `runbook` | `draft` | `source-only-read-only-operations` |
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
