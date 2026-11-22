@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-storage-owner-session-dbceb-20261122` at `fe8f450c11ce3b3d2a80be65afc64e774b88fc06`
+Implementation baseline: `we3/steam-ratings-sql-20261122` at `e67f02e4023003aca3648a6bc46fc8042b6061fb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
