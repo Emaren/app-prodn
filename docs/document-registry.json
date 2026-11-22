@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "149a4bc05d8160a6401bf46b9dcefa8b23c4806f2a27f4ac2c82c7f5658f297e",
+      "sha256": "6be75f2cd95755320fdcf0e3505cd389f54374f9651bdd47bc18ddc730d7930b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2803,7 +2803,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "4e93c30d47840f45a1bce4bfc423cd4f3bf9a16f065926c330f66d5470cf9c0c",
+      "sha256": "c40706f841bb23085d4c783af1a47e30a1d54aa611d0d2b23d7d4e77eb6e920a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-storage-atlas-five-pages-20261122",
-    "commit": "0560db0aa1946aa81cd9bb00e2c3831551fd40a6"
+    "commit": "3455b6678c65283585f22a1a8f14ca687ba18040"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
