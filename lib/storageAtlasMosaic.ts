@@ -34,7 +34,7 @@ export type AtlasSurface={
  id:AtlasId; label:string; host:"M1"|"HEL1"|"INTEL"; role:string; mountLabel:string;
  source:AtlasTrust; sourceObservedAt:string|null; sourceAgeSeconds:number|null;
  coverage:AtlasCoverage; totalBytes:number|null; usedBytes:number|null;
- availableBytes:number|null; usedPercent:number|null; capacityAuthority:
+ availableBytes:number|null; reservedBytes:number|null; usedPercent:number|null; capacityAuthority:
    "INDEPENDENT_SIGNED_POLICY_HOLD"|"OBSERVED_OPERATOR_UNCERTIFIED"|"INTEL_SIGNED_CAPACITY"|"UNKNOWN";
  categories:AtlasCategory[]; unattributedBytes:number|null;
  // No available original whole-disk disjoint unique-footprint certificate.
@@ -94,7 +94,7 @@ function kindFor(h:VisualHog):AtlasCategoryKind {
    return "RECOVERY_PROTECTED";
  if(h.key==="APP_ACTIVE_DEPENDENCIES"||h.key==="HEL1_TRAFFIC_DB"||
    h.key==="PROJECT_SOURCE"||h.key==="HEL1_ROOT_SYSTEM"||
-   h.key==="HEL1_DEPLOY_BUILDS"||h.key==="HEL1_ACTIVE_SWAP")return "LIVE_PROTECTED";
+   h.key==="HEL1_ACTIVE_SWAP")return "LIVE_PROTECTED";
  return h.level>=5?"RECOVERY_PROTECTED":
    h.level===4?"REVIEW_HOLD":"MEASURED_OTHER";
 }
@@ -122,7 +122,7 @@ function visualCategories(plane:VisualPlane,source:AtlasTrust,current:boolean):A
 }
 function base(id:AtlasId):AtlasSurface{
  return {...META[id],id,source:"NOT_ADMITTED",sourceObservedAt:null,sourceAgeSeconds:null,
-   coverage:"UNKNOWN",totalBytes:null,usedBytes:null,availableBytes:null,usedPercent:null,
+   coverage:"UNKNOWN",totalBytes:null,usedBytes:null,availableBytes:null,reservedBytes:null,usedPercent:null,
    capacityAuthority:"UNKNOWN",categories:[],unattributedBytes:null,
    uniqueMappedBytes:null,uniqueReclaimBytes:null,excludedBytes:null,partitionCertified:false,
    blockers:["No current source-qualified complete filesystem distribution.",

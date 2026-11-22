@@ -123,15 +123,21 @@ function Mosaic({surface,scale,mode,compact,onSelect}:{surface:AtlasSurface;scal
  </div>;
 }
 function EvidenceCard({surface,compact=false}:{surface:AtlasSurface;compact?:boolean}){
+ const facts=[
+   ["Capacity source",surface.capacityAuthority.replaceAll("_"," ")],
+   ["Available (source-labeled)",surface.capacityAuthority==="OBSERVED_OPERATOR_UNCERTIFIED"?
+     "OBSERVED ONLY · "+formatAtlasBytes(surface.availableBytes):
+     formatAtlasBytes(surface.availableBytes)],
+   ["Used physical bytes",formatAtlasBytes(surface.usedBytes)],
+   ["Source observation",surface.sourceAgeSeconds===null?"UNKNOWN":ageLabel(surface.sourceAgeSeconds)+" ago"],
+   ["Total physical bytes",formatAtlasBytes(surface.totalBytes)],
+   ["Reserved / inaccessible",formatAtlasBytes(surface.reservedBytes)],
+   ["Excluded / unscanned",formatAtlasBytes(surface.excludedBytes)],
+   ["Unattributed bytes",formatAtlasBytes(surface.unattributedBytes)]
+ ];
  return <div className={"grid gap-2 text-[11px] text-slate-200 "+(compact?"grid-cols-2":"grid-cols-2 sm:grid-cols-4")}>
-   {[
-    ["Capacity source",surface.capacityAuthority.replaceAll("_"," ")],
-    ["Available (qualified)",surface.capacityAuthority==="OBSERVED_OPERATOR_UNCERTIFIED"?
-      "OBSERVED ONLY · "+formatAtlasBytes(surface.availableBytes):
-      formatAtlasBytes(surface.availableBytes)],
-    ["Used physical bytes",formatAtlasBytes(surface.usedBytes)],
-    ["Source observation",surface.sourceAgeSeconds===null?"UNKNOWN":ageLabel(surface.sourceAgeSeconds)+" ago"]
-   ].map(([title,value])=><div key={title} className="min-w-0 rounded-xl border border-white/10 bg-white/[.025] p-2.5">
+   {(compact?facts.slice(0,4):facts).map(([title,value])=>
+     <div key={title} className="min-w-0 rounded-xl border border-white/10 bg-white/[.025] p-2.5">
        <p className="text-[10px] text-slate-300">{title}</p>
        <p className="mt-1 break-words font-semibold text-white">{value}</p>
      </div>)}

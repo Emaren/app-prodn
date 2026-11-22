@@ -122,6 +122,7 @@ test("three computers across four independently identified storage surfaces",()=
  for(const s of p.surfaces){
   assert.equal(s.totalBytes,null);
   assert.equal(s.usedBytes,null);
+  assert.equal(s.reservedBytes,null);
   assert.equal(s.unattributedBytes,null);
   assert.equal(s.uniqueReclaimBytes,null);
   assert.equal(s.partitionCertified,false);
@@ -154,6 +155,13 @@ test("positive real-source-style gross sample is never certified occupied bytes"
  assert.equal(s.usedBytes,null);
  assert.equal(tileGroups(s,"gib").renderedTiles,2);
  assert.equal(tileGroups(s,"mib100").renderedTiles,16);
+});
+test("generic deployment builds are not automatically described as live services",()=>{
+ const s=projectStorageAtlas(signedModel(
+  [hog("HEL1_DEPLOY_BUILDS",3*1024**3,false,3)]),null,now).surfaces[0];
+ assert.equal(s.categories[0].kind,"MEASURED_OTHER");
+ assert.equal(s.categories[0].allowedToDelete,false);
+ assert.equal(s.categories[0].allowedToTransfer,false);
 });
 test("overlapping/nested gross categories are not added to used or reclaimed",()=>{
  const raw=signedModel([
