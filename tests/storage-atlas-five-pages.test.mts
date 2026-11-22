@@ -72,6 +72,8 @@ function routeModule(auth:"missing"|"ordinary"|"admin",badSource=false){
        schema:"aoe2war.storage-atlas.runtime-cohort.v1",status:"NOT_ADMITTED",
        sourceHash:null,rows:[],signedSourceAtRead:false
      };}};
+   if(id==="@/lib/storageAtlasNativeCapacityServer")return {
+     readAtlasNativeCapacityObservations:async()=>{observedReads++;return [];}};
    if(id==="@/lib/storageAtlasMosaic")return {projectStorageAtlas};
    throw Error("UNEXPECTED_API_MODULE:"+id);
  };
@@ -101,7 +103,7 @@ test("private GET enforces real admin gate before source reads; 401,403,200; no 
    const m=routeModule(role);
    const res=await m.get({});
    assert.equal(res.status,expected,role);
-   assert.equal(m.reads(),role==="admin"?4:0,"no evidence reads before admin");
+   assert.equal(m.reads(),role==="admin"?5:0,"no evidence reads before admin");
    if(role==="admin"){
      assert.equal(res.headers["Cache-Control"],"private, no-store, max-age=0");
      assert.equal(res.headers["X-Content-Type-Options"],"nosniff");
@@ -136,6 +138,42 @@ test("three computers across four independently identified storage surfaces",()=
   assert.equal(s.source,"NOT_ADMITTED");
  }
  assert.equal(p.authority,"ADMIN_READ_ONLY_NO_SCAN_COPY_OR_RETIRE");
+});
+test("three native capacity observations keep exact numeric truth but never certify hogs",()=>{
+ const obs=[
+  {id:"hel1-root",observedAt:"2026-11-22T04:09:00Z",
+   source:"NATIVE_HEL1_STATFS_UNCERTIFIED",deviceIdentity:"HEL1 root mount",
+   totalBytes:1000,usedBytes:700,availableBytes:200,reservedBytes:100},
+  {id:"hel1-data",observedAt:"2026-11-22T04:09:00Z",
+   source:"NATIVE_HEL1_STATFS_UNCERTIFIED",deviceIdentity:"HEL1 mounted data volume",
+   totalBytes:5000,usedBytes:4000,availableBytes:1000,reservedBytes:0},
+  {id:"m1",observedAt:"2026-11-22T04:09:00Z",
+   source:"OWNER_M1_APFS_DATED_UNCERTIFIED",deviceIdentity:"disk3 / owner APFS container",
+   totalBytes:10000,usedBytes:9000,availableBytes:1000,reservedBytes:0}
+ ] as const;
+ const p=projectStorageAtlas(signedModel([]),null,now,obs);
+ for(let i=0;i<3;i++){
+  const s=p.surfaces[i];
+  assert.equal(s.totalBytes,obs[i].totalBytes);
+  assert.equal(s.usedBytes,obs[i].usedBytes);
+  assert.equal(s.availableBytes,obs[i].availableBytes);
+  assert.equal(s.capacityObservedAt,obs[i].observedAt);
+  assert.equal(s.capacityAgeSeconds,60);
+  assert.equal(s.capacityAuthority,obs[i].source);
+  assert.equal(s.partitionCertified,false);
+  assert.equal(s.unattributedBytes,null);
+  assert.equal(s.uniqueReclaimBytes,null);
+  assert.equal(s.categories.length,0);
+  assert.ok(s.blockers.some(x=>x.includes("NOT signed")));
+ }
+ assert.equal(p.surfaces[3].totalBytes,null,"Intel needs independent current source");
+ assert.equal(p.surfaces[0].coverage,"NOT_SCANNED");
+ const fake=projectStorageAtlas(null,null,now,[{...obs[0],usedBytes:899}]);
+ assert.equal(fake.surfaces[0].totalBytes,null,"reject invalid byte arithmetic");
+ const spoof=projectStorageAtlas(null,null,now,[{...obs[0],id:"intel" as never}]);
+ assert.equal(spoof.surfaces[3].totalBytes,null,"never accept Intel as HEL1");
+ const aged=projectStorageAtlas(null,null,new Date("2026-11-23T04:10:00Z"),obs);
+ assert.ok(aged.surfaces[0].blockers.some(x=>x.includes("older than 15")));
 });
 test("signed v1 zero hog entries are NOT SCANNED, not zero used or free",()=>{
  const s=projectStorageAtlas(signedModel([]),null,now).surfaces[0];

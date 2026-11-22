@@ -1,0 +1,15 @@
+{
+  "schema": "aoe2war.storage-atlas.dated-native-capacity.v1",
+  "surface": "m1",
+  "source": "OWNER_UID501_MACOS_DISKUTIL_APFS_LIST",
+  "observedAt": "2026-11-22T12:41:06Z",
+  "deviceIdentity": "disk3 / DF99D6D6-A364-41E4-B992-12ED76BB8353",
+  "scope": "SHARED_APFS_CONTAINER_NOT_SINGLE_DATA_VOLUME",
+  "totalBytes": 494384795648,
+  "usedBytes": 484315406336,
+  "availableBytes": 10069389312,
+  "reservedBytes": 0,
+  "independentlySigned": false,
+  "categoryAuthority": false,
+  "reclaimAuthority": false
+}

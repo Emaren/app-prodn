@@ -123,6 +123,60 @@ function Mosaic({surface,scale,mode,compact,onSelect}:{surface:AtlasSurface;scal
    </div>
  </div>;
 }
+function CapacityRail({surface}:{surface:AtlasSurface}){
+ const total=surface.totalBytes,used=surface.usedBytes,free=surface.availableBytes,
+   reserved=surface.reservedBytes;
+ const measured=total!==null&&total>0&&used!==null&&free!==null&&reserved!==null;
+ const usedPercent=measured?Math.min(100,used!/total!*100):0;
+ const availablePercent=measured?Math.min(100,free!/total!*100):0;
+ const targetGiB:Record<AtlasId,number>={"hel1-root":25,"hel1-data":40,m1:25,intel:60};
+ const target=targetGiB[surface.id]*1024**3;
+ const gap=free===null?null:Math.max(0,target-free);
+ const dated=surface.capacityAgeSeconds!==null&&surface.capacityAgeSeconds>900;
+ const label=surface.capacityAuthority==="NATIVE_HEL1_STATFS_UNCERTIFIED"?
+   "HEL1 SERVER STATFS · OBSERVED ONLY":
+   surface.capacityAuthority==="OWNER_M1_APFS_DATED_UNCERTIFIED"?
+   "OWNER M1 APFS · DATED OBSERVATION":
+   surface.capacityAuthority==="INTEL_SIGNED_CAPACITY"?"INDEPENDENT INTEL CAPACITY RECEIPT":
+   surface.capacityAuthority==="UNKNOWN"?"NO ADMITTED CAPACITY SOURCE":
+   surface.capacityAuthority.replaceAll("_"," ");
+ return <section aria-label={"Native capacity observation for "+surface.label}
+   className="mt-3 rounded-2xl border border-sky-300/20 bg-[#081b2b] p-3">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+     <span className="text-[10px] font-black tracking-[.11em] text-sky-200">{label}</span>
+     <span className={"text-[10px] font-black "+(dated?"text-amber-200":"text-slate-300")}>
+       {surface.capacityObservedAt?
+         (dated?"DATED / NOT CURRENT · ":"OBSERVED · ")+observed(surface.capacityObservedAt):
+         "NO WHOLE-DISK CAPACITY OBSERVATION"}</span>
+   </div>
+   {measured?<><div className="mt-3 flex items-end justify-between gap-2">
+     <div><p className="text-[10px] text-slate-300">USED / NATIVE FILESYSTEM ACCOUNTING</p>
+       <p className="mt-1 text-lg font-black tabular-nums text-white">{formatAtlasBytes(used)}
+         <span className="text-xs font-semibold text-slate-300"> / {formatAtlasBytes(total)}</span></p></div>
+     <p className="text-xs font-black tabular-nums text-sky-100">{Math.round(usedPercent*10)/10}% used</p>
+   </div>
+   <div role="img" aria-label={surface.label+" native observed disk capacity: "+
+     formatAtlasBytes(used)+" used, "+formatAtlasBytes(free)+" available, "+
+     formatAtlasBytes(reserved)+" reserved; this is not a category allocation census"}
+     className="mt-2 flex h-4 overflow-hidden rounded-lg border border-white/10 bg-slate-700">
+     <div className="bg-amber-500/80" style={{width:usedPercent+"%"}}/>
+     <div className="bg-cyan-500/75" style={{width:availablePercent+"%"}}/>
+   </div></>:<p className="mt-2 text-sm font-bold text-slate-200">
+     USED / TOTAL UNKNOWN · Source admission required
+   </p>}
+   <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-slate-200">
+     <span>Ordinarily available <strong className="tabular-nums text-white">{formatAtlasBytes(free)}</strong></span>
+     <span>Reserve / other <strong className="tabular-nums text-white">{formatAtlasBytes(reserved)}</strong></span>
+     <span>Target ≥{targetGiB[surface.id]} GiB · gap <strong className="tabular-nums text-amber-100">
+       {gap===null?"UNKNOWN":formatAtlasBytes(gap)}</strong></span>
+   </div>
+   <p className="mt-2 break-words text-[10px] leading-5 text-slate-300">
+     {surface.capacityDeviceIdentity?"Device: "+surface.capacityDeviceIdentity+" · ":""}
+     Capacity observation is NOT signed category proof. The grey mosaic remains unscanned;
+     no bytes are called reclaimable by this observation.
+   </p>
+ </section>;
+}
 function EvidenceCard({surface,compact=false}:{surface:AtlasSurface;compact?:boolean}){
  const facts=[
    ["Capacity source",surface.capacityAuthority.replaceAll("_"," ")],
@@ -130,7 +184,8 @@ function EvidenceCard({surface,compact=false}:{surface:AtlasSurface;compact?:boo
      "OBSERVED ONLY · "+formatAtlasBytes(surface.availableBytes):
      formatAtlasBytes(surface.availableBytes)],
    ["Used physical bytes",formatAtlasBytes(surface.usedBytes)],
-   ["Source observation",surface.sourceAgeSeconds===null?"UNKNOWN":ageLabel(surface.sourceAgeSeconds)+" ago"],
+   ["Capacity observation",surface.capacityObservedAt?observed(surface.capacityObservedAt):"UNKNOWN"],
+   ["Category observation",surface.sourceAgeSeconds===null?"UNKNOWN":ageLabel(surface.sourceAgeSeconds)+" ago"],
    ["Total physical bytes",formatAtlasBytes(surface.totalBytes)],
    ["Reserved / inaccessible",formatAtlasBytes(surface.reservedBytes)],
    ["Excluded / unscanned",formatAtlasBytes(surface.excludedBytes)],
@@ -154,6 +209,7 @@ function SurfacePanel({surface,scale,mode,onSelect}:{surface:AtlasSurface;
      <EvidenceTag s={surface}/>
    </div>
    <p className="mt-1 text-[11px] text-slate-300">{surface.role}</p>
+   <CapacityRail surface={surface}/>
    <div className="mt-4"><Mosaic surface={surface} scale={scale} mode={mode} compact
      onSelect={onSelect}/></div>
    <div className="mt-4"><EvidenceCard surface={surface} compact/></div>
@@ -439,6 +495,7 @@ export default function StorageSpatialAtlas({initialPlane}:{initialPlane:AtlasId
              {current.coverage.replaceAll("_"," ")}
            </span></div>
        </div>
+       <CapacityRail surface={current}/>
        <EvidenceCard surface={current}/>
        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2.35fr)_minmax(290px,1fr)]">
          <div className="min-w-0 rounded-[25px] border border-cyan-300/15 bg-[#0b1828] p-3 sm:p-5">
@@ -494,6 +551,8 @@ export default function StorageSpatialAtlas({initialPlane}:{initialPlane:AtlasId
          No colored block represents an independently certified occupied-share percentage unless a complete,
          nonoverlapping source census explicitly proves one. Gross source samples may overlap. Free,
          reserved, active recovery, transfer eligibility and actual physical reclamation are independent proofs.
+         KEEP / COLD / PRUNE / PROTECTED are standing review labels only when independently
+         assigned to specific items; no candidate gross figure is certified physical reclaim.
          L4 has no software delete; L5 is NEVER DELETE.
        </p>
      </section>

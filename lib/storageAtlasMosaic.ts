@@ -33,12 +33,20 @@ export type AtlasCategory={
   currentContentHashVerifiedNow:boolean|null;
   historicalRestoreReceiptSha256:string|null;
 };
+export type AtlasCapacityObservation={
+ id:"hel1-root"|"hel1-data"|"m1"; observedAt:string;
+ source:"NATIVE_HEL1_STATFS_UNCERTIFIED"|"OWNER_M1_APFS_DATED_UNCERTIFIED";
+ deviceIdentity:string; totalBytes:number; usedBytes:number;
+ availableBytes:number; reservedBytes:number;
+};
 export type AtlasSurface={
  id:AtlasId; label:string; host:"M1"|"HEL1"|"INTEL"; role:string; mountLabel:string;
  source:AtlasTrust; sourceObservedAt:string|null; sourceAgeSeconds:number|null;
+ capacityObservedAt:string|null; capacityAgeSeconds:number|null; capacityDeviceIdentity:string|null;
  coverage:AtlasCoverage; totalBytes:number|null; usedBytes:number|null;
  availableBytes:number|null; reservedBytes:number|null; usedPercent:number|null; capacityAuthority:
-   "INDEPENDENT_SIGNED_POLICY_HOLD"|"OBSERVED_OPERATOR_UNCERTIFIED"|"INTEL_SIGNED_CAPACITY"|"UNKNOWN";
+   "INDEPENDENT_SIGNED_POLICY_HOLD"|"OBSERVED_OPERATOR_UNCERTIFIED"|"INTEL_SIGNED_CAPACITY"|
+   "NATIVE_HEL1_STATFS_UNCERTIFIED"|"OWNER_M1_APFS_DATED_UNCERTIFIED"|"UNKNOWN";
  categories:AtlasCategory[]; unattributedBytes:number|null;
  // No available original whole-disk disjoint unique-footprint certificate.
  uniqueMappedBytes:null; uniqueReclaimBytes:null; excludedBytes:null;
@@ -127,6 +135,7 @@ function visualCategories(plane:VisualPlane,source:AtlasTrust,current:boolean):A
 }
 function base(id:AtlasId):AtlasSurface{
  return {...META[id],id,source:"NOT_ADMITTED",sourceObservedAt:null,sourceAgeSeconds:null,
+   capacityObservedAt:null,capacityAgeSeconds:null,capacityDeviceIdentity:null,
    coverage:"UNKNOWN",totalBytes:null,usedBytes:null,availableBytes:null,reservedBytes:null,usedPercent:null,
    capacityAuthority:"UNKNOWN",categories:[],unattributedBytes:null,
    uniqueMappedBytes:null,uniqueReclaimBytes:null,excludedBytes:null,partitionCertified:false,
@@ -173,6 +182,11 @@ function planeProjection(id:Exclude<AtlasId,"intel">,raw:StorageCommandCenter|nu
    item.capacityAuthority="OBSERVED_OPERATOR_UNCERTIFIED";
  }
  // A signed available-byte sample is NOT a total-byte or used-byte sample.
+ if(item.capacityAuthority!=="UNKNOWN"&&validIso(reading?.asOf)){
+   item.capacityObservedAt=reading!.asOf;
+   item.capacityAgeSeconds=age(item.capacityObservedAt,now);
+   item.capacityDeviceIdentity="Previously admitted command-center plane "+sourceId;
+ }
  return item;
 }
 function intelProjection(raw:IntelColdView|null|undefined,now:number):AtlasSurface{
@@ -187,6 +201,9 @@ function intelProjection(raw:IntelColdView|null|undefined,now:number):AtlasSurfa
  if(fresh){
    item.availableBytes=cleanBytes(raw.capacity.availableBytes);
    item.capacityAuthority="INTEL_SIGNED_CAPACITY";
+   item.capacityObservedAt=item.sourceObservedAt;
+   item.capacityAgeSeconds=item.sourceAgeSeconds;
+   item.capacityDeviceIdentity="Independent Intel cold-status receipt";
  }
  if(fresh&&Array.isArray(raw.objects)){
    item.categories=raw.objects.slice(0,48).filter(x=>cleanBytes(x.allocatedBytes)!==null).map(x=>({
@@ -207,11 +224,37 @@ function intelProjection(raw:IntelColdView|null|undefined,now:number):AtlasSurfa
  return item;
 }
 export function projectStorageAtlas(raw:StorageCommandCenter|null,
- intel:IntelColdView|null,now:Date=new Date()):AtlasPayload{
+ intel:IntelColdView|null,now:Date=new Date(),
+ observedCapacities:readonly AtlasCapacityObservation[]=[]):AtlasPayload{
  const ms=now.getTime();
  if(!Number.isFinite(ms))throw Error("ATLAS_CLOCK_INVALID");
  const surfaces:AtlasSurface[]=ATLAS_IDS.map(id=>id==="intel"
    ?intelProjection(intel,ms):planeProjection(id,raw,ms));
+ // Capacity samples have NO authority to change source-qualified hogs,
+ // lifecycle decisions, signed admission, or unique reclaimed bytes.
+ for(const observation of observedCapacities){
+   const item=surfaces.find(x=>x.id===observation.id);
+   if(!item||item.id==="intel"||
+     (item.id==="m1")!==(observation.source==="OWNER_M1_APFS_DATED_UNCERTIFIED")||
+     !validIso(observation.observedAt)||
+     typeof observation.deviceIdentity!=="string"||
+     observation.deviceIdentity.length<4||observation.deviceIdentity.length>128)continue;
+   const total=cleanBytes(observation.totalBytes),used=cleanBytes(observation.usedBytes),
+     available=cleanBytes(observation.availableBytes),reserved=cleanBytes(observation.reservedBytes);
+   const elapsed=age(observation.observedAt,ms);
+   if(total===null||used===null||available===null||reserved===null||
+      !total||used+available+reserved!==total||elapsed===null)continue;
+   item.totalBytes=total;item.usedBytes=used;item.availableBytes=available;
+   item.reservedBytes=reserved;item.usedPercent=Math.round(used/total*1000)/10;
+   item.capacityObservedAt=observation.observedAt;
+   item.capacityAgeSeconds=elapsed;
+   item.capacityDeviceIdentity=observation.deviceIdentity;
+   item.capacityAuthority=observation.source;
+   item.blockers.push("Native observed capacity is NOT signed or certified category allocation.");
+   if(elapsed>900)item.blockers.push("Capacity observation is older than 15 minutes (dated, NOT current).");
+   // No disjoint whole-disk category certificate: physical unattributed is null.
+   item.unattributedBytes=null;item.uniqueReclaimBytes=null;item.partitionCertified=false;
+ }
  return {schema:ATLAS_SCHEMA,authority:"ADMIN_READ_ONLY_NO_SCAN_COPY_OR_RETIRE",
    polledAt:now.toISOString(),surfaces};
 }

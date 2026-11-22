@@ -7,6 +7,7 @@ import {readPrivateStorageVisual} from "@/lib/storageVisualPrivate";
 import {readIntelColdEvidence} from "@/lib/intelColdStorageEvidence";
 import {projectStorageAtlas} from "@/lib/storageAtlasMosaic";
 import {readRuntimeCohort} from "@/lib/storageAtlasGenerationCohortServer";
+import {readAtlasNativeCapacityObservations} from "@/lib/storageAtlasNativeCapacityServer";
 
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
@@ -32,7 +33,8 @@ export async function GET(request:NextRequest){
    // An owner-private digest-pinned source is not an independent host signer;
    // source-only cohort remains visibly separate from signed gross disk tiles.
    const runtimeCohort=await readRuntimeCohort();
-   return NextResponse.json({...projectStorageAtlas(main,intel),
+   const observedCapacities=await readAtlasNativeCapacityObservations();
+   return NextResponse.json({...projectStorageAtlas(main,intel,new Date(),observedCapacities),
      rootRuntimeCohort:runtimeCohort},{headers:HEADERS});
  }catch{
    // An invalid signed source is not converted into a fabricated empty disk.

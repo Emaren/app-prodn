@@ -73,6 +73,38 @@ proof. Intel absent, unsigned, stale or unadmitted stays UNKNOWN. Bounded
 opaque item aliases only; no protected absolute paths, secrets, financial
 identities or source signer material in browser responses.
 
+## November 22 native capacity observation rail — not category admission
+
+The five-page source preserves the large Tetris/diamond gross category mosaic,
+but additionally shows a compact native *capacity* utilization bar **outside**
+the grey category field. ROOT and DATA are read at request time using only
+Node's read-only statfs metadata at the existing fixed HEL1 / and
+/mnt/HC_Volume_105319120 mounts. Both require separate, real directory
+mount devices; absent/mismounted volumes withhold both values. No walk,
+spawn, shell, SSH, file contents, signed-receipt generation or write occurs.
+All four values (total, used, ordinarily available, reserved) must be safe
+integers and independently sum exactly. The source is explicitly
+NATIVE_HEL1_STATFS_UNCERTIFIED, not a signed collector receipt.
+
+M1 shows the original owner UID501's **dated** November 22, 2026
+12:41:06 UTC native macOS APFS container observation (total
+494384795648, used 484315406336, not allocated 10069389312 bytes).
+This source-only observation is embedded as a versioned record, declared
+OWNER_M1_APFS_DATED_UNCERTIFIED, and is marked DATED / NOT CURRENT after
+15 minutes. It is a *whole APFS container* sample, not the ordinary Data
+volume accounting or a live signed Mac source. Its bytes are never
+silently refreshed by browser polling.
+
+The source date and device identity are explicit. No Intel total or used
+bytes are manufactured from the historically recorded 23 encrypted objects
+or a previously recorded free-space point; the independently admitted
+current Intel reader continues to own those facts. No capacity receipt
+assigns category percentages or a unique reclaim figure. HEL1 and M1
+utilization bars represent native capacity accounting only; the separate
+grey UNKNOWN / NOT SCANNED mosaics remain unscaled until disjoint category
+evidence exists. Device headroom guidance is ROOT 25 GiB, DATA 40 GiB,
+M1 25 GiB, Intel 60 GiB, never a cleanup authorization.
+
 ## WE4 twenty-six ROOT generations — independently sourced cohort
 
 Original WE4 owner-private source manifest, observed November 22, 2026 at
