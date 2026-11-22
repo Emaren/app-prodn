@@ -1,0 +1,319 @@
+{
+  "schema": "aoe2war.organization-os.source-links.v1",
+  "authority": "READ_ONLY_SOURCE_GRAPH_NO_EXTRA_SERVICE",
+  "objects": [
+    {
+      "id": "PROJECT_ENTRY",
+      "kind": "PROJECT",
+      "repo": "Emaren/app-prodn",
+      "path": "docs/OPERATOR_START_HERE.md",
+      "owner": "WE3",
+      "producer": "CANONICAL_OPERATOR_SOURCE",
+      "consumers": [
+        "WE1",
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MAIN_SOURCE_NOT_LIVE_PROOF"
+    },
+    {
+      "id": "SCAN_OS",
+      "kind": "OPERATING_SYSTEM",
+      "repo": "Emaren/app-prodn",
+      "path": "scripts/scan_os.py",
+      "owner": "WE1",
+      "producer": "MERGED_SCAN_OS_1455",
+      "consumers": [
+        "WE1",
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "PROJECT_ENTRY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MERGED_SOURCE_NO_HOST_EXECUTOR"
+    },
+    {
+      "id": "SCAN_LEARNING",
+      "kind": "OPERATING_SYSTEM",
+      "repo": "Emaren/app-prodn",
+      "path": "scripts/scan_os_learning.py",
+      "owner": "WE1",
+      "producer": "SCAN_OS_EXTENSION",
+      "consumers": [
+        "WE1",
+        "WE2",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "SCAN_OS"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "DRAFT_ONLY_NOT_MAIN"
+    },
+    {
+      "id": "KINGDOM_INTELLIGENCE",
+      "kind": "OPERATING_SYSTEM",
+      "repo": "Emaren/app-prodn",
+      "path": "docs/KINGDOM_INTELLIGENCE.md",
+      "owner": "WE3",
+      "producer": "EXISTING_OS",
+      "consumers": [
+        "WE1",
+        "WE3"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "PROJECT_ENTRY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MAIN_SOURCE_NOT_LIVE_PROOF"
+    },
+    {
+      "id": "STORAGE_OS",
+      "kind": "OPERATING_SYSTEM",
+      "repo": "Emaren/app-prodn",
+      "path": "docs/STORAGE_OS.md",
+      "owner": "WE2",
+      "producer": "EXISTING_OS",
+      "consumers": [
+        "WE1",
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "PROJECT_ENTRY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MAIN_SOURCE_NOT_LIVE_PROOF"
+    },
+    {
+      "id": "STORAGE_POLICY",
+      "kind": "POLICY",
+      "repo": "Emaren/app-prodn",
+      "path": "config/storage-disposition-policy.v1.json",
+      "owner": "WE1",
+      "producer": "STORAGE_CLASSIFICATION_1458",
+      "consumers": [
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "STORAGE_OS"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MAIN_SOURCE_NO_MUTATION_AUTHORITY"
+    },
+    {
+      "id": "OWNER_POLICY",
+      "kind": "POLICY",
+      "repo": "Emaren/app-prodn",
+      "path": "config/storage-owner-session-retirement.v1.json",
+      "owner": "WE1",
+      "producer": "OWNER_SESSION_1461",
+      "consumers": [
+        "WE2",
+        "WE4"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "STORAGE_POLICY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "SOURCE_ONLY_ISSUER_NOT_ENROLLED"
+    },
+    {
+      "id": "FACTORY_RETENTION",
+      "kind": "EXECUTOR_SOURCE",
+      "repo": "Emaren/app-prodn",
+      "path": "scripts/aoe2_product_retention.py",
+      "owner": "WE2",
+      "producer": "FACTORY_RELEASE_CONTROLLER",
+      "consumers": [
+        "WE1",
+        "WE2"
+      ],
+      "source_location": "GIT",
+      "runtime_surface": "HEL1_ROOT",
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "STORAGE_POLICY",
+        "OWNER_POLICY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "MAIN_OLD_CONTROLLER_DRAFT_COPY_NOT_ADMITTED"
+    },
+    {
+      "id": "GOVERNOR_V1",
+      "kind": "POLICY",
+      "repo": "Emaren/VPSSentry",
+      "path": "ops/storage-governor-budgets-v1.json",
+      "owner": "WE1",
+      "producer": "GOVERNOR_PR126",
+      "consumers": [
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT_PR126_NOT_MAIN",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "STORAGE_POLICY"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "DRAFT_ONLY_NOT_INSTALLED"
+    },
+    {
+      "id": "TOP20_CONTRACT",
+      "kind": "EVIDENCE_SCHEMA",
+      "repo": "Emaren/VPSSentry",
+      "path": "ops/storage-top20-evidence-contract-v1.json",
+      "owner": "WE1",
+      "producer": "GOVERNOR_PR126",
+      "consumers": [
+        "WE2",
+        "WE3",
+        "WE4"
+      ],
+      "source_location": "GIT_PR126_NOT_MAIN",
+      "runtime_surface": null,
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "GOVERNOR_V1"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "DRAFT_ONLY_NOT_SOURCE_SIGNED"
+    },
+    {
+      "id": "HEL1_HOG_CENSUS",
+      "kind": "SCAN_SOURCE",
+      "repo": "Emaren/VPSSentry",
+      "path": "scripts/hel1_bounded_hog_census.py",
+      "owner": "WE2",
+      "producer": "HOG_SOURCE_PR125",
+      "consumers": [
+        "WE1",
+        "WE3"
+      ],
+      "source_location": "GIT_PR125_NOT_MAIN",
+      "runtime_surface": "HEL1_ROOT_AND_DATA",
+      "symlink_to": null,
+      "symlink_destinations": [],
+      "dependencies": [
+        "TOP20_CONTRACT"
+      ],
+      "retention": "PROTECTED_SOURCE",
+      "recovery_evidence": null,
+      "admission": "DRAFT_ONLY_NOT_RECEIVER_ADMITTED"
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "WORKSPACE_OS_RUNTIME_SOURCE",
+      "source": "UNKNOWN_NOT_VERIFIED_IN_MAIN",
+      "needed": "ORIGINAL_ADMITTED_SOURCE_PATH_AND_CONSUMERS"
+    },
+    {
+      "id": "INTEL_RECEIVER_LIVE_RECEIPT",
+      "source": "UNKNOWN_NOT_ATTESTED_IN_THIS_GRAPH",
+      "needed": "ORIGINAL_WE4_SOURCE_AND_INDEPENDENT_RESTORE_PROOF"
+    }
+  ],
+  "terms": [
+    {
+      "term": "GROSS_ALLOCATED",
+      "definition": "st_blocks or source-equivalent allocation; sums may overlap, never equal reclaim by default"
+    },
+    {
+      "term": "UNIQUE_EXCLUSIVE",
+      "definition": "Allocated extents proven nonoverlapping across categories; unknown until original inode/clone proof"
+    },
+    {
+      "term": "PHYSICAL_RECLAIM",
+      "definition": "Native same-filesystem available-space delta after authorized completed operation; not gross directory sizes"
+    },
+    {
+      "term": "HOT_SCAN",
+      "definition": "Capacity and cached receipt metadata only, no source traversal or new signatures"
+    },
+    {
+      "term": "INCREMENTAL_SCAN",
+      "definition": "Revalidate bounded registered source identities and rehash only changed source files"
+    },
+    {
+      "term": "DEEP_SCAN",
+      "definition": "Bounded explicit reason-driven hash investigation; never an unrestricted whole-disk crawler"
+    },
+    {
+      "term": "COPY_ONLY",
+      "definition": "Durable verified recipient object while original source is preserved; not retirement"
+    },
+    {
+      "term": "RETIRE",
+      "definition": "Different signed one-use owner action requiring independent restored proof, original rollback guards and root nonce ledger"
+    },
+    {
+      "term": "UNKNOWN",
+      "definition": "Missing, stale, overlapping or unsigned evidence; not zero, passed or reusable"
+    },
+    {
+      "term": "L4",
+      "definition": "Original human-only retirement classification; never inferred from lower-level maintenance"
+    },
+    {
+      "term": "L5",
+      "definition": "Never-delete protected original or original legal/financial/custody material"
+    },
+    {
+      "term": "T10",
+      "definition": "Original source/BUILD exact deployment acceptance with proven rollback and restoration, not PR merge"
+    }
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "schema": "aoe2war.scan-os.maturity-rubric.v1",
+  "authority": "MEASURED_LOCAL_LOWER_BOUND_NOT_PRODUCTION_CERTIFICATION",
+  "scoring": {
+    "dimensions": 7,
+    "criteria_per_dimension": 5,
+    "weight_per_criterion": 20,
+    "max_dimension_score": 100,
+    "statuses": [
+      "LOCAL_PASS",
+      "VERIFIED_PASS",
+      "VERIFIED_FAIL",
+      "UNKNOWN"
+    ],
+    "missing": "UNKNOWN_NOT_ZERO_OR_PASS",
+    "score_interpretation": "lower_bound_of_tested_evidence_and_upper_bound_of_all_unknowns",
+    "production_certified_total_requires": "ORIGINAL_SIGNED_SOURCES_FOR_EVERY_CRITICAL_CRITERION",
+    "subjective_central_estimates": "SEPARATE_NOT_USED",
+    "no_unverified_boolean_to_score": true,
+    "no_fabricated_percentile": true
+  },
+  "dimensions": [
+    {
+      "id": "scanning",
+      "gates": [
+        {
+          "id": "S1",
+          "description": "All HOT, INCREMENTAL and explicit DEEP measured against same original source scope",
+          "evidence": "LOCAL_PROFILE_TRIAD",
+          "weight": 20
+        },
+        {
+          "id": "S2",
+          "description": "At least one unchanged source digest reused without full reread",
+          "evidence": "LOCAL_INCREMENTAL_REUSE",
+          "weight": 20
+        },
+        {
+          "id": "S3",
+          "description": "DEEP bounded by original source catalog and explicit reason",
+          "evidence": "LOCAL_BOUNDED_DEEP",
+          "weight": 20
+        },
+        {
+          "id": "S4",
+          "description": "At least five native independent observations per profile with p50 and p95",
+          "evidence": "LOCAL_STATISTICAL_SAMPLE",
+          "weight": 20
+        },
+        {
+          "id": "S5",
+          "description": "Independent reviewed false-positive rate, missing-source and false-negative audits",
+          "evidence": "INDEPENDENT_FP_REVIEW",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "gates": [
+        {
+          "id": "ST1",
+          "description": "Current signed native capacity across all four surfaces",
+          "evidence": "FOUR_SURFACE_SIGNED_CAPACITY",
+          "weight": 20
+        },
+        {
+          "id": "ST2",
+          "description": "Each surface top20 includes original source and nonoverlapping attribution",
+          "evidence": "SIGNED_TOP20",
+          "weight": 20
+        },
+        {
+          "id": "ST3",
+          "description": "At least ninety percent native used disjoint uniquely proven or honest residual",
+          "evidence": "UNIQUE_COVERAGE",
+          "weight": 20
+        },
+        {
+          "id": "ST4",
+          "description": "Original capacity budgets enforced without bypassing operating hard stops",
+          "evidence": "ENFORCED_BUDGET",
+          "weight": 20
+        },
+        {
+          "id": "ST5",
+          "description": "Physical reclaim claimed only by same filesystem native pre/post signed receipt",
+          "evidence": "PHYSICAL_RECLAIM_RECEIPT",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "housekeeping",
+      "gates": [
+        {
+          "id": "H1",
+          "description": "Verified eligible L1 source class with live FD exclusion",
+          "evidence": "L1_ELIGIBILITY",
+          "weight": 20
+        },
+        {
+          "id": "H2",
+          "description": "One legitimate controller L1 cleanup with actual receipt",
+          "evidence": "L1_CONTROLLER",
+          "weight": 20
+        },
+        {
+          "id": "H3",
+          "description": "No re-accumulation after two natural cycles",
+          "evidence": "TWO_NATURAL_CYCLES",
+          "weight": 20
+        },
+        {
+          "id": "H4",
+          "description": "Actual byte delta measured and snapshots accounted",
+          "evidence": "NATIVE_CAUSAL_BYTES",
+          "weight": 20
+        },
+        {
+          "id": "H5",
+          "description": "Protected personal/source/financial material excluded",
+          "evidence": "EXCLUSION_PROOF",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "pruning",
+      "gates": [
+        {
+          "id": "P1",
+          "description": "Installed cryptographically signed original owner class and purpose",
+          "evidence": "SIGNED_CAPABILITY",
+          "weight": 20
+        },
+        {
+          "id": "P2",
+          "description": "Root durable one-use nonce and revocation denial",
+          "evidence": "NONCE_LEDGER",
+          "weight": 20
+        },
+        {
+          "id": "P3",
+          "description": "Separate COPY and RETIRE original verifier boundary",
+          "evidence": "SEPARATE_PURPOSE",
+          "weight": 20
+        },
+        {
+          "id": "P4",
+          "description": "Original highest historical L4 human / L5 never-delete tested",
+          "evidence": "L4_L5_DENIAL",
+          "weight": 20
+        },
+        {
+          "id": "P5",
+          "description": "A legitimate original retirement with native before/after and rollback health",
+          "evidence": "REAL_ORIGINAL_RETIRE",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "recovery",
+      "gates": [
+        {
+          "id": "R1",
+          "description": "Ciphertext source and destination digest with durable ACK",
+          "evidence": "DURABLE_ACK",
+          "weight": 20
+        },
+        {
+          "id": "R2",
+          "description": "Independent full content reread verified",
+          "evidence": "FULL_REREAD",
+          "weight": 20
+        },
+        {
+          "id": "R3",
+          "description": "Isolated restoration against exact source object and inventory",
+          "evidence": "ISOLATED_RESTORE",
+          "weight": 20
+        },
+        {
+          "id": "R4",
+          "description": "Original remains until distinct verified signed retirement",
+          "evidence": "COPY_NOT_RETIRE",
+          "weight": 20
+        },
+        {
+          "id": "R5",
+          "description": "Recovery fire drill verified across active and rollback cohorts",
+          "evidence": "LIVE_RECOVERY_DRILL",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "gates": [
+        {
+          "id": "O1",
+          "description": "Single structural graph is valid and cycle-free",
+          "evidence": "LOCAL_GRAPH_VALID",
+          "weight": 20
+        },
+        {
+          "id": "O2",
+          "description": "Every original Scan OS group maps once to canonical producer",
+          "evidence": "LOCAL_ORIGINAL_PRODUCERS",
+          "weight": 20
+        },
+        {
+          "id": "O3",
+          "description": "Eight requested views all derive deterministically from one graph",
+          "evidence": "LOCAL_EIGHT_VIEWS",
+          "weight": 20
+        },
+        {
+          "id": "O4",
+          "description": "Every important physical object has actual verified source, symlink and recovery evidence",
+          "evidence": "INDEPENDENT_COMPLETE_PROVENANCE",
+          "weight": 20
+        },
+        {
+          "id": "O5",
+          "description": "No unresolved organizational object, orphan ref or cross-OS conflict",
+          "evidence": "NO_UNRESOLVED",
+          "weight": 20
+        }
+      ]
+    },
+    {
+      "id": "production_usability",
+      "gates": [
+        {
+          "id": "U1",
+          "description": "Storage Atlas exact production T10 and build source verified",
+          "evidence": "ATLAS_T10",
+          "weight": 20
+        },
+        {
+          "id": "U2",
+          "description": "Actual Emaren Incognito and Scribe denial independently accepted",
+          "evidence": "REAL_BROWSER_SESSIONS",
+          "weight": 20
+        },
+        {
+          "id": "U3",
+          "description": "Basic Advanced Extreme have same admitted facts and blockers",
+          "evidence": "CROSS_VIEW_TRUTH",
+          "weight": 20
+        },
+        {
+          "id": "U4",
+          "description": "Observed production response and CPU/I/O performance meets accepted budget",
+          "evidence": "LIVE_PERFORMANCE",
+          "weight": 20
+        },
+        {
+          "id": "U5",
+          "description": "One-login owner capability accepts once and denies replay without SHA transcription",
+          "evidence": "OWNER_EXPERIENCE",
+          "weight": 20
+        }
+      ]
+    }
+  ],
+  "proof_classes": {
+    "LOCAL_PROFILE_TRIAD": "source-origin bounded Scan OS local owner receipt, no service attestation",
+    "LOCAL_INCREMENTAL_REUSE": "same source metadata and digest reused, no host crypto admission",
+    "LOCAL_BOUNDED_DEEP": "explicit reason and exact local source producer cap",
+    "LOCAL_STATISTICAL_SAMPLE": "p50 and p95 from >=5 independent runs/profile",
+    "LOCAL_GRAPH_VALID": "source-owned graph structural checker",
+    "LOCAL_ORIGINAL_PRODUCERS": "original 8 scan IDs same 6 deduped producer groups",
+    "LOCAL_EIGHT_VIEWS": "same validated graph materializes 8 views",
+    "OTHER": "UNKNOWN until independently checked native/protected/original signed receipts"
+  }
+}
