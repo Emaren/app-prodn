@@ -140,6 +140,28 @@ EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
     "docs/document-registry.json",
 })
 
+# WE1 one exact additional original Factory BIRTH source: post-Atlas candidate.
+# Preserve prior F1, main, and old T10 frozen SHA pins independently.
+# Source admission does not grant a Factory release, ROOT mutation or L4.
+EXACT_WE1_BIRTH_BRANCH = "we1/factory-birth-after-atlas-20261122"
+EXACT_WE1_BIRTH_BASE = "f833d7e633cee4b36f1427fa45d76081fa0796ef"
+EXACT_WE1_BIRTH_PINS = {
+    "scripts/aoe2_product_release.py":
+        "573e0b34c6751e9cd363d0536b7c25b8176ab0d35f936daf68cf0c732844b396",
+    "scripts/aoe2_factory_retention_post_t10.py":
+        "85f22c2472b5532981127d9540282eca3ce885d0fcbcaff35554acd3e996d7cd",
+    "tests/test_factory_birth_original.py":
+        "c9c5962dd1394afdb72cd48b25c3eeb97860e82e1f93cbfff6b93209cfbd582c",
+    "tests/test_product_boundary_guard.py":
+        "aa30ee677cfd6006c8875c452c7fbddb8cb60c0cc60783b36a946c64b72012a8",
+}
+EXACT_WE1_BIRTH_CHANGED = frozenset(EXACT_WE1_BIRTH_PINS) | {
+    "scripts/product_boundary_guard.py",
+}
+EXACT_WE1_BIRTH_OPTIONAL_DOCSV2 = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -248,7 +270,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/factory-birth-after-atlas-20261122|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -347,6 +369,12 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if (base == EXACT_WE1_BIRTH_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE1_BIRTH_BRANCH
+            and raw in ("scripts/aoe2_product_release.py",
+                        "scripts/aoe2_factory_retention_post_t10.py")):
+        _exact_we1_birth_blob(checkout, raw)
+        return raw
     if raw == "scripts/scan_os.py":
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_SCAN_OS_BRANCH:
             raise BoundaryHold("C_SCAN_WRONG_BRANCH")
@@ -876,6 +904,61 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+def _exact_we1_birth_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_WE1_BIRTH_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE1_BIRTH_UNREVIEWED_SOURCE")
+    path = checkout
+    for item in relative_path(raw).parts:
+        path = path / item
+        if path.is_symlink():
+            raise BoundaryHold("WE1_BIRTH_SYMLINK_ANCESTOR")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 120000 or
+            stat.S_IMODE(st.st_mode) & 0o022 or
+            st.st_dev != checkout.stat().st_dev):
+        raise BoundaryHold("WE1_BIRTH_SOURCE_CUSTODY")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns) != (
+                st.st_dev, st.st_ino, st.st_size,
+                st.st_mtime_ns, st.st_ctime_ns):
+            raise BoundaryHold("WE1_BIRTH_SOURCE_READ_RACE")
+        content = os.read(fd, 120001)
+        after = os.fstat(fd)
+        if (after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns) != (
+                before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns):
+            raise BoundaryHold("WE1_BIRTH_SOURCE_CHANGED_DURING_READ")
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        raise BoundaryHold("WE1_BIRTH_SHA256_DRIFT")
+
+
+def check_exact_we1_factory_birth_source(
+        checkout: Path, repo: str, branch: str,
+        base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE1_BIRTH_BRANCH:
+        raise BoundaryHold("WE1_BIRTH_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("WE1_BIRTH_SOURCE_REPO")
+    if base != EXACT_WE1_BIRTH_BASE:
+        raise BoundaryHold("WE1_BIRTH_SOURCE_BASE")
+    files = set(changes)
+    if (len(changes) != len(files) or
+            not EXACT_WE1_BIRTH_CHANGED.issubset(files) or
+            not files.issubset(EXACT_WE1_BIRTH_CHANGED |
+                               EXACT_WE1_BIRTH_OPTIONAL_DOCSV2)):
+        raise BoundaryHold("WE1_BIRTH_CHANGED_FILE_SET")
+    for raw in EXACT_WE1_BIRTH_PINS:
+        _exact_we1_birth_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -903,6 +986,9 @@ def main() -> int:
                 checkout,repo_name,branch,base,receipt["changed_files"])
         if branch == EXACT_C_SCAN_OS_BRANCH:
             check_exact_c_scan_os_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_WE1_BIRTH_BRANCH:
+            check_exact_we1_factory_birth_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
