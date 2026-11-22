@@ -233,6 +233,7 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   ];
 
   let queryTake: number | undefined;
+  let queryOrderBy: unknown;
   let matchupQueryCount = 0;
   let generationRevision = 1;
   const prisma = {
@@ -248,10 +249,12 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
       findMany: async (
         options: {
           take?: number;
+          orderBy?: unknown;
         }
       ) => {
         matchupQueryCount += 1;
         queryTake = options.take;
+        queryOrderBy = options.orderBy;
         return corpus;
       },
     },
@@ -318,6 +321,11 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   assert.equal(
     queryTake,
     undefined
+  );
+  assert.equal(
+    queryOrderBy,
+    undefined,
+    "complete-corpus reads must not perform a redundant wide-row PostgreSQL ORDER BY"
   );
   assert.equal(
     matchupQueryCount,
