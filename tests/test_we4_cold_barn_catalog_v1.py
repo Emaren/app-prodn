@@ -405,6 +405,86 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(x["status"],"HOLD_CURRENT_OR_HOT_PIN_SOURCE_CONFLICT")
         self.assertFalse(x["apply"])
 
+
+    def test_explicit_root_nomination_exact_owner_target_stays_hold_without_admitted_pins(self):
+        a,b,r=fixtures()
+        r["rows"].append({"generation":"444444444444","source_sha":"4"*40,
+             "build_id":"EXACT-BUILD-01","device":2049,"inode":4493824,
+             "allocated_bytes":1584885760,"allocation_status":"MEASURED_SELECTED_TREE",
+             "mtime_ns":202611220001})
+        for x in r["rows"][:3]:
+            x.update({"device":2049,"inode":700+len(x["generation"]),
+                      "allocation_status":"MEASURED_SELECTED_TREE"})
+        r.update(count=4,measured_count=4,mount_dev=2049)
+        docket={"schema":"aoe2war.we4.first-generation-copy-admission-docket.v1",
+          "target":{"host":"HEL1","fs":"/dev/sda1",
+          "generation":"444444444444","source_sha":"4"*40,
+          "build_id":"EXACT-BUILD-01","root_dev":2049,"root_inode":4493824,
+          "fs_uuid":"64f6fb02-4fed-4836-a33b-86e8993afdfa",
+          "file_content_manifest_sha256":"e"*64,"regular_files_hashed":45036,
+          "entries":51438,"gross_allocated_bytes":1584885760}}
+        pinset={"schema":"aoe2war.we2.factory-current-two-hot-source-dossier.v1",
+          "active":r["rows"][0],"hot_rollback_candidates":r["rows"][1:3],
+          "hot_pinset_admitted":False,"owner_admission":"PENDING_EXACT_DECISION"}
+        result=mod.review_explicit_hel1_owner_copy_nomination(r,docket,pinset,
+                     owner_selected_generation="444444444444")
+        self.assertEqual(result["status"],"HOLD_CURRENT_TWO_HOT_OWNER_ADMISSION")
+        self.assertEqual(result["candidate"]["generation"],"444444444444")
+        self.assertEqual(result["candidate"]["root_inode"],4493824)
+        self.assertFalse(result["apply"])
+        self.assertFalse(result["automatic_oldest_candidate_override"])
+        self.assertEqual(result["new_copies"],0)
+        self.assertEqual(result["new_deletions"],0)
+        # No field in an unverified dossier can constitute signature authority.
+        pinset["hot_pinset_admitted"]=True;pinset["owner_admission"]="ADMITTED"
+        accepted=mod.review_explicit_hel1_owner_copy_nomination(r,docket,pinset,
+                     owner_selected_generation="444444444444")
+        self.assertEqual(accepted["status"],"HOLD_EXTERNAL_OWNER_SIGNATURE_AND_COPY_CLASS_VERIFIER")
+        self.assertFalse(accepted["one_use_copy_permission_validated"])
+        return r,docket,pinset
+
+    def test_explicit_root_nomination_never_substitutes_oldest(self):
+        r,docket,pinset=self.test_explicit_root_nomination_exact_owner_target_stays_hold_without_admitted_pins()
+        # The source inventory also contains other generations; none may become owner target.
+        result=mod.review_explicit_hel1_owner_copy_nomination(r,docket,pinset,
+                     owner_selected_generation="aaaaaaaaaaaa")
+        self.assertEqual(result["status"],"HOLD_EXACT_ROOT_IDENTITY_MISMATCH")
+        self.assertIsNone(result["candidate"])
+        self.assertFalse(result["apply"])
+
+    def test_explicit_root_nomination_stale_uuid_inode_source_and_manifest_fail_closed(self):
+        r,docket,pinset=self.test_explicit_root_nomination_exact_owner_target_stays_hold_without_admitted_pins()
+        for key,value in [
+          ("fs_uuid","MISSING"),("root_inode",4493825),
+          ("source_sha","f"*40),("file_content_manifest_sha256","invalid"),
+          ("gross_allocated_bytes",1584885761),("build_id","OTHER-BUILD-02")]:
+            modified={"schema":docket["schema"],"target":dict(docket["target"])}
+            modified["target"][key]=value
+            q=mod.review_explicit_hel1_owner_copy_nomination(r,modified,pinset,
+                     owner_selected_generation="444444444444")
+            self.assertTrue(q["status"].startswith("HOLD_"))
+            self.assertFalse(q["apply"])
+            self.assertEqual(q["new_copies"],0)
+
+    def test_explicit_root_nomination_missing_or_conflicting_hot_evidence_holds(self):
+        r,docket,pinset=self.test_explicit_root_nomination_exact_owner_target_stays_hold_without_admitted_pins()
+        q=mod.review_explicit_hel1_owner_copy_nomination(r,docket,{},
+                     owner_selected_generation="444444444444")
+        self.assertEqual(q["status"],"HOLD_WE2_NATIVE_TWO_HOT_DOSSIER_MISSING")
+        bad=dict(pinset,hot_rollback_candidates=[dict(pinset["hot_rollback_candidates"][0],
+                         generation="444444444444"),pinset["hot_rollback_candidates"][1]])
+        q=mod.review_explicit_hel1_owner_copy_nomination(r,docket,bad,
+                     owner_selected_generation="444444444444")
+        self.assertEqual(q["status"],"HOLD_CURRENT_OR_HOT_PIN_SOURCE_CONFLICT")
+
+    def test_explicit_root_nomination_invalid_inventory_has_no_fallback(self):
+        r,docket,pinset=self.test_explicit_root_nomination_exact_owner_target_stays_hold_without_admitted_pins()
+        r["count"]=5
+        q=mod.review_explicit_hel1_owner_copy_nomination(r,docket,pinset,
+                    owner_selected_generation="444444444444")
+        self.assertEqual(q["status"],"HOLD_INCOMPLETE_SOURCE_INVENTORY")
+        self.assertIsNone(q["candidate"])
+
     def test_original_preserved_tar_stage_remains_keep(self):
         good={"schema":"aoe2war.we2.factory-historical-transport-retention-receipt.v1",
               "items":[{"sourceRemovedAfterVerifiedPreservation":True,"sha256":"a"*64}]}
