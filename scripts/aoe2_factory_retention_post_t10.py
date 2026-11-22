@@ -136,6 +136,68 @@ def plan_only_after_exact_t10(*, source_sha: str, build_id: str,
     return report
 
 
+
+# This is a bounded read-only post-T10 candidate census.  The three actual
+# HOT identities must still be admitted from original Factory T8/T9/T10 and
+# the owner ledger; a directory name or apparent age is NEVER retention
+# authority. This function cannot copy, move, quarantine, or retire.
+RUNTIME_PREFIX = "aoe2war-web-prod-"
+RUNTIME_NAME = re.compile(r"aoe2war-web-prod-[0-9a-f]{12}\Z")
+ANCILLARY_PREFIXES = frozenset(("f50ead889c61", "da0bee282e52"))
+MAX_RUNTIME_CENSUS = 128
+
+def plan_three_hot_cold_review(*, runtime_names: list[str],
+                               current_source_sha: str,
+                               previous_source_sha: str) -> dict:
+    if not (type(runtime_names) is list and
+            1 <= len(runtime_names) <= MAX_RUNTIME_CENSUS and
+            all(type(name) is str and RUNTIME_NAME.fullmatch(name)
+                for name in runtime_names) and
+            len(set(runtime_names)) == len(runtime_names)):
+        raise RetentionHold("THREE_HOT_RUNTIME_INVENTORY_INVALID")
+    if not (type(current_source_sha) is str and HEX40.fullmatch(current_source_sha)
+            and type(previous_source_sha) is str
+            and HEX40.fullmatch(previous_source_sha)
+            and previous_source_sha != current_source_sha):
+        raise RetentionHold("THREE_HOT_SOURCE_ANCESTRY_INVALID")
+    names = sorted(runtime_names)
+    current = RUNTIME_PREFIX + current_source_sha[:12]
+    prior = RUNTIME_PREFIX + previous_source_sha[:12]
+    if current not in names or prior not in names:
+        raise RetentionHold("THREE_HOT_REQUIRED_RUNTIME_MISSING")
+    protected = sorted(name for name in names
+                       if name[len(RUNTIME_PREFIX):] in ANCILLARY_PREFIXES)
+    website = sorted(set(names) - set(protected))
+    # Being outside CURRENT/PREVIOUS does not imply old, dead or recoverable.
+    # The independent third-hot owner admission remains a separate proof.
+    candidate_extra_count = max(0, len(website) - 3)
+    result = {
+        "schema": "aoe2war.factory.three-hot-cold-review.v1",
+        "current_source_sha": current_source_sha,
+        "previous_source_sha": previous_source_sha,
+        "runtime_names_sha256": sha(canonical(names)),
+        "all_runtime_directory_count": len(names),
+        "independent_ancillary_keep": protected,
+        "website_generation_candidates": len(website),
+        "website_hot_limit": 3,
+        "candidate_over_three": candidate_extra_count,
+        "cold_review_required": candidate_extra_count > 0,
+        "third_hot_owner_ledger_admitted": False,
+        "third_hot_identity": None,
+        "unclassified_website_candidates": website,
+        "review_state": ("COLD_REVIEW_REQUIRED_HOLD_OWNER_PINSET_AND_RESTORE"
+                         if candidate_extra_count > 0 else
+                         "HOLD_THIRD_HOT_OWNER_LEDGER_ADMISSION"),
+        "retirement_authorized": False,
+        "copy_authorized": False,
+        "may_remove_source": False,
+        "run_automated_retirement": False,
+        "next_action": "READ_ONLY_SOURCE_REVIEW_THEN_INTEL_COPY_RESTORE_THEN_FRESH_ONE_USE_L4",
+    }
+    result["canonical_sha256"] = sha(canonical(result))
+    return result
+
+
 # Additive, reviewed original Factory birth registry; source-recording only.
 # This certificate inherits the existing T5/T8/T10 controller invocation.
 # The original Factory append-only release ledger and one-shot seal_once own

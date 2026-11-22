@@ -1775,8 +1775,26 @@ def record_post_t10_retention_intent(approval, release_work):
             ledger_raw=values["release-events-v1.jsonl"],
             t8_raw=values["public-evidence-T8-v1.json"],
         )
+        # Read-only original ROOT inventory, bounded and validated. No
+        # automatic pruning, even if the observed count exceeds three.
+        from aoe2_factory_retention_post_t10 import plan_three_hot_cold_review
+        census = ssh(
+            "find /var/lib -mindepth 1 -maxdepth 1 -type d "
+            "-name 'aoe2war-web-prod-*' -printf '%f\\n' "
+            "| LC_ALL=C sort", root=True, timeout=20,
+        ).splitlines()
+        retention_review = plan_three_hot_cold_review(
+            runtime_names=census,
+            current_source_sha=approval["sourceSha"],
+            previous_source_sha=intent["t8_verified_predecessor"]["source_sha"],
+        )
+        intent["three_hot_cold_review"] = retention_review
+        intent["canonical_sha256"] = hashlib.sha256(
+            canonical({k: v for k, v in intent.items()
+                       if k != "canonical_sha256"})
+        ).hexdigest()
         seal_once(release_work / "post-t10-retention-intent-v1.json",
-                  canonical(intent) + b"\\n")
+                  canonical(intent) + b"\n")
         print(json.dumps({
             "phase": "post-T10-retention", "state": "plan-only",
             "sourceSha": approval["sourceSha"], "buildId": approval["buildId"],

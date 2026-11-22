@@ -99,3 +99,130 @@ class PostT10Retention(unittest.TestCase):
         for banned in ("os.unlink(","os.remove(","shutil.rmtree(","subprocess.","ssh ","--apply","systemctl restart","pkeyutl -sign"):
             self.assertNotIn(banned,text)
 if __name__=="__main__":unittest.main()
+
+
+
+class ThreeHotFactoryIntegration(unittest.TestCase):
+    def test_original_post_t10_seals_bounded_over_three_review(self):
+        from unittest import mock
+        import tempfile
+        import aoe2_product_release as F
+        with tempfile.TemporaryDirectory() as td:
+            work=Path(td)
+            fields=inputs()
+            for name,key in (
+                ("release-seal-v1.json","seal_raw"),
+                ("release-events-v1.jsonl","ledger_raw"),
+                ("public-evidence-T8-v1.json","t8_raw")):
+                (work/name).write_bytes(fields[key])
+            census="\n".join([
+                "aoe2war-web-prod-"+CURRENT[:12],
+                "aoe2war-web-prod-"+PRIOR[:12],
+                "aoe2war-web-prod-50b943a44a2e",
+                "aoe2war-web-prod-f50ead889c61",
+                "aoe2war-web-prod-da0bee282e52",
+                "aoe2war-web-prod-f9d82fe9169d"])+"\n"
+            with mock.patch.object(F.transport,"checked_file",
+                                   side_effect=lambda path: path.lstat()), \
+                 mock.patch.object(F,"ssh",return_value=census) as remote:
+                F.record_post_t10_retention_intent(
+                    {"sourceSha":CURRENT,"buildId":BUILD},work)
+            self.assertEqual(remote.call_count,1)
+            self.assertTrue(remote.call_args.kwargs["root"])
+            output=json.loads((work/"post-t10-retention-intent-v1.json").read_text())
+            review=output["three_hot_cold_review"]
+            self.assertEqual(review["all_runtime_directory_count"],6)
+            self.assertEqual(review["website_generation_candidates"],4)
+            self.assertTrue(review["cold_review_required"])
+            self.assertFalse(review["retirement_authorized"])
+            self.assertFalse(output["retirement_authorized"])
+            self.assertFalse(output["delete_or_prune_allowed"])
+
+    def test_remote_untrusted_inventory_never_creates_permit(self):
+        from unittest import mock
+        import tempfile
+        import aoe2_product_release as F
+        with tempfile.TemporaryDirectory() as td:
+            work=Path(td)
+            fields=inputs()
+            for name,key in (
+                ("release-seal-v1.json","seal_raw"),
+                ("release-events-v1.jsonl","ledger_raw"),
+                ("public-evidence-T8-v1.json","t8_raw")):
+                (work/name).write_bytes(fields[key])
+            with mock.patch.object(F.transport,"checked_file",
+                                   side_effect=lambda path: path.lstat()), \
+                 mock.patch.object(F,"ssh",return_value="../secrets\n"):
+                F.record_post_t10_retention_intent(
+                    {"sourceSha":CURRENT,"buildId":BUILD},work)
+            self.assertFalse((work/"post-t10-retention-intent-v1.json").exists())
+
+class ThreeHotColdReview(unittest.TestCase):
+    def setUp(self):
+        self.current = CURRENT
+        self.previous = PRIOR
+        self.names = [
+            "aoe2war-web-prod-" + CURRENT[:12],
+            "aoe2war-web-prod-" + PRIOR[:12],
+            "aoe2war-web-prod-50b943a44a2e",
+            "aoe2war-web-prod-f50ead889c61",
+            "aoe2war-web-prod-da0bee282e52",
+        ]
+
+    def review(self, names=None):
+        return R.plan_three_hot_cold_review(
+            runtime_names=self.names if names is None else names,
+            current_source_sha=self.current,
+            previous_source_sha=self.previous,
+        )
+
+    def test_original_three_plus_two_ancillary_not_age_off(self):
+        x = self.review()
+        self.assertEqual(x["website_generation_candidates"], 3)
+        self.assertEqual(x["all_runtime_directory_count"], 5)
+        self.assertEqual(len(x["independent_ancillary_keep"]), 2)
+        self.assertFalse(x["cold_review_required"])
+        self.assertFalse(x["third_hot_owner_ledger_admitted"])
+        self.assertIsNone(x["third_hot_identity"])
+        self.assertFalse(x["retirement_authorized"])
+        self.assertFalse(x["may_remove_source"])
+
+    def test_fourth_generation_triggers_cold_review_only(self):
+        x = self.review(self.names+["aoe2war-web-prod-f9d82fe9169d"])
+        self.assertTrue(x["cold_review_required"])
+        self.assertEqual(x["candidate_over_three"], 1)
+        self.assertIn("COLD_REVIEW_REQUIRED_HOLD", x["review_state"])
+        self.assertFalse(x["copy_authorized"])
+        self.assertFalse(x["retirement_authorized"])
+        self.assertFalse(x["run_automated_retirement"])
+
+    def test_missing_parent_or_active_holds(self):
+        for missing in (self.current[:12], self.previous[:12]):
+            with self.subTest(missing=missing), self.assertRaisesRegex(
+                R.RetentionHold,"THREE_HOT_REQUIRED_RUNTIME_MISSING"
+            ):
+                self.review([n for n in self.names if not n.endswith(missing)])
+
+    def test_bad_paths_duplicates_and_unbounded_inventory_hold(self):
+        for names in ([self.names[0]]*2, self.names+["../private"],
+                      self.names+["aoe2war-web-prod-QQQQQQQQQQQQ"],
+                      self.names*30, []):
+            with self.subTest(names=len(names)), self.assertRaisesRegex(
+                R.RetentionHold,"THREE_HOT_RUNTIME_INVENTORY_INVALID"
+            ):
+                self.review(names)
+
+    def test_deterministic_and_not_owner_retire_authority(self):
+        a=self.review(self.names+["aoe2war-web-prod-f9d82fe9169d"])
+        b=self.review(list(reversed(self.names))+
+                      ["aoe2war-web-prod-f9d82fe9169d"])
+        self.assertEqual(a["canonical_sha256"],b["canonical_sha256"])
+        self.assertFalse(a["may_remove_source"])
+        self.assertEqual(len(a["canonical_sha256"]),64)
+
+    def test_original_factory_calls_readonly_collector_after_t10(self):
+        text=(Path(R.__file__).parent/"aoe2_product_release.py").read_text()
+        self.assertIn("plan_three_hot_cold_review(",text)
+        self.assertIn("find /var/lib -mindepth 1 -maxdepth 1 -type d",text)
+        self.assertIn("root=True, timeout=20",text)
+        self.assertIn("retirementAuthorized",text)

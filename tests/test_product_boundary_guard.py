@@ -176,7 +176,11 @@ class BoundaryTests(unittest.TestCase):
                      "f833d7e633cee4b36f1427fa45d76081fa0796ef:"+relative],
                     capture_output=True,check=True,timeout=25)
                 return result.stdout
-            return (source/relative).read_bytes()
+            result=subprocess.run(
+                ["git","-C",str(source),"show",
+                 "4ae531a18198f9b438a43221f6e5f5d4c911fac1:"+relative],
+                capture_output=True,check=True,timeout=25)
+            return result.stdout
         for relative,digest in pins.items():
             self.assertEqual(hashlib.sha256(reviewed_preimage(relative)).hexdigest(),digest)
         changed=sorted(expected_changes)
@@ -825,14 +829,20 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(policy.EXACT_WE2_FACTORY_RETENTION_PINS[
                          "scripts/aoe2_factory_retention_post_t10.py"],
                          "81eeea068721bf751d11366b13d6c75f876bce72d3629e58cde6b3f31151ca12")
+        def original_birth_blob(name):
+            result=subprocess.run(
+                ["git","-C",str(root),"show",
+                 "4ae531a18198f9b438a43221f6e5f5d4c911fac1:"+name],
+                capture_output=True,check=True,timeout=25)
+            return result.stdout
         for name,h in pins.items():
-            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),h)
+            self.assertEqual(hashlib.sha256(original_birth_blob(name)).hexdigest(),h)
         with tempfile.TemporaryDirectory() as td:
             q=Path(td)
             for name in pins:
                 p=q/name
                 p.parent.mkdir(parents=True,exist_ok=True)
-                p.write_bytes((root/name).read_bytes())
+                p.write_bytes(original_birth_blob(name))
             changes=sorted(policy.EXACT_WE1_BIRTH_CHANGED)
             self.assertIsNone(policy.check_exact_we1_factory_birth_source(
                 q,"Emaren/app-prodn",bp,base,changes))
@@ -859,6 +869,48 @@ class BoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(policy.BoundaryHold,"WE1_BIRTH_SHA256"):
                 policy.check_exact_we1_factory_birth_source(
                     q,"Emaren/app-prodn",bp,base,changes)
+
+
+    def test_three_hot_source_exact_admission_and_previous_birth_pins(self):
+        import hashlib
+        root=GUARD.parent.parent
+        branch=policy.EXACT_WE1_THREE_HOT_BRANCH
+        base=policy.EXACT_WE1_THREE_HOT_BASE
+        self.assertEqual(base,"4ae531a18198f9b438a43221f6e5f5d4c911fac1")
+        self.assertIsNotNone(policy.BRANCH.fullmatch(branch))
+        self.assertIsNone(policy.BRANCH.fullmatch("we1/three-hot-arbitrary"))
+        pins=policy.EXACT_WE1_THREE_HOT_PINS
+        self.assertEqual(set(pins),{
+            "scripts/aoe2_product_release.py",
+            "scripts/aoe2_factory_retention_post_t10.py",
+            "tests/test_factory_retention_post_t10.py"})
+        for name,digest in pins.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),digest)
+        with tempfile.TemporaryDirectory() as temp:
+            q=Path(temp)
+            for name in pins:
+                f=q/name
+                f.parent.mkdir(parents=True,exist_ok=True)
+                f.write_bytes((root/name).read_bytes())
+            changes=sorted(policy.EXACT_WE1_THREE_HOT_CHANGED)
+            self.assertIsNone(policy.check_exact_we1_three_hot_source(
+                q,"Emaren/app-prodn",branch,base,changes))
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+                for name in pins:
+                    self.assertEqual(policy.authorize_changed_source(q,base,name),name)
+            for bad in (changes[:-1],changes+["scripts/executor-unknown.py"],
+                        changes+[changes[0]]):
+                with self.assertRaisesRegex(policy.BoundaryHold,"THREE_HOT_CHANGED_FILES"):
+                    policy.check_exact_we1_three_hot_source(
+                        q,"Emaren/app-prodn",branch,base,bad)
+            with self.assertRaisesRegex(policy.BoundaryHold,"THREE_HOT_BASE"):
+                policy.check_exact_we1_three_hot_source(
+                    q,"Emaren/app-prodn",branch,"f"*40,changes)
+            f=q/"scripts/aoe2_product_release.py"
+            f.write_bytes(f.read_bytes()+b"\n#drift\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,"THREE_HOT_SOURCE_SHA256"):
+                policy.check_exact_we1_three_hot_source(
+                    q,"Emaren/app-prodn",branch,base,changes)
 
 
 if __name__ == "__main__":
