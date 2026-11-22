@@ -10,9 +10,9 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 import aoe2_factory_retention_post_t10 as R
 
-CURRENT="9cf670724c82e29861e539c03c4d3165893da8f3"
-PRIOR="50b943a44a2e89deaee7b12acaf87d8567898b3f"
-BUILD="fvPCvEd_aFucA_X3hSfn9"
+CURRENT="890d9dcc22d081ff1c662f33c98a8da795f3d3e9"
+PRIOR="9cf670724c82e29861e539c03c4d3165893da8f3"
+BUILD="0NEGtfP0ieSzETh1JHGhE"
 def raw(x):
     return (json.dumps(x,sort_keys=True,separators=(",",":"))+"\n").encode()
 def inputs(*,current=CURRENT,previous=PRIOR):
@@ -22,7 +22,7 @@ def inputs(*,current=CURRENT,previous=PRIOR):
       "ledgerSha256":hashlib.sha256(events).hexdigest(),
       "lastEventHash":"a"*64,"summarySha256":"b"*64})
     t8=raw({"schema":"test.original.witness.v1","sourceSha":previous,
-       "buildId":"eZR1BHZQglplgTfeWp_q5"})
+       "buildId":"fvPCvEd_aFucA_X3hSfn9"})
     return {"source_sha":current,"build_id":BUILD,"seal_raw":seal,
       "ledger_raw":events,"t8_raw":t8}
 class PostT10Retention(unittest.TestCase):
@@ -45,6 +45,15 @@ class PostT10Retention(unittest.TestCase):
         self.assertEqual(x["three_cold_checkpoints"],"HOLD_INDEPENDENT_ENCRYPTED_RESTORE_PROOF_REQUIRED")
     def test_different_accepted_t10_does_not_select_4c14(self):
         x=inputs(current="c"*40)
+        self.assertIsNone(R.plan_only_after_exact_t10(**x)["first_owner_selected_cold_review"])
+    def test_wrong_rollback_build_never_nominates_4c14(self):
+        x=inputs()
+        t8=json.loads(x["t8_raw"])
+        t8["buildId"]="eZR1BHZQglplgTfeWp_q5"
+        x["t8_raw"]=raw(t8)
+        self.assertIsNone(R.plan_only_after_exact_t10(**x)["first_owner_selected_cold_review"])
+    def test_stale_9cf_current_never_nominates_4c14(self):
+        x=inputs(current="9cf670724c82e29861e539c03c4d3165893da8f3",previous="50b943a44a2e89deaee7b12acaf87d8567898b3f")
         self.assertIsNone(R.plan_only_after_exact_t10(**x)["first_owner_selected_cold_review"])
     def test_wrong_previous_not_exact_first(self):
         x=inputs(previous="d"*40)
