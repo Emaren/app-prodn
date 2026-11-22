@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b99da09d4d3f552a09d1ffc6379ff590e09412437eaceb04883aa1ff289b54cb",
+      "sha256": "0a393e30b80b5fc9d421144c2dc97b98d6b7f01e1e1bb2f9705542cbb08c8bf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2618,6 +2618,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-we3-bae-basic-advanced-extreme-20261122",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_BAE_BASIC_ADVANCED_EXTREME_20261122.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "200b8e8d4cf4175d6a07abd851defd6d903ba5f9c2200e0c8a70d765f7357f89",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Storage OS BAE \u2014 Basic / Advanced / Extreme",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-product-source-only-not-production-admission",
       "id": "aoe2war.app-prodn.we3-four-plane-storage-review-20261120",
       "owner": "aoe2war-web",
@@ -3572,8 +3594,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we1-scan-os-exact-review-20261122",
-    "commit": "61b09b02e08c7f6dbdffd59ad958b98af576e1aa"
+    "branch": "session-c/we3-bae-advanced-extreme-20261122",
+    "commit": "11b1035c8320f4b06e7f28cee6c56e7141045b17"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
