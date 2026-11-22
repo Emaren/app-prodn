@@ -227,7 +227,15 @@ async function main(){
        sourceCoverage:{accepted:0,expected:27},
        history:"BOUNDED_FIXTURE_NO_DEPLOYMENT_PROOF",events:[]})
    }));
-   await boardEntry.focus();
+   // App Router may expose two equivalent links across a streamed
+   // hydration boundary. Both MUST target the original signed-off route;
+   // select a real DOM edge, never accept a changed or arbitrary href.
+   const boardCandidates=await boardEntry.evaluateAll(nodes=>
+     nodes.map(node=>node.getAttribute("href")));
+   assert.ok(boardCandidates.length>=1&&boardCandidates.every(
+     href=>href==="/admin/central-command/job-board"),
+     "Q17 Job Exchange hydration yielded an unapproved destination");
+   await boardEntry.first().focus();
    await page.keyboard.press("Enter");
    await page.waitForURL("**/admin/central-command/job-board",{timeout:20000});
    await page.getByRole("heading",{name:/THE JOB EXCHANGE/}).waitFor({timeout:20000});
