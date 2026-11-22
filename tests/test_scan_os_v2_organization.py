@@ -27,7 +27,7 @@ import scan_os_maturity as mature
 class ScanLearningV2Tests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="scan-os-v2-fixture-")
-        base = Path(self.temp.name)
+        base = Path(self.temp.name).resolve()
         self.root = base / "local-source"
         self.root.mkdir(mode=0o700)
         self.scripts = self.root / "scripts"
@@ -306,7 +306,7 @@ class MaturityRubricTests(unittest.TestCase):
 
     def test_observed_local_benchmark_not_owner_authority(self):
         with tempfile.TemporaryDirectory() as t:
-            base = Path(t)
+            base = Path(t).resolve()
             root = base / "source"
             root.mkdir(mode=0o700)
             (root / "scripts").mkdir(mode=0o700)
