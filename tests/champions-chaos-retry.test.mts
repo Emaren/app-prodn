@@ -71,10 +71,14 @@ test("after a successful read, expired data remains last-known-good throughout a
 test("Champions retains historical distinct-game SQL and nonfinancial public-view privacy", () => {
   const src = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
   const sql = fs.readFileSync("config/nonfinancial-public-champions-v6.sql", "utf8");
-  assert.match(src, /COUNT\(\s*DISTINCT COALESCE\(/);
+  assert.match(src, /GROUP BY COALESCE\(w\.user_uid, u\.uid\),/);
+  assert.match(src, /SUM\(event_count\)::bigint AS event_count/);
+  assert.match(src, /COUNT\(replay_key\)::bigint AS streamed_games/);
   assert.match(src, /FROM aoe2war_public_v6\.champions_chaos_activity/);
   assert.match(src, /createStaleWhileRevalidateBackoff/);
-  assert.match(sql, /COUNT\(DISTINCT COALESCE\(/);
+  assert.match(sql, /GROUP BY COALESCE\(w\.user_uid,u\.uid\),/);
+  assert.match(sql, /SUM\(event_count\)::bigint AS event_count/);
+  assert.match(sql, /COUNT\(replay_key\)::bigint AS streamed_games/);
   assert.match(sql, /REVOKE ALL ON aoe2war_public_v6\.champions_chaos_activity/);
   assert.doesNotMatch(src, /return \[\];\s*}\s*\nfunction startChaosActivityRefresh/);
 });

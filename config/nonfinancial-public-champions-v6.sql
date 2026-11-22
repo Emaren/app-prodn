@@ -23,15 +23,26 @@ GRANT USAGE ON SCHEMA aoe2war_public_v6 TO aoe2war_web_prod;
 -- payloads, key identifiers, key hashes or user contact fields.
 CREATE OR REPLACE VIEW aoe2war_public_v6.champions_chaos_activity
 WITH (security_barrier = true) AS
-WITH watcher_activity AS (
+-- Same per-replay grouping as the read-only legacy profile. The public
+-- security barrier, grant scope, output columns and replay-count authority
+-- remain unchanged; installation still needs original DB-owner admission.
+WITH grouped_watcher_replays AS (
  SELECT COALESCE(w.user_uid,u.uid) AS user_uid,
+        COALESCE(NULLIF(w.replay_hash,''),NULLIF(w.replay_file,'')) AS replay_key,
         COUNT(*)::bigint AS event_count,
-        COUNT(DISTINCT COALESCE(NULLIF(w.replay_hash,''),NULLIF(w.replay_file,'')))::bigint AS streamed_games,
         MAX(w.created_at) AS last_watcher_at
  FROM public.watcher_client_events w
  LEFT JOIN public.users u ON u.id=w.user_id
  WHERE COALESCE(w.user_uid,u.uid) IS NOT NULL
- GROUP BY COALESCE(w.user_uid,u.uid)
+ GROUP BY COALESCE(w.user_uid,u.uid),
+          COALESCE(NULLIF(w.replay_hash,''),NULLIF(w.replay_file,''))
+), watcher_activity AS (
+ SELECT user_uid,
+        SUM(event_count)::bigint AS event_count,
+        COUNT(replay_key)::bigint AS streamed_games,
+        MAX(last_watcher_at) AS last_watcher_at
+ FROM grouped_watcher_replays
+ GROUP BY user_uid
 ), watcher_keys AS (
  SELECT u.uid AS user_uid, TRUE AS has_watcher_key
  FROM public.api_keys k JOIN public.users u ON u.id=k.user_id

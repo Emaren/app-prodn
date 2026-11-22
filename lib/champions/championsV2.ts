@@ -452,22 +452,29 @@ async function loadChaosActivityRowsFresh(
       `);
     }
     return await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql`
-      WITH watcher_activity AS (
+      -- First deduplicate only narrow (identity,replay) evidence. This
+      -- preserves all events and NULL-key behavior without a full-history
+      -- COUNT(DISTINCT ...) per user over the joined raw event set.
+      WITH grouped_watcher_replays AS (
         SELECT
           COALESCE(w.user_uid, u.uid) AS user_uid,
+          COALESCE(NULLIF(w.replay_hash, ''), NULLIF(w.replay_file, ''))
+            AS replay_key,
           COUNT(*)::bigint AS event_count,
-          COUNT(
-            DISTINCT COALESCE(
-              NULLIF(w.replay_hash, ''),
-              NULLIF(w.replay_file, '')
-            )
-          )::bigint AS streamed_games,
           MAX(w.created_at) AS last_watcher_at
         FROM watcher_client_events w
-        LEFT JOIN users u
-          ON u.id = w.user_id
+        LEFT JOIN users u ON u.id = w.user_id
         WHERE COALESCE(w.user_uid, u.uid) IS NOT NULL
-        GROUP BY COALESCE(w.user_uid, u.uid)
+        GROUP BY COALESCE(w.user_uid, u.uid),
+          COALESCE(NULLIF(w.replay_hash, ''), NULLIF(w.replay_file, ''))
+      ),
+      watcher_activity AS (
+        SELECT user_uid,
+          SUM(event_count)::bigint AS event_count,
+          COUNT(replay_key)::bigint AS streamed_games,
+          MAX(last_watcher_at) AS last_watcher_at
+        FROM grouped_watcher_replays
+        GROUP BY user_uid
       ),
       watcher_keys AS (
         SELECT

@@ -20,7 +20,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-3bc5615601eae25ae240",
+    version: "src-2a51c62f42919119e95a",
   },
   {
     href: "/chaosium",

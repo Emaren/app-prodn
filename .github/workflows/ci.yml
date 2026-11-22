@@ -162,6 +162,7 @@ jobs:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      RUN_CHAMPIONS_CHAOS_SQL_PG_TESTS: "1"
       RUN_PRODUCTION_AUTH_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
@@ -191,5 +192,7 @@ jobs:
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
             --test tests/current-watcher-rating-postgres.test.mts
+      - name: Compare legacy and public Champions full-history COUNT parity and TEMP on isolated PG16
+        run: python3 -B -m unittest tests.test_champions_chaos_sql_pg -v
       - name: Prove production auth grants and financial write denial in isolated PostgreSQL
         run: python3 -B -m unittest discover -s tests -p 'test_nonfinancial_production_auth_pg.py'
