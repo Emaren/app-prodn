@@ -1,0 +1,180 @@
+{
+  "schema": "aoe2war.historical-os.classification.v1",
+  "version": "2026-11-22.v1",
+  "effective_at_utc": "2026-11-22T00:00:00Z",
+  "source_issue": "Emaren/app-prodn/issues/1468",
+  "authority": "SOURCE_ONLY_NON_EXECUTABLE_HISTORY_DECISION",
+  "cross_os_identity": "ORIGINAL_PRODUCER_OBJECT_SHA_BUILD_FS_NO_PARALLEL_LEDGER",
+  "classification_levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "UNKNOWN"
+  ],
+  "object_types": [
+    {
+      "id": "CURRENT_RUNTIME",
+      "meaning": "Live source-qualified serving runtime",
+      "default_posture": "CRITICAL_KEEP"
+    },
+    {
+      "id": "HOT_ROLLBACK",
+      "meaning": "Current rollback runtime, transport or Factory T8 witness",
+      "default_posture": "CRITICAL_KEEP"
+    },
+    {
+      "id": "HISTORICAL_GENERATION",
+      "meaning": "Old release stage, build or deployment generation",
+      "default_posture": "COLD_REVIEW"
+    },
+    {
+      "id": "BUILD_ARTIFACT",
+      "meaning": "Immutable Linux artifact or original source pack",
+      "default_posture": "COLD_REVIEW"
+    },
+    {
+      "id": "GIT_SOURCE",
+      "meaning": "GitHub repo, commit, tags, source worktrees, code dependency",
+      "default_posture": "PROTECTED_SOURCE"
+    },
+    {
+      "id": "FS_SNAPSHOT_CLONE",
+      "meaning": "Filesystem snapshot, APFS clone, hardlink ancestry",
+      "default_posture": "UNIQUE_OVERLAP_UNKNOWN"
+    },
+    {
+      "id": "PG_DATABASE_WAL",
+      "meaning": "Live database, WAL, migrations, base backups or dump",
+      "default_posture": "DATABASE_PROTECTED"
+    },
+    {
+      "id": "SQLITE_TRAFFIC",
+      "meaning": "Traffic raw source, replay graph and canonical SQLite proof",
+      "default_posture": "LIVE_DATA_PROTECTED"
+    },
+    {
+      "id": "REPLAY_GAME_INDEX",
+      "meaning": "HD/DE games, replays, parsing lineage and indexed data",
+      "default_posture": "LIVE_DATA_PROTECTED"
+    },
+    {
+      "id": "MEDIA_AVATAR",
+      "meaning": "Owned upload, artwork, radio, profile or media source",
+      "default_posture": "USER_SOURCE_PROTECTED"
+    },
+    {
+      "id": "WATCHER_INSTALLER",
+      "meaning": "Native Watcher versions, installer and Steam source",
+      "default_posture": "COLD_REVIEW"
+    },
+    {
+      "id": "CHAIN_STATE",
+      "meaning": "WoloChain node, wallet or financial chain original",
+      "default_posture": "L5_PROTECTED"
+    },
+    {
+      "id": "BACKUP_ARCHIVE",
+      "meaning": "Compressed source/proof archive and backup",
+      "default_posture": "COLD_REVIEW"
+    },
+    {
+      "id": "INTEL_CIPHERTEXT",
+      "meaning": "Encrypted Cold Barn received copy with receiver receipt",
+      "default_posture": "COLD_COPY_DISTINCT"
+    },
+    {
+      "id": "ISOLATED_RESTORE",
+      "meaning": "Independent restoration output and verified proof",
+      "default_posture": "PROOF_KEEP"
+    },
+    {
+      "id": "PERSONAL_OR_EVIDENCE",
+      "meaning": "Personal documents, photos, court documents and unique logs",
+      "default_posture": "L5_PROTECTED"
+    },
+    {
+      "id": "OTHER_UNKNOWN",
+      "meaning": "Unattributed bytes or unclassified source",
+      "default_posture": "HOLD_UNTIL_PROOF"
+    }
+  ],
+  "roles": [
+    "LIVE",
+    "HOT",
+    "COLD",
+    "SOLE",
+    "PROOF",
+    "SOURCE",
+    "UNKNOWN"
+  ],
+  "states": [
+    "KEEP",
+    "HOT",
+    "COLD_REVIEW",
+    "RESTORED_EVIDENCE",
+    "RETIRE_CANDIDATE_HOLD",
+    "UNKNOWN"
+  ],
+  "verification_stages": [
+    "SOURCE_RECORDED",
+    "FS_IDENTITY_VERIFIED",
+    "SOURCE_DIGEST_VERIFIED",
+    "RECIPIENT_DURABLE_ACK",
+    "FULL_CONTENT_REREAD",
+    "ISOLATED_RESTORE_VERIFIED",
+    "SEPARATE_RETIRE_PERMIT_SPENT"
+  ],
+  "legal_retirement_rule": "NO_SOURCE_ONLY_MODEL_CAN_GRANT_RETIRE_READY",
+  "signed_copy_requires": [
+    "ORIGINAL_SIGNED_COPY_ONLY_PURPOSE",
+    "ORIGINAL_TRUST_VERIFIED",
+    "ONE_USE_ROOT_NONCE_SPENT",
+    "CURRENT_OBJECT_CAS",
+    "SOURCE_AND_ROLLBACK_EXCLUSION",
+    "DESTINATION_HEADROOM"
+  ],
+  "signed_retire_requires": [
+    "INDEPENDENT_HUMAN_L4_REVIEW_IF_APPLICABLE",
+    "DISTINCT_SIGNED_RETIRE_PURPOSE",
+    "ORIGINAL_ROOT_NONCE_SPENT",
+    "RECEIVER_DURABLE_ACK",
+    "FULL_CONTENT_REREAD",
+    "INDEPENDENT_ISOLATED_RESTORE",
+    "CURRENT_ORIGINAL_HOST_CAS",
+    "HOT_T8_T9_T10_ROLLBACK_EXCLUSION",
+    "PHYSICAL_NATIVE_PRE_POST_MEASUREMENT"
+  ],
+  "safety": [
+    "L5_ALWAYS_DENY",
+    "L4_HUMAN_ONLY",
+    "COPY_NEVER_RETIRE",
+    "NO_GROSS_SUM_TO_UNIQUE",
+    "NO_GITHUB_SOURCE_EQUALS_LIVE_DB",
+    "NO_ZERO_FROM_ABSENT_EVIDENCE",
+    "NO_AUTOMATIC_ROOT_UNLINK",
+    "NO_FINANCIAL_OR_WALLET_IO"
+  ],
+  "scorecard_link": {
+    "standard_schema": "aoe2war.kingdom.scorecard.standards.v1",
+    "axes": [
+      "necessity",
+      "relevance",
+      "redundancy_risk",
+      "storage_efficiency",
+      "recovery",
+      "security"
+    ],
+    "risk_direction": "HIGH_REDUNDANCY_RISK_IS_BAD"
+  },
+  "surface_links": [
+    "HEL1_ROOT",
+    "HEL1_DATA",
+    "M1_DEV",
+    "INTEL_COLD",
+    "GITHUB_SOURCE",
+    "UNKNOWN"
+  ],
+  "change_policy": "ONE_SOURCE_VERSION_PER_MEANING_AND_GIT_IMMUTABLE_HISTORY"
+}

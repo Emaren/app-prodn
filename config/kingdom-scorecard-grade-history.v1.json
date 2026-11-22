@@ -1,0 +1,29 @@
+{
+  "schema": "aoe2war.kingdom.scorecard.grade-history.v1",
+  "authority": "SOURCE_ONLY_IMMUTABLE_VERSIONED_SCORE_RECEIPTS",
+  "as_of_utc": "2026-11-22T00:00:00Z",
+  "snapshots": [],
+  "historical_subjective": {
+    "value": 54,
+    "grade_status": "PROVISIONAL_NOT_A_VERSIONED_RUBRIC_GRADE",
+    "source_issue": "Emaren/app-prodn/issues/1467",
+    "as_of_utc": "2026-11-22T00:00:00Z",
+    "production_certified": false
+  },
+  "previous_standard_reference": {
+    "schema": "aoe2war.scan-os.maturity-rubric.v1",
+    "path": "config/scan-os-maturity-rubric.v1.json",
+    "preserve_original_git_blob": true,
+    "interpretation": "7-domain local lower-and-upper; not comparable with nine-directional feature Scorecard"
+  },
+  "future_append_contract": [
+    "SOURCE_SHA256_AT_GRADE_TIME",
+    "STANDARD_VERSION_AND_EFFECTIVE_DATE",
+    "AS_OF_AND_OBJECT_ID",
+    "ORIGINAL_ADMITTED_EVIDENCE_REFS",
+    "IMMUTABLE_GIT_HISTORY",
+    "OLD_RECORDS_NEVER_REGRADING"
+  ],
+  "no_automatic_rubric_edit": true,
+  "no_signed_grade_evidence_created": true
+}

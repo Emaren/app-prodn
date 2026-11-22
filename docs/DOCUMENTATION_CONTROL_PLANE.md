@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we1/scan-org-learning-source-20261122` at `bcb44905e0fb84ae85315b7b559e62822f03682c`
+Implementation baseline: `we1/scorecard-historical-source-20261122` at `2a1420cf08c4d59bbf537b127ff25e8c0cdd2024`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **159**
+- Authoritative repository documents: **160**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 13
 - `reference`: 83
-- `runbook`: 51
+- `runbook`: 52
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 51
+- `draft`: 52
 - `generated`: 1
 - `historical`: 13
 - `superseded`: 3
@@ -97,6 +97,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Kingdom Civic Surfaces](KINGDOM_CIVIC_SURFACES.md) | `reference` | `active` | `product-and-implementation-contract` |
 | [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md) | `reference` | `active` | `self-knowledge-contract` |
 | [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
+| [Kingdom Scorecard and Historical OS Source Contracts](KINGDOM_SCORECARD_HISTORICAL_OS.md) | `runbook` | `draft` | `source-only-read-only-operations` |
 | [Transparent Kingdom Machine Instruments](KINGDOM_TRANSPARENT_MACHINERY.md) | `reference` | `active` | `visual-only-read-side-projection-contract` |
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |

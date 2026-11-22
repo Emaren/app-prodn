@@ -178,6 +178,40 @@ EXACT_C_SCAN_V2_OPTIONAL_DOCSV2 = frozenset({
     "docs/document-registry.json",
 })
 
+# WE1 Scorecard OS + independent Historical OS (issue #1467/#1468):
+# one literal stacked source branch, base exactly qualified Scan OS V2 #1466.
+# This review NEVER conveys ROOT issuer, financial custody, deletion or
+# general scripts permission; changes to these bytes require a NEW admission.
+EXACT_WE1_SCORE_HISTORY_BRANCH = "we1/scorecard-historical-source-20261122"
+EXACT_WE1_SCORE_HISTORY_BASE = "845beeba6746dfdfce89f078bc70897a159fc856"
+EXACT_WE1_SCORE_HISTORY_PINS = {
+    "config/historical-os-classification.v1.json":
+        "15afb66c8e4606eb9a15f90c71eab354228d5f1dfd707ff23aeb6f9041414ef1",
+    "config/historical-os-cohorts.v1.json":
+        "3c0002fb9efacd0153fef571310c753e089ceab70296035f753d9ec1624c3e36",
+    "config/kingdom-scorecard-grade-history.v1.json":
+        "5bca7afbae087189388c68ab1be5eb8b0ade6bc4ac0d54bdd81337cbed286787",
+    "config/kingdom-scorecard-standards.v1.json":
+        "8dfea6ebae5cf43d35dcd4a8985895887fae84f7e89dd12387ad1778dc2a30ac",
+    "docs/KINGDOM_SCORECARD_HISTORICAL_OS.md":
+        "9ad2cec81f912f08afff0f79e318d9a10f47803108a84458041e372921b8c0b8",
+    "scripts/historical_os.py":
+        "49ab74c8f0befa3bcfa298c3e4384b63c8b70054bbc0caffd23fb6b79dfdcdd1",
+    "scripts/kingdom_scorecard_os.py":
+        "0f7fb12425daa861a16e64fc0712cb0e1aa87c25b784da75790f2cb6513df5c7",
+    "tests/test_c_kingdom_scorecard_history_admission.py":
+        "eef26b9d3d1594f32cfe92edc9ed9f1c60e0f504aab27e748660b2ecee53b142",
+    "tests/test_kingdom_scorecard_historical_os.py":
+        "62664bd575d7e8222fe698c4426923ff76be6d2771c1ccc6359e6de095780152",
+}
+EXACT_WE1_SCORE_HISTORY_REQUIRED = frozenset(EXACT_WE1_SCORE_HISTORY_PINS) | {
+    "scripts/product_boundary_guard.py",
+}
+EXACT_WE1_SCORE_HISTORY_OPTIONAL_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -286,7 +320,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/scan-org-learning-source-20261122|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we1/scan-org-learning-source-20261122|we1/scorecard-historical-source-20261122|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -385,6 +419,11 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit only reviewed source identities."""
+    if (base == EXACT_WE1_SCORE_HISTORY_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE1_SCORE_HISTORY_BRANCH and
+            raw in ("scripts/kingdom_scorecard_os.py", "scripts/historical_os.py")):
+        _exact_we1_score_history_blob(checkout, raw)
+        return raw
     if (base == EXACT_C_SCAN_V2_BASE and
             os.environ.get("BOUNDARY_BRANCH") == EXACT_C_SCAN_V2_BRANCH and
             raw in EXACT_C_SCAN_V2_PINS):
@@ -971,6 +1010,61 @@ def check_exact_c_scan_v2_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_v2_source_blob(checkout, path)
 
 
+def _exact_we1_score_history_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_WE1_SCORE_HISTORY_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("SCORE_HISTORY_UNREVIEWED_PATH")
+    relative = relative_path(raw)
+    target = checkout
+    for item in relative.parts:
+        target = target / item
+        if target.is_symlink():
+            raise BoundaryHold("SCORE_HISTORY_SYMLINK_ANCESTOR")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000 or
+            stat.S_IMODE(st.st_mode) & 0o022 or
+            st.st_dev != checkout.stat().st_dev):
+        raise BoundaryHold("SCORE_HISTORY_SOURCE_CUSTODY")
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns) != (
+                st.st_dev, st.st_ino, st.st_size,
+                st.st_mtime_ns, st.st_ctime_ns):
+            raise BoundaryHold("SCORE_HISTORY_SOURCE_RACE")
+        content = os.read(fd, 100001)
+        after = os.fstat(fd)
+        if (after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns) != (
+                before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns):
+            raise BoundaryHold("SCORE_HISTORY_SOURCE_CHANGED_DURING_READ")
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        raise BoundaryHold("SCORE_HISTORY_SOURCE_SHA256_MISMATCH")
+
+
+def check_exact_we1_score_history_source(checkout: Path, repo: str, branch: str,
+                                         base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE1_SCORE_HISTORY_BRANCH:
+        raise BoundaryHold("SCORE_HISTORY_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("SCORE_HISTORY_SOURCE_REPO")
+    if base != EXACT_WE1_SCORE_HISTORY_BASE:
+        raise BoundaryHold("SCORE_HISTORY_SOURCE_BASE")
+    files = set(changes)
+    if (len(changes) != len(files) or
+            not EXACT_WE1_SCORE_HISTORY_REQUIRED.issubset(files) or
+            not files.issubset(EXACT_WE1_SCORE_HISTORY_REQUIRED |
+                               EXACT_WE1_SCORE_HISTORY_OPTIONAL_DOCS)):
+        raise BoundaryHold("SCORE_HISTORY_CHANGED_FILE_SET")
+    for raw in EXACT_WE1_SCORE_HISTORY_PINS:
+        _exact_we1_score_history_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1001,6 +1095,9 @@ def main() -> int:
                 checkout,repo_name,branch,base,receipt["changed_files"])
         if branch == EXACT_C_SCAN_V2_BRANCH:
             check_exact_c_scan_v2_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_WE1_SCORE_HISTORY_BRANCH:
+            check_exact_we1_score_history_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
