@@ -1568,6 +1568,50 @@ def approved_controller(action, manifest, approval):
     controller(action, manifest)
 
 
+def record_post_t10_retention_intent(approval, release_work):
+    """Original Factory post-T10 planning only, never a release/retire authority.
+
+    The genuine T10 source/receipt contract wins: the optional retention note
+    may fail closed without changing a sealed website or triggering a transfer.
+    No new host read, service, signer or worker is introduced here.
+    """
+    names = ("release-seal-v1.json", "release-events-v1.jsonl",
+             "public-evidence-T8-v1.json")
+    try:
+        from aoe2_factory_retention_post_t10 import (
+            plan_only_after_exact_t10, canonical,
+        )
+        values = {}
+        for name in names:
+            path = release_work / name
+            transport.checked_file(path)
+            info = path.lstat()
+            need(info.st_size <= 2_000_000, "RETENTION_INPUT_SIZE")
+            values[name] = path.read_bytes()
+        intent = plan_only_after_exact_t10(
+            source_sha=approval["sourceSha"], build_id=approval["buildId"],
+            seal_raw=values["release-seal-v1.json"],
+            ledger_raw=values["release-events-v1.jsonl"],
+            t8_raw=values["public-evidence-T8-v1.json"],
+        )
+        seal_once(release_work / "post-t10-retention-intent-v1.json",
+                  canonical(intent) + b"\\n")
+        print(json.dumps({
+            "phase": "post-T10-retention", "state": "plan-only",
+            "sourceSha": approval["sourceSha"], "buildId": approval["buildId"],
+            "intentSha256": intent["canonical_sha256"],
+            "copyAuthorized": False, "retirementAuthorized": False,
+            "nextAction": intent["next_action"],
+        }), flush=True)
+    except (OSError, RuntimeError, ValueError, ImportError, KeyError):
+        print(json.dumps({
+            "phase": "post-T10-retention", "state": "hold",
+            "reason": "ORIGINAL_T10_SOURCE_OR_RETENTION_RECEIPT_NOT_ADMITTED",
+            "sourceSha": approval.get("sourceSha"),
+            "copyAuthorized": False, "retirementAuthorized": False,
+        }), flush=True)
+
+
 def run_main(invocation):
     global DIAGNOSTIC_DIR
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1604,6 +1648,8 @@ def run_main(invocation):
                 invocation, approval, release_work, journal,
                 permit_write=(args.phase == "release"),
             )
+            if args.phase == "release":
+                record_post_t10_retention_intent(approval, release_work)
             print("PASS_ALREADY_ACCEPTED_EXACT_SOURCE_ROOT_SEAL_VERIFIED")
             return
     if args.phase == "plan":
@@ -1652,6 +1698,7 @@ def run_main(invocation):
     remote = deliver(approval, stage, proof, log, invocation=invocation)
     if args.phase == "release":
         release(approval, remote, proof, log, release_work, invocation=invocation)
+        record_post_t10_retention_intent(approval, release_work)
     else:
         print(json.dumps(ledger.summary(ledger.read(log), approval["buildId"])), flush=True)
 
