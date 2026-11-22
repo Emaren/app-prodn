@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/bridge-dual-path-20261121` at `c1226465465e9999ddc69cb225dbbc8d80b8897c`
+Implementation baseline: `session-c/we1-prisma-readme-protected-review-20261122` at `aafde8acc19501a291f0228443b71dfe36d9e514`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

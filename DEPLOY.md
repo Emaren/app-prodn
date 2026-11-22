@@ -8,12 +8,32 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # app-prodn Deploy
+
+## November 22, 2026 — WE3 source/host-scoped protected-release review
+
+**Review scope (not historical rollback recertification):** Rechecked existing
+protected release entrypoints in scripts/aoe2_release.py and
+scripts/aoe2_release_ship.py, live read-only systemd state, and existing
+loopback listeners. Both aoe2hdbets-web-prod.service and legacy
+aoe2hdbets-web.service were active when observed on November 22. Listeners at
+3032, 3030 and reserved 3033 boundary were visible. This observation is
+not approval to restart, switch release targets or retire rollback services.
+
+Storage OS BAE Basic / Advanced / Extreme and the five-page Storage Atlas
+remain distinct, separately permitted releases: BAE FIRST. Atlas follows
+only with a fresh exact source admission, protected Factory T7–T10 and
+genuine owner/ordinary-account browser acceptance. A draft PR or successful
+Linux build grants no migration, release activation, deletion, archive
+or financial authority. Historical commands below are dated references;
+use current source-qualified controllers and receipts, never an isolated
+old shell example or blanket pull-and-restart command.
+
 
 ## October 22, 2026 — targeted release-safety review
 
@@ -27,9 +47,11 @@ For a fresh operator or AI-assisted session, begin with
 
 - VPS repo path: `/var/www/AoE2HDBets/app-prodn`
 - HD production database: `aoe2hd_db`
-- service: `aoe2hdbets-web.service`
-- public domain: `https://aoe2war.com`
-- bind: `127.0.0.1:3030`
+- 2026-11-22 observed active production: aoe2hdbets-web-prod.service, loopback 3032
+- 2026-11-22 observed separate legacy service: aoe2hdbets-web.service, loopback 3030; preserve rollback
+- public domain: https://aoe2war.com
+- 3033 is the reserved emergency boundary and must remain preserved
+- historical 3030 configuration below is not the authority for current production switching
 - service user: `tony`
 - preferred SSH alias from MBP: `hel1`
 
