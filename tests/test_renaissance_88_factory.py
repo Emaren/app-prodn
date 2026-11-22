@@ -24,7 +24,7 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(p["actual_templates"],161)
         # Source includes the new administrator-only Intel status reader.
         # Count real handlers, including this independently gated private API.
-        self.assertEqual(p["actual_handlers"],291)
+        self.assertEqual(p["actual_handlers"],292)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
