@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-storage-classification-20261122` at `17d2928148e4c772898033e423a5eb1937c28c8e`
+Implementation baseline: `we2/factory-post-t10-retention-20261122` at `52c906f57258a0debfbdfc424c6a2353f860c9e3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
