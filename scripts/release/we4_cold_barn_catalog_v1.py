@@ -290,6 +290,7 @@ def query(db_path: Path, field: str, value: str) -> list[dict]:
 
 def plan_hot_runtime(runtimes: dict, *, active_roles: dict[str, str],
                      exact_hot_rollback_ids: list[str] | None = None,
+                     exact_proven_cold_checkpoint_ids: list[str] | None = None,
                      catalog: dict | None = None) -> dict:
     if runtimes.get("schema") != "we4.hel1.actual-runtime-inventory.v1":
         raise ValueError("runtime schema mismatch")
@@ -301,6 +302,11 @@ def plan_hot_runtime(runtimes: dict, *, active_roles: dict[str, str],
         raise ValueError("more than two hot rollback pins")
     if len(set(active_roles.values())) != len(active_roles):
         raise ValueError("duplicate active runtime role")
+    if exact_proven_cold_checkpoint_ids is not None and (
+            len(exact_proven_cold_checkpoint_ids) != 3 or
+            len(set(exact_proven_cold_checkpoint_ids)) != 3 or
+            any(not isinstance(x,str) or not HEX40.fullmatch(x) for x in exact_proven_cold_checkpoint_ids)):
+        raise ValueError("three exact verified cold checkpoint sources required")
     if catalog is not None and catalog.get("schema") != SCHEMA:
         raise ValueError("unqualified catalog")
     archive_pairs = {(x["source_sha"],x["build_id"]) for x in (catalog or {}).get("entries", [])
@@ -316,6 +322,8 @@ def plan_hot_runtime(runtimes: dict, *, active_roles: dict[str, str],
         if roles:reasons.append("LIVE_SERVICE_" + "_".join(roles).upper())
         if gen in pins:reasons.append("HOT_ROLLBACK_PIN")
         if exact_hot_rollback_ids is None:reasons.append("FACTORY_ROLLBACK_PINS_NOT_ADMITTED")
+        if exact_proven_cold_checkpoint_ids is None:
+            reasons.append("THREE_SOURCE_ADMITTED_COLD_CHECKPOINTS_NOT_PROVEN")
         if not re.fullmatch(r"[0-9a-f]{40}", r.get("source_sha") or "") or not r.get("build_id"):
             reasons.append("SOURCE_OR_BUILD_ID_UNVERIFIED")
         if (r.get("source_sha"),r.get("build_id")) not in archive_pairs:
