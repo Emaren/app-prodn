@@ -1179,7 +1179,7 @@ def release(approval, remote, proof, log, work, invocation=None):
         # T10 acceptance above is unchanged. Preserve explicit UNKNOWN
         # rather than fabricating a missing local seal for old fixtures.
         t10_sha = None
-    record_factory_birth(approval, work, "T10", t10_sha or "0" * 64, [
+    record_factory_birth(approval, work, "T10", t10_sha or before, [
         _factory_birth_object("M1_T10_SEAL", seal_file,
                               source=source, build=approval["buildId"],
                               expected_sha256=t10_sha,
