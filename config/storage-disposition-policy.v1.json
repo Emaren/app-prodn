@@ -471,5 +471,151 @@
     "gross_is_not_unique_reclaim": true,
     "copy_is_not_retirement": true,
     "historical_restore_is_not_fresh_restore": true
+  },
+  "research_candidates_l1": [
+    {
+      "id": "node_gyp_header_cache",
+      "relative_home_path": "Library/Caches/node-gyp",
+      "machine": "M1_DEV",
+      "observed_dev": 16777234,
+      "observed_inode": 213057367,
+      "observed_gross_allocated_bytes": 55799808,
+      "suspected_producer": "NODE_GYP_NODE_HEADER_DOWNLOADS",
+      "proven_producer": false,
+      "known_consumer_risk": "NODE_TOOLCHAINS_ACTIVE",
+      "classification": "L2_REVIEW_PROSPECTIVE_L1",
+      "disposition": "PROTECTED",
+      "requires": [
+        "PRODUCER_VERSION_REBUILD_RECEIPT",
+        "ORIGINAL_SOURCE_SIGNED_EXACT_ITEM",
+        "FD_AND_PROCESS_EXCLUSION",
+        "ORIGINAL_CONTROLLER_SOURCE_ADMISSION",
+        "OWNER_EXPLICIT_APPLY"
+      ],
+      "current_controller_admitted": false,
+      "prune_authorized": false
+    },
+    {
+      "id": "node_toolchain_cache",
+      "relative_home_path": ".cache/node",
+      "machine": "M1_DEV",
+      "observed_dev": 16777234,
+      "observed_inode": 156617193,
+      "observed_gross_allocated_bytes": 33996800,
+      "suspected_producer": "NODE_TOOLING_MIXED_CACHE",
+      "proven_producer": false,
+      "known_consumer_risk": "ACTIVE_NODE_NPM_PROCESSES_OBSERVED",
+      "classification": "L2_REVIEW_PROSPECTIVE_L1",
+      "disposition": "PROTECTED",
+      "requires": [
+        "EXACT_PRODUCER_AND_SUBTREE_SCOPE",
+        "ACTIVE_NODE_FD_NEGATIVE",
+        "REGENERATION_PROOF",
+        "ORIGINAL_CONTROLLER_SOURCE_ADMISSION",
+        "OWNER_EXPLICIT_APPLY"
+      ],
+      "current_controller_admitted": false,
+      "prune_authorized": false
+    },
+    {
+      "id": "uv_package_cache",
+      "relative_home_path": ".cache/uv",
+      "machine": "M1_DEV",
+      "observed_dev": 16777234,
+      "observed_inode": 217003141,
+      "observed_gross_allocated_bytes": 21889024,
+      "suspected_producer": "ASTRAL_UV_DOWNLOAD_BUILD_CACHE",
+      "proven_producer": false,
+      "known_consumer_risk": "PYTHON_UV_ACTIVE_OR_ENVIRONMENT_DEPENDENCIES_UNKNOWN",
+      "classification": "L2_REVIEW_PROSPECTIVE_L1",
+      "disposition": "PROTECTED",
+      "requires": [
+        "UV_SOURCE_AND_PINNED_PROJECT_INPUTS",
+        "UV_CACHE_REBUILD_AND_OFFLINE_DEPENDENCY_PROOF",
+        "NESTED_SYMLINK_AND_HARDLINK_EXCLUSION",
+        "FD_PROCESS_EXCLUSION",
+        "ORIGINAL_CONTROLLER_SOURCE_ADMISSION",
+        "OWNER_EXPLICIT_APPLY"
+      ],
+      "current_controller_admitted": false,
+      "prune_authorized": false
+    },
+    {
+      "id": "apple_siri_tts_cache",
+      "relative_home_path": "Library/Caches/SiriTTS",
+      "machine": "M1_DEV",
+      "observed_dev": 16777234,
+      "observed_inode": 156611754,
+      "observed_gross_allocated_bytes": 232882176,
+      "suspected_producer": "APPLE_OS_MANAGED_VOICE_ASSETS",
+      "proven_producer": false,
+      "known_consumer_risk": "OS_ACCESSIBILITY_AND_LOCALE_VOICE_REDOWNLOAD",
+      "classification": "PROTECTED_APPLE_MANAGED_REVIEW",
+      "disposition": "PROTECTED",
+      "requires": [
+        "ORIGINAL_APPLE_OS_CACHE_OWNER_REVIEW",
+        "OFFLINE_LOCALE_AND_ACCESSIBILITY_RECOVERY_PROOF",
+        "NO_OS_SERVICE_PROCESS_REFERENCES",
+        "SEPARATE_EXACT_CONTROLLER_SOURCE_ADMISSION"
+      ],
+      "current_controller_admitted": false,
+      "prune_authorized": false
+    }
+  ],
+  "future_generated_retention_contract": {
+    "mode": "DESIGN_ONLY_NO_CURRENT_GENERATION_RETIREMENT",
+    "proposed_class": "FUTURE_SOURCE_ADMITTED_GENERATED_RUNTIME_AFTER_T10",
+    "source_enrollment_before_object_creation": true,
+    "initial_effective_floor": "ORIGINAL_HOST_SOURCE_FLOOR_WINS",
+    "standing_class_may_override_l4_l5": false,
+    "class_approval_scope": [
+      "EXACT_PRODUCER_GIT_SHA",
+      "APPROVED_NEXTJS_RUNTIME_FAMILY",
+      "FILESYSTEM_UUID",
+      "DETERMINISTIC_BUILD_ARTIFACT_IDENTITY",
+      "RETENTION_RULE_CURRENT_TWO_HOT_PLUS_MIN_THREE_COLD",
+      "EXACT_CONTROLLER_SHA",
+      "OWNER_POLICY_NONCE_TTL",
+      "INDEPENDENT_VERIFIER"
+    ],
+    "new_object_evidence": [
+      "ROOT_SOURCE_DEV_INODE_MANIFEST_CAS",
+      "REAL_T8_T9_T10_EVENT_AND_BUILD_SEAL",
+      "NO_CURRENT_SERVICE_OR_3030_3033_OR_ANCILLARY_CONSUMERS",
+      "PROTECTED_ORIGINALS_AND_SOURCE_SEPARATE_KEEP",
+      "SOURCE_REVIEWED_NON_L4_NON_L5_FLOOR",
+      "INTEL_RESTRICTED_CLASS_AND_ONE_USE_COPY_PERMISSION",
+      "DURABLE_RECEIVER_ACK_AND_CIPHERTEXT_FULL_READBACK",
+      "INDEPENDENT_ISOLATED_RESTORE_EXACT_ARTIFACT",
+      "THREE_INDEPENDENT_COLD_CHECKPOINTS_RETAINED",
+      "ORIGINAL_PER_OBJECT_OR_BOUNDED_CLASS_OWNER_AUTHORITY",
+      "SAME_FS_AVAILABLE_BEFORE_AFTER_RECEIPT"
+    ],
+    "controller_transaction_max_objects": 1,
+    "deletion_allowed_now": false,
+    "existing_l4_l5_eligible": false,
+    "batch_age_only_selection": false,
+    "software_guard_revalidate_each_object": true,
+    "standing_policy_is_not_signed_execution_permit": true
+  },
+  "future_l1_enrollment_contract": {
+    "action": "REVIEW_NEW_REGENERABLE_PRODUCER_CLASS",
+    "design_only": true,
+    "minimum_proof": [
+      "ORIGINAL_SOURCE_OWNER_AND_VERSION",
+      "SAME_DEVICE_EXACT_PATH_ALIAS",
+      "BOUNDED_PRODUCER_PREFIX_OR_EXACT_OUTPUT",
+      "REBUILD_COMMAND_AND_ORIGINAL_INPUTS",
+      "CURRENT_PROCESS_AND_FD_EXCLUSION",
+      "PROTECTED_HISTORY_FLOOR_NEGATIVE",
+      "NESTED_SYMLINK_AND_MOUNT_EXCLUSION",
+      "REVIEWED_CONTROLLER_SHA_AND_TESTS",
+      "OWNER_CLASS_SCOPED_AUTHORITY",
+      "ONE_ITEM_DURABLE_ROLLBACK_OR_REGENERATION",
+      "SAME_FILESYSTEM_POSTIMAGE"
+    ],
+    "batch_unit": "ONE_OBJECT_PER_CONTROLLER_TRANSACTION",
+    "automatic_category_pruning": false,
+    "eligible_only_after_source_owner_and_signed_controller_install": true
   }
 }
