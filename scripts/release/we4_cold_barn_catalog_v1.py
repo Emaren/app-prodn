@@ -536,6 +536,116 @@ def review_exact_factory_zip_for_retention(inventory: dict, sha256: str) -> dict
             ]}
 
 
+
+def review_explicit_hel1_owner_copy_nomination(
+    runtimes: dict, source_docket: dict, two_hot_dossier: dict, *,
+    owner_selected_generation: str,
+) -> dict:
+    """Bind exactly one named HEL1 COPY candidate; NEVER select by old mtime.
+
+    The source dossier and invocation are review inputs, not signed permits.
+    The one real owner/signer enrollment is external to this pure function.
+    A caller cannot set a boolean that causes a copy, restore or L4 retirement.
+    """
+    result = {
+        "schema": "aoe2war.we4.hel1-exact-owner-nomination.review-only.v1",
+        "status": "HOLD_EXACT_SOURCE_REVIEW_REQUIRED",
+        "selection_mode": "EXPLICIT_OWNER_NAMED_ONE_OBJECT_NOT_AUTOMATIC",
+        "owner_selected_generation": owner_selected_generation,
+        "candidate": None,
+        "automatic_oldest_candidate_override": False,
+        "hot_pinset_source_dossier_checked_as_signature": False,
+        "owner_nomination_signature_validated": False,
+        "receiver_source_class_admitted": False,
+        "one_use_copy_permission_validated": False,
+        "independent_restoration_this_action": False,
+        "independent_rollback_exclusion": False,
+        "human_L4_retirement_permission": False,
+        "apply": False, "new_archives": 0, "new_copies": 0,
+        "new_deletions": 0, "measured_reclaimed_bytes": 0,
+    }
+    if (not isinstance(owner_selected_generation, str) or
+            re.fullmatch(r"[0-9a-f]{12}", owner_selected_generation) is None):
+        return {**result, "status": "HOLD_INVALID_EXACT_OWNER_SELECTION"}
+    if (not isinstance(runtimes, dict) or
+            runtimes.get("schema") != "we4.hel1.actual-runtime-inventory.v1" or
+            not isinstance(runtimes.get("rows"), list) or
+            runtimes.get("count") != len(runtimes["rows"]) or
+            runtimes.get("measured_count") != len(runtimes["rows"]) or
+            len(runtimes["rows"]) > 128):
+        return {**result, "status": "HOLD_INCOMPLETE_SOURCE_INVENTORY"}
+    if (not isinstance(source_docket, dict) or
+            source_docket.get("schema") !=
+                "aoe2war.we4.first-generation-copy-admission-docket.v1" or
+            not isinstance(source_docket.get("target"), dict)):
+        return {**result, "status": "HOLD_ORIGINAL_SOURCE_DOCKET_MISSING"}
+    target = source_docket["target"]
+    required = ("generation", "source_sha", "build_id", "root_dev",
+                "root_inode", "fs_uuid", "file_content_manifest_sha256",
+                "regular_files_hashed", "entries", "gross_allocated_bytes")
+    if any(key not in target for key in required):
+        return {**result, "status": "HOLD_EXACT_SOURCE_FINGERPRINT_INCOMPLETE"}
+    if (target["generation"] != owner_selected_generation or
+            target.get("host") != "HEL1" or target.get("fs") != "/dev/sda1" or
+            not isinstance(target.get("source_sha"), str) or
+            HEX40.fullmatch(target["source_sha"]) is None or
+            not target["source_sha"].startswith(owner_selected_generation) or
+            not isinstance(target["build_id"], str) or
+            re.fullmatch(r"[A-Za-z0-9_-]{8,64}", target["build_id"]) is None or
+            not isinstance(target["fs_uuid"], str) or
+            re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                         target["fs_uuid"]) is None or
+            not isinstance(target["file_content_manifest_sha256"], str) or
+            HEX64.fullmatch(target["file_content_manifest_sha256"]) is None or
+            any(type(target[k]) is not int or target[k] <= 0 for k in
+                ("root_dev", "root_inode", "regular_files_hashed", "entries",
+                 "gross_allocated_bytes"))):
+        return {**result, "status": "HOLD_EXACT_ROOT_IDENTITY_MISMATCH"}
+    matches = [row for row in runtimes["rows"]
+               if isinstance(row, dict) and
+               row.get("generation") == owner_selected_generation]
+    if len(matches) != 1:
+        return {**result, "status": "HOLD_EXACT_GENERATION_MISSING_OR_DUPLICATE"}
+    row = matches[0]
+    if (row.get("source_sha") != target["source_sha"] or
+            row.get("build_id") != target["build_id"] or
+            row.get("device") != target["root_dev"] or
+            row.get("inode") != target["root_inode"] or
+            row.get("allocated_bytes") != target["gross_allocated_bytes"] or
+            row.get("allocation_status") != "MEASURED_SELECTED_TREE" or
+            runtimes.get("mount_dev") != target["root_dev"]):
+        return {**result, "status": "HOLD_NATIVE_SOURCE_VERSUS_FULL_DOCKET_DRIFT"}
+    candidate = {key: target[key] for key in required}
+    result = {**result, "candidate": candidate}
+    if (not isinstance(two_hot_dossier, dict) or
+            two_hot_dossier.get("schema") !=
+                "aoe2war.we2.factory-current-two-hot-source-dossier.v1" or
+            not isinstance(two_hot_dossier.get("active"), dict) or
+            not isinstance(two_hot_dossier.get("hot_rollback_candidates"), list) or
+            len(two_hot_dossier["hot_rollback_candidates"]) != 2):
+        return {**result, "status": "HOLD_WE2_NATIVE_TWO_HOT_DOSSIER_MISSING"}
+    hot_rows = [two_hot_dossier["active"], *two_hot_dossier["hot_rollback_candidates"]]
+    hot_generations = [entry.get("generation") for entry in hot_rows
+                       if isinstance(entry, dict)]
+    if (len(hot_generations) != 3 or len(set(hot_generations)) != 3 or
+            owner_selected_generation in hot_generations or
+            not all(any(r.get("generation") == gen and
+                        r.get("source_sha") == entry.get("source_sha") and
+                        r.get("build_id") == entry.get("build_id")
+                        for r in runtimes["rows"] if isinstance(r, dict))
+                    for gen, entry in zip(hot_generations, hot_rows))):
+        return {**result, "status": "HOLD_CURRENT_OR_HOT_PIN_SOURCE_CONFLICT"}
+    if (two_hot_dossier.get("hot_pinset_admitted") is not True or
+            two_hot_dossier.get("owner_admission") != "ADMITTED"):
+        return {**result, "status": "HOLD_CURRENT_TWO_HOT_OWNER_ADMISSION",
+                "native_source_two_hot_candidates": hot_generations}
+    # Even an 'ADMITTED' field is only a claim; this offline script never
+    # authenticates an owner signature or receiver class. Cannot promote it.
+    return {**result, "status": "HOLD_EXTERNAL_OWNER_SIGNATURE_AND_COPY_CLASS_VERIFIER",
+            "native_source_two_hot_candidates": hot_generations}
+
+
+
 def stage_retention_gate(receipt: dict) -> dict:
     if not isinstance(receipt, dict) or receipt.get("schema") != "aoe2war.we2.factory-historical-transport-retention-receipt.v1":
         raise ValueError("untrusted factory receipt")
