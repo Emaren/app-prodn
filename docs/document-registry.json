@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bd77c9b3a382765f78e122c14cc37c7f7bcf923b4b7b79cb63ff0df158d8f5d6",
+      "sha256": "3261678213a620163dae774f82798327a81b40a4930ef8910790134846e5d665",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3597,7 +3597,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-champions-chaos-30s-backoff-20261122",
-    "commit": "726e30eae00c0d9f34149addf8f578fe96fb4e18"
+    "commit": "c3184b2940037b615dc66a9a696f4c523ba145cb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
