@@ -83,9 +83,10 @@ def validate_standard(s):
          s.get("unknown_value") is None and s.get("gate_points")==20 and
          s.get("security_and_recovery_veto")=="NO_GREEN_WITH_FAILED_CRITICAL_EVIDENCE",
          "RISK_DIRECTION_GUARDS")
-    need(type(s.get("version")) is str and re.fullmatch(r"2026-11-22\.v[1-9][0-9]*",s["version"]),
+    need(type(s.get("version")) is str and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}\.v[1-9][0-9]*",s["version"]),
          "VERSION")
     require_time(s.get("effective_at_utc"))
+    need(s["effective_at_utc"][:10]==s["version"][:10], "VERSION_EFFECTIVE_DATE_DRIFT")
     dims=s.get("dimensions")
     need(type(dims) is list and len(dims)==len(NAMES) and
          tuple(d["id"] for d in dims)==NAMES,"DIMENSION_COUNT_OR_ID")
