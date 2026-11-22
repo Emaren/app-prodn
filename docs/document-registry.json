@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2e0422f5c62f1c7555e8bea9e23c9c87a96bee1c561eabd9de1b2161bac3e79",
+      "sha256": "86a6782936fc672116d6507d264d41c724b20abe8a1c18459d33ac380901e6d8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3596,8 +3596,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we1-storage-owner-session-dbceb-20261122",
-    "commit": "fe8f450c11ce3b3d2a80be65afc64e774b88fc06"
+    "branch": "session-c/we3-champions-chaos-30s-backoff-20261122",
+    "commit": "1737f935cf3a7cdd71106bf82d0fbb2322fb3e02"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
