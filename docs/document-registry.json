@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d14b398f531695d03532909704ea0a7e1b8334e104c1967ccec5e09d230b983b",
+      "sha256": "ece20b1315c2edc3fb7fa9fd1ae383feb35c5f0495cffda988298e2e8607a72c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/bridge-dual-path-20261121",
-    "commit": "c1226465465e9999ddc69cb225dbbc8d80b8897c"
+    "branch": "we3/teaching-exact-guard-after-bridge-20261121",
+    "commit": "96f3a5f4e8860965b0a54fee37a6821c37822b28"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

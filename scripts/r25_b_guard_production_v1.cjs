@@ -15,6 +15,9 @@ const STEAM = "steamcommunity.com";
 const APPEARANCE_SOCKET = "/run/aoe2war-appearance-writer/appearance.sock";
 // Separate, source-pinned nonfinancial signed-session text writer.
 const SOCIAL_SOCKET = "/run/aoe2war-social-writer/social.sock";
+// A separate root-owned monotonic witness. A Bridge source ACK never grants
+// this private owner feedback socket or any destructive operation.
+const TEACHING_WITNESS_SOCKET = "/run/aoe2war-storage-independent-tip/witness.sock";
 const SOCIAL_ROUTES = new Set([
   "/api/social/clan-text", "/api/contact-emaren", "/api/lobby/chat",
 ]);
@@ -57,6 +60,19 @@ function approvedSocialRequest(opts) {
     opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
     !opts.protocol && !opts.auth && approvedSocialHeaders(opts.headers);
 }
+function approvedTeachingWitnessHeaders(h) {
+  return h && typeof h === "object" && Object.keys(h).length === 2 &&
+    h["Content-Type"] === "application/json" &&
+    Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
+    h["Content-Length"] <= 1024;
+}
+function approvedTeachingWitnessRequest(opts) {
+  return teachingEnabled && opts && typeof opts === "object" &&
+    opts.socketPath === TEACHING_WITNESS_SOCKET && opts.path === "/v1/witness" &&
+    opts.method === "POST" && opts.timeout === 4000 &&
+    !opts.host && !opts.hostname && !opts.port && !opts.protocol &&
+    !opts.auth && approvedTeachingWitnessHeaders(opts.headers);
+}
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
 const required = Object.freeze({
@@ -79,7 +95,15 @@ const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECR
   "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
   "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
   "AOE2WAR_STORAGE_VISUAL_HMAC_KEY",
-  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY"]);
+  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY",
+  // Independent owner teaching is OFF unless all six separately reviewed
+  // settings are atomically enrolled. Never inherit Bridge approval.
+  "AOE2WAR_STORAGE_TEACHING_OWNER_UID",
+  "AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY",
+  "AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM_SHA256",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PATH"]);
 const storageKeys = [
   "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
   "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
@@ -101,6 +125,37 @@ if (storagePresent.length) {
     new Set(keys).size === keys.length &&
     keys.every(k => k !== token), "STORAGE_SOURCE_KEY_SEGREGATION_REQUIRED");
 }
+const teachingEnv = [
+  "AOE2WAR_STORAGE_TEACHING_OWNER_UID",
+  "AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY",
+  "AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM_SHA256",
+  "AOE2WAR_STORAGE_TEACHING_TIP_PATH",
+];
+const teachingPresent = teachingEnv.filter(k => Object.prototype.hasOwnProperty.call(process.env,k));
+if (teachingPresent.length) {
+  need(teachingPresent.length === teachingEnv.length && storagePresent.length === storageEnv.length,
+    "TEACHING_PARTIAL_OR_UNOBSERVED_SOURCE_DENIED");
+  const ownerUid = process.env.AOE2WAR_STORAGE_TEACHING_OWNER_UID;
+  need(typeof ownerUid === "string" && /^[A-Za-z0-9:_-]{1,100}$/.test(ownerUid),
+    "TEACHING_OWNER_UID_INVALID");
+  const hmac = process.env.AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY;
+  need(typeof hmac === "string" && /^[a-f0-9]{64}$/.test(hmac) &&
+       !storageKeys.some(k => process.env[k] === hmac) &&
+       process.env.AOE2WAR_OS_BRIDGE_TOKEN !== hmac,
+    "TEACHING_SEGREGATED_HMAC_REQUIRED");
+  need(process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET === TEACHING_WITNESS_SOCKET &&
+       process.env.AOE2WAR_STORAGE_TEACHING_TIP_PATH ===
+          "/var/lib/aoe2war-storage-independent-tip/teaching-tip.json",
+    "TEACHING_EXACT_WITNESS_AND_ROOT_TIP_REQUIRED");
+  const pem = process.env.AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM;
+  need(typeof pem === "string" && pem.startsWith("-----BEGIN PUBLIC KEY-----") &&
+       pem.length >= 100 && pem.length <= 2048 &&
+       /^[a-f0-9]{64}$/.test(process.env.AOE2WAR_STORAGE_TEACHING_TIP_PUBLIC_PEM_SHA256 || ""),
+    "TEACHING_PINNED_PUBLIC_WITNESS_REQUIRED");
+}
+const teachingEnabled = teachingPresent.length === teachingEnv.length;
 need(process.platform === "linux" && process.getuid() === UID && process.geteuid() === UID,
   "EXACT_DEDICATED_UID_REQUIRED");
 for (const [key, value] of Object.entries(required)) need(process.env[key] === value, "ENV_" + key);
@@ -209,9 +264,14 @@ net.Socket.prototype.connect = function (...args) {
     opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
     !opts.protocol && !opts.auth && opts.method === "POST" &&
     opts.timeout === 2300 && approvedSocialHeaders(opts.headers);
+  const nodeTeachingConnect = teachingEnabled &&
+    opts.path === TEACHING_WITNESS_SOCKET && opts.socketPath === TEACHING_WITNESS_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === "POST" &&
+    opts.timeout === 4000 && approvedTeachingWitnessHeaders(opts.headers);
   const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
     !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect ||
-    nodeSocialConnect;
+    nodeSocialConnect || nodeTeachingConnect;
   // Deliberately do not permit a bare {path:SOCIAL_SOCKET} connect:
   // the new Social lane requires the exact signed-session Node22 envelope.
   need(exactWriterSocket || (!opts.path &&
@@ -241,10 +301,11 @@ for (const api of [http, https]) {
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
     const exactAppearance = api === http && approvedAppearanceRequest(opts);
     const exactSocial = api === http && approvedSocialRequest(opts);
-    need(opts && (!opts.socketPath || exactAppearance || exactSocial) &&
+    const exactTeachingTip = api === http && approvedTeachingWitnessRequest(opts);
+    need(opts && (!opts.socketPath || exactAppearance || exactSocial || exactTeachingTip) &&
       !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
-    if (exactAppearance || exactSocial) return original.apply(this, args);
+    if (exactAppearance || exactSocial || exactTeachingTip) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -326,11 +387,32 @@ http.Server.prototype.emit = function (event, ...args) {
       Number(bridgeLength) <= 262144 &&
       request.headers?.["transfer-encoding"] === undefined &&
       request.headers?.["content-type"] === "application/json";
+    // Browser sessions remain authoritative in the original Next.js routes:
+    // this guard only permits two exact, bounded, same-origin owner operations.
+    // A Source/Bridge ACK is not a teaching-write or deletion permit.
+    const ownerPostLimit = request.url === "/api/admin/storage-os/teaching" ? 1600 :
+      request.url === "/api/admin/storage-os/dry-run" ? 512 : 0;
+    const ownerLength = request.headers?.["content-length"];
+    const ownerCookie = request.headers?.cookie;
+    const ownerOnlyWrite = teachingEnabled && request.method === "POST" &&
+      ownerPostLimit > 0 &&
+      request.socket?.remoteAddress === "127.0.0.1" &&
+      request.headers?.host === "aoe2war.com" &&
+      request.headers?.["x-forwarded-proto"] === "https" &&
+      request.headers?.origin === "https://aoe2war.com" &&
+      request.headers?.["sec-fetch-site"] === "same-origin" &&
+      typeof ownerCookie === "string" && ownerCookie.length > 0 &&
+      ownerCookie.length <= 8192 &&
+      typeof ownerLength === "string" && /^[1-9][0-9]{0,3}$/.test(ownerLength) &&
+      Number(ownerLength) <= ownerPostLimit &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      typeof request.headers?.["content-type"] === "string" &&
+      request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
       appearanceWrite || socialWrite || storageVisualOnlyWrite ||
-      operatorBridgeWrite;
+      operatorBridgeWrite || ownerOnlyWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;
