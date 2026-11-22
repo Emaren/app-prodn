@@ -817,7 +817,7 @@ class BoundaryTests(unittest.TestCase):
             "tests/test_product_boundary_guard.py"})
         self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE,
                          "1b6e36e2bf4b823b9192488f12074798232c22ab")
-        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_SHA256[
+        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE[
                          "scripts/aoe2_product_retention.py"],
                          "a169f1ddd6c541e45c05b3792750931e9ddfa6164399aabe998dc724924e53ae")
         for path,expected in names.items():
