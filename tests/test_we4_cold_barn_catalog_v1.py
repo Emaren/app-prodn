@@ -163,6 +163,45 @@ class CatalogTests(unittest.TestCase):
         result=mod.plan_hot_runtime(r,active_roles={"web":"aaaaaaaaaaaa",
            "appearance":"bbbbbbbbbbbb","social":"cccccccccccc"})
         self.assertTrue(all("FACTORY_ROLLBACK_PINS_NOT_ADMITTED" in x["missing_evidence"] for x in result["actions"]))
+    def test_cold_nomination_requires_exact_source_owner_hot_pins(self):
+        a,b,r=fixtures()
+        r["count"]=len(r["rows"])
+        r["measured_count"]=len(r["rows"])
+        for x in r["rows"]:
+            x["allocation_status"]="MEASURED_SELECTED_TREE"
+            x["mtime_ns"]=100
+        result=mod.nominate_one_cold_copy_on_promotion(
+            r,live_service_generations={"web":"aaaaaaaaaaaa",
+              "appearance":"bbbbbbbbbbbb","social":"cccccccccccc"},
+            source_attested_hot_rollback_generations=None)
+        self.assertEqual(result["status"],"HOLD_EXACT_TWO_HOT_PINS_NOT_ADMITTED")
+        self.assertIsNone(result["candidate"])
+        self.assertFalse(result["apply"])
+
+    def test_one_nominated_unpinned_generation_never_implies_copy(self):
+        a,b,r=fixtures()
+        r["rows"].append({"generation":"dddddddddddd","source_sha":"d"*40,
+             "build_id":"BUILD-4","allocated_bytes":12345,
+             "allocation_status":"MEASURED_SELECTED_TREE","mtime_ns":1})
+        r["count"]=4;r["measured_count"]=4
+        for x in r["rows"][:3]:
+            x["allocation_status"]="MEASURED_SELECTED_TREE"
+            x["mtime_ns"]=300
+        roots={"web":"aaaaaaaaaaaa","appearance":"bbbbbbbbbbbb","social":"cccccccccccc"}
+        q=mod.nominate_one_cold_copy_on_promotion(
+            r,live_service_generations=roots,
+            source_attested_hot_rollback_generations=["aaaaaaaaaaaa","bbbbbbbbbbbb"])
+        self.assertEqual(q["candidate"]["generation"],"dddddddddddd")
+        self.assertFalse(q["apply"])
+        self.assertEqual(q["new_copies"],0)
+        self.assertEqual(q["new_deletions"],0)
+        self.assertEqual(q["exact_copy_permission"],"NOT_VALIDATED")
+        protected=mod.nominate_one_cold_copy_on_promotion(
+            r,live_service_generations=roots,
+            source_attested_hot_rollback_generations=["aaaaaaaaaaaa","bbbbbbbbbbbb"],
+            protected_original_generations=["dddddddddddd"])
+        self.assertIsNone(protected["candidate"])
+
     def test_three_cold_proof_pins_fail_closed(self):
         a,b,r=fixtures()
         z=mod.plan_hot_runtime(r,active_roles={"web":"aaaaaaaaaaaa"},
