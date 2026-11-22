@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# WE3 private Storage Atlas — source and evidence contract
+# WE3 Private Five-Page Storage Atlas — Source and Visual Truth
 
 This is a **separate post-BAE product increment**, NOT a rename of the
 Basic / Advanced / Extreme mode selector. The BAE release proceeds on its
