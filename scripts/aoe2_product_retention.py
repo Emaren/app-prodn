@@ -380,6 +380,8 @@ def copy_only(q, qsha, p, pinsha):
          "DBCEB_OWNER_COPY_VERIFIER_AND_DURABLE_NONCE_LEDGER_NOT_ENROLLED")
     need(c in p["candidates"] and candidate(c, p) == entry,
          "COPY_ONLY_SOURCE_PROOF_DRIFT")
+    # A boolean pin is not a signed one-use COPY capability.
+    require_original_storage_authority("COPY_ONLY", q, p)
     need(free(dest) >= c["archive_bytes"] + GIB, "COPY_ONLY_VOLUME_HEADROOM")
     target = dest / "objects" / (c["source"] + "-" + c["archive_sha256"] + ".tar.gz")
     receipts = dest / "receipts"
@@ -430,6 +432,16 @@ def copy_only(q, qsha, p, pinsha):
             "independent_restoration_verified": False}
 
 
+def require_original_storage_authority(action, q, p):
+    """Fail closed until the ORIGINAL root V6 signer and nonce verifier is installed.
+
+    A root-owned pins JSON and a claimed True are never independent evidence.
+    A reviewed root-issued one-use authenticated capability must eventually
+    replace this guard. This release introduces NO fake signing authority.
+    """
+    need(False, "GENUINE_SIGNED_OWNER_GRANT_SPENT_NONCE_AND_RECOVERY_VERIFIER_NOT_ENROLLED")
+
+
 def apply(q, qsha, p, pinsha):
     # The original 50b T8 predecessor has a distinct recovery floor.  Neither
     # the COPY-only receipt nor self-asserted root pin booleans are authentic
@@ -441,6 +453,10 @@ def apply(q, qsha, p, pinsha):
                 need(item["classification"].get("source") !=
                      DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE,
                      "DBCEB_SIGNED_RETIRE_AND_RESTORE_RECEIPT_VERIFIER_ABSENT")
+    # No original can cross the ROOT unlink boundary on self-asserted pins.
+    # Keep the original rename/receipt/restore implementation unreachable
+    # until a separately reviewed cryptographic verifier is enrolled.
+    require_original_storage_authority("RETIRE", q, p)
     need(p.get("purpose") == RETIRE_PURPOSE
          and p.get("retirement_authorized") is True
          and p.get("independent_restoration_verified") is True
