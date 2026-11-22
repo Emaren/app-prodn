@@ -16,19 +16,33 @@ const initdb = path.join(pgBin, "initdb");
 const pgctl = path.join(pgBin, "pg_ctl");
 const enabled = process.env.RUN_PLAYER_CURRENT_RATING_PG_TESTS === "1";
 
-/** Existing isolated PostgreSQL runner also checks the full original-vs-new
- * signed Watcher Steam Ratings SQL plan and history. No production connection.
+/** Source-qualified original-vs-optimized SQL, separately for Steam
+ * identity/chronology and Champions replay-count semantics. Both fixtures
+ * use their own isolated PostgreSQL UNIX-socket clusters, never production.
  */
-test("fully historical Watcher Steam Ratings SQL preserves authority and improves temp I/O", {
-  skip: !enabled ? "Set RUN_PLAYER_CURRENT_RATING_PG_TESTS=1 to run isolated SQL tests" : false,
-}, () => {
-  execFileSync("python3", ["-B", "-m", "unittest",
-    "tests.test_verified_watcher_rating_sql_pg", "-v"], {
-    cwd: process.cwd(),
-    env: { ...process.env, RUN_VERIFIED_WATCHER_SQL_PG_TESTS: "1" },
-    stdio: "inherit", timeout: 60_000,
+for (const spec of [
+  {
+    name: "Watcher Steam Ratings complete historical SQL parity and temp I/O",
+    testModule: "tests.test_verified_watcher_rating_sql_pg",
+    enabledName: "RUN_VERIFIED_WATCHER_SQL_PG_TESTS",
+  },
+  {
+    name: "Champions legacy and public full-history SQL replay-count parity",
+    testModule: "tests.test_champions_chaos_sql_pg",
+    enabledName: "RUN_CHAMPIONS_CHAOS_SQL_PG_TESTS",
+  },
+] as const) {
+  test(spec.name, {
+    skip: !enabled ? "Set RUN_PLAYER_CURRENT_RATING_PG_TESTS=1 to run isolated SQL tests" : false,
+  }, () => {
+    execFileSync("python3", ["-B", "-m", "unittest", spec.testModule, "-v"], {
+      cwd: process.cwd(),
+      env: { ...process.env, [spec.enabledName]: "1" },
+      stdio: "inherit",
+      timeout: 60_000,
+    });
   });
-});
+}
 
 
 test("current rating selection against isolated PostgreSQL", {

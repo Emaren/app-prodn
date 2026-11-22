@@ -50,7 +50,22 @@ class ChampionsPublication(unittest.TestCase):
         self.assertIn(": await prisma.trophy.findMany({", SRC)
         self.assertIn("return await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql", SRC)
         self.assertIn('currentHolder: row.currentUid ?', SRC)
-        self.assertIn('if (isNonfinancialPublicReadProfile()) throw error;', SRC)
+        # The shared catch now fails closed for BOTH read profiles. Assert the
+        # behavioral boundaries, not an obsolete implementation string.
+        fresh = SRC.split("async function loadChaosActivityRowsFresh(", 1)[1].split(
+            "async function loadChaosActivityRows(", 1
+        )[0]
+        self.assertIn("if (isNonfinancialPublicReadProfile()) {", fresh)
+        self.assertLess(
+            fresh.index("FROM aoe2war_public_v6.champions_chaos_activity"),
+            fresh.index("FROM watcher_client_events w"),
+        )
+        self.assertIn("catch (error)", fresh)
+        catch_body = fresh.split("catch (error)", 1)[1]
+        self.assertIn("throw error;", catch_body)
+        self.assertNotIn("return [];", catch_body)
+        self.assertIn("createStaleWhileRevalidateBackoff<WatcherActivityRow[]>", SRC)
+        self.assertIn("retryMs: 30_000", SRC)
 
 
 if __name__ == "__main__":
