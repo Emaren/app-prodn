@@ -100,8 +100,10 @@ def plan_only_after_exact_t10(*, source_sha: str, build_id: str,
             and previous_source != source_sha
             and type(previous_build) is str and BUILD.fullmatch(previous_build)):
         raise RetentionHold("T8_PREDECESSOR_ORIGINAL_MISMATCH")
-    exact_first = (source_sha == "9cf670724c82e29861e539c03c4d3165893da8f3"
-                   and previous_source == "50b943a44a2e89deaee7b12acaf87d8567898b3f")
+    exact_first = (source_sha == "890d9dcc22d081ff1c662f33c98a8da795f3d3e9"
+                   and build_id == "0NEGtfP0ieSzETh1JHGhE"
+                   and previous_source == "9cf670724c82e29861e539c03c4d3165893da8f3"
+                   and previous_build == "fvPCvEd_aFucA_X3hSfn9")
     report = {
         "schema": SCHEMA,
         "factory_source_sha": source_sha,
