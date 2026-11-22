@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0a1016479a4afc1c4803f100e87647781f1d268f44abbff30114d7d4dd18d393",
+      "sha256": "149a4bc05d8160a6401bf46b9dcefa8b23c4806f2a27f4ac2c82c7f5658f297e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-storage-atlas-five-pages-20261122",
-    "commit": "6466f26f535e6cd956febeb81fd6159c59b4e426"
+    "commit": "0560db0aa1946aa81cd9bb00e2c3831551fd40a6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
