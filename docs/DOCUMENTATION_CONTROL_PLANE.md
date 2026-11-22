@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-champions-chaos-30s-backoff-20261122` at `6f1f7813b9ad98747106ffd2771d5006830787b0`
+Implementation baseline: `session-c/we3-champions-chaos-30s-backoff-20261122` at `4db4b17efcbef59790108cbce338580a079ff5e9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
