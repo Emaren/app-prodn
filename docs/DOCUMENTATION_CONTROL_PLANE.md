@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/bridge-dual-path-20261121` at `c1226465465e9999ddc69cb225dbbc8d80b8897c`
+Implementation baseline: `session-c/we1-scan-os-exact-review-20261122` at `61b09b02e08c7f6dbdffd59ad958b98af576e1aa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
