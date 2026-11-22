@@ -140,6 +140,44 @@ EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
     "docs/document-registry.json",
 })
 
+# C/WE1 Scan OS V2: exact-source admission of a measured, SOURCE_CI-only
+# extension to already merged #1455, plus thin Organization OS and 35-gate
+# scorecard. NO host scan, timer, server, signer, copy, or delete authority.
+# These are fixed source bytes on one branch and base, not a scripts wildcard.
+EXACT_C_SCAN_V2_BRANCH = "we1/scan-org-learning-source-20261122"
+EXACT_C_SCAN_V2_BASE = "f833d7e633cee4b36f1427fa45d76081fa0796ef"
+EXACT_C_SCAN_V2_PINS = {
+    "scripts/scan_os.py":
+        "3322f0b6928dfdc8676a2024542a417e19f4de02d512a245c1788ac46386fe6b",
+    "scripts/scan_os_learning.py":
+        "f5f53c1aa164e3d260f32d45ba9688044da17df8af670f4eae80bc8cd87c1a9b",
+    "scripts/organization_os.py":
+        "59a93cc6a7d9384af40642729ebb7374b2bfde6d82702d42c9f2d6ab18363c02",
+    "scripts/scan_os_maturity.py":
+        "0514184014dd51155cb2d3994af405d8300f02a964dd04e41166fd6bb3ad804b",
+    "config/scan-os-catalog.v1.json":
+        "5399ba92c6b93de08bc3f78c74847b88656d2371a5d21102035455209209e794",
+    "config/organization-os-source-links.v1.json":
+        "96a7c7e7811c6b6c35b33b102cc7c7aeb132a43d53785b4ecab63f14ffac5f3f",
+    "config/scan-os-maturity-rubric.v1.json":
+        "28a9ec29c4dcfcb6da3c6b120621d98cee25dad48231295429efb9a5e8fadc45",
+    "docs/SCAN_ORGANIZATION_OS.md":
+        "0e9bcab654b728f08175d7ba763262d905ba9eae187b1d4e2ec010a51af67e68",
+    "tests/test_scan_os_v2_organization.py":
+        "69e42c9ee2b3e9de4b170502b65eb5fa94e4911bd941087ad81fc01dc577e4bc",
+    "tests/test_c_scan_os_source_admission.py":
+        "6b9b8bfac7fe316cbb0ceff2f1a9faa8ad38ac9f4006e3faa546f4b497f90853",
+    "tests/test_c_scan_os_v2_admission.py":
+        "66e1c482ec6ad081b53b4fdc0f9eaee1df056adf9a1e79ce79a3b3aab0c2d20a",
+}
+EXACT_C_SCAN_V2_REQUIRED = (
+    frozenset(EXACT_C_SCAN_V2_PINS) - {"config/scan-os-catalog.v1.json"}
+) | {"scripts/product_boundary_guard.py"}
+EXACT_C_SCAN_V2_OPTIONAL_DOCSV2 = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -346,7 +384,12 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
-    """No dynamic-route wildcard: admit one independently reviewable route."""
+    """No dynamic-route wildcard: admit only reviewed source identities."""
+    if (base == EXACT_C_SCAN_V2_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_C_SCAN_V2_BRANCH and
+            raw in EXACT_C_SCAN_V2_PINS):
+        _exact_c_scan_v2_source_blob(checkout, raw)
+        return raw
     if raw == "scripts/scan_os.py":
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_SCAN_OS_BRANCH:
             raise BoundaryHold("C_SCAN_WRONG_BRANCH")
@@ -876,6 +919,58 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+def _exact_c_scan_v2_source_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_C_SCAN_V2_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("SCAN_V2_UNREVIEWED_PATH")
+    rel = relative_path(raw)
+    p = checkout
+    for part in rel.parts:
+        p = p / part
+        if p.is_symlink():
+            raise BoundaryHold("SCAN_V2_SYMLINK_ANCESTOR")
+    st = p.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 64_000 or
+            stat.S_IMODE(st.st_mode) & 0o022 or
+            st.st_dev != checkout.stat().st_dev):
+        raise BoundaryHold("SCAN_V2_SINGLE_FILE")
+    fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns,
+                live.st_ctime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns):
+            raise BoundaryHold("SCAN_V2_FD_CAS_CHANGED")
+        content = os.read(fd, 64001)
+        last = os.fstat(fd)
+        if (last.st_ino, last.st_mtime_ns, last.st_ctime_ns, last.st_size) != (
+                live.st_ino, live.st_mtime_ns, live.st_ctime_ns, live.st_size):
+            raise BoundaryHold("SCAN_V2_READ_RACE")
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        raise BoundaryHold("SCAN_V2_SHA256_MISMATCH")
+
+
+def check_exact_c_scan_v2_source(checkout: Path, repo: str, branch: str,
+                                 base: str, changes: list[str]) -> None:
+    if branch != EXACT_C_SCAN_V2_BRANCH:
+        raise BoundaryHold("SCAN_V2_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("SCAN_V2_SOURCE_REPO")
+    if base != EXACT_C_SCAN_V2_BASE:
+        raise BoundaryHold("SCAN_V2_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+            not EXACT_C_SCAN_V2_REQUIRED.issubset(files) or
+            not files.issubset(EXACT_C_SCAN_V2_REQUIRED |
+                               EXACT_C_SCAN_V2_OPTIONAL_DOCSV2)):
+        raise BoundaryHold("SCAN_V2_CHANGED_FILE_SET")
+    for path in EXACT_C_SCAN_V2_PINS:
+        _exact_c_scan_v2_source_blob(checkout, path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -903,6 +998,9 @@ def main() -> int:
                 checkout,repo_name,branch,base,receipt["changed_files"])
         if branch == EXACT_C_SCAN_OS_BRANCH:
             check_exact_c_scan_os_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_SCAN_V2_BRANCH:
+            check_exact_c_scan_v2_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
