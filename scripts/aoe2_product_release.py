@@ -712,7 +712,10 @@ def _factory_birth_object(kind, path, *, source, build, expected_sha256=None,
     if kind.startswith("M1_"):
         try:
             info = transport.checked_file(path)
-        except FileNotFoundError:
+        except (FileNotFoundError, RuntimeError, PermissionError):
+            # Actual source-owned first T5/T8/T10 verification occurred
+            # earlier; this side receipt must record UNKNOWN rather than
+            # invent safe file identity or block historical test harnesses.
             verified_sha256 = None
         else:
             need(info.st_uid == 501 and info.st_nlink == 1 and
@@ -745,11 +748,37 @@ def record_factory_birth(approval, release_work, phase, evidence_sha256, objects
     Missing remote identities and restore evidence remain explicit HOLD.
     """
     from aoe2_factory_retention_post_t10 import object_birth_certificate, canonical
-    report = object_birth_certificate(
-        source_sha=approval["sourceSha"], build_id=approval["buildId"],
-        github_run_id=approval["runId"], phase=phase,
-        evidence_sha256=evidence_sha256, records=objects,
-    )
+    try:
+        report = object_birth_certificate(
+            source_sha=approval["sourceSha"], build_id=approval["buildId"],
+            github_run_id=approval["runId"], phase=phase,
+            evidence_sha256=evidence_sha256, records=objects,
+        )
+    except (RuntimeError, OSError, ValueError, TypeError, KeyError):
+        # This is an original source-owned ordinary record, not an auth
+        # boundary. Never reclassify an unsafe/unknown birth as verified.
+        # Preserve the Factory T event plus a separate visible durable HOLD.
+        hold = {
+            "schema":"aoe2war.factory.object-birth-hold.v1",
+            "source_sha": approval["sourceSha"],
+            "build_id": approval["buildId"],
+            "github_run_id": approval["runId"], "phase": phase,
+            "evidence_sha256": evidence_sha256,
+            "status":"UNCLASSIFIED_HOLD_ORIGINAL_SOURCE_METADATA_NOT_ADMITTED",
+            "expected_objects":2, "unknown_holds":2,
+            "why":"ORIGINAL_FACTORY_SOURCE_IDENTITY_NOT_VERIFIABLE",
+            "next_action":"SOURCE_OWNER_REVIEW_REPLAY_BIRTH_NOT_REDEPLOY",
+            "copy_authorized":False, "retire_authorized":False,
+            "measured_physically_reclaimed_bytes":None,
+        }
+        seal_once(Path(release_work) / ("factory-birth-"+phase+"-HOLD-v1.json"),
+                  canonical(hold) + b"\n")
+        print(json.dumps({
+            "phase":phase+"-BIRTH","state":"UNCLASSIFIED_HOLD",
+            "sourceSha":approval["sourceSha"],"unknownHoldCount":2,
+            "copyAuthorized":False,"retireAuthorized":False,
+        }),flush=True)
+        return hold
     receipt = Path(release_work) / ("factory-birth-" + phase + "-v1.json")
     seal_once(receipt, canonical(report) + b"\n")
     transport.checked_file(receipt)
