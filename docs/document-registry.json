@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55efae19bd3554d5bdd944b6eae7f0389c42ead3347e50485cf74ecc438ad713",
+      "sha256": "b99da09d4d3f552a09d1ffc6379ff590e09412437eaceb04883aa1ff289b54cb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we1-prisma-readme-protected-review-20261122",
-    "commit": "aafde8acc19501a291f0228443b71dfe36d9e514"
+    "branch": "session-c/we1-scan-os-exact-review-20261122",
+    "commit": "61b09b02e08c7f6dbdffd59ad958b98af576e1aa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
