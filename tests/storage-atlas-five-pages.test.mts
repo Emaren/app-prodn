@@ -67,6 +67,11 @@ function routeModule(auth:"missing"|"ordinary"|"admin",badSource=false){
    if(id==="@/lib/intelColdStorageEvidence")return {readIntelColdEvidence:async()=>{
      observedReads++;throw Error("INTEL_NOT_EXPECTED");}};
    if(id==="@/lib/storageCommandCenterProjection")return {projectPrivateStorage:()=>signedModel([],"NONE")};
+   if(id==="@/lib/storageAtlasGenerationCohortServer")return {
+     readRuntimeCohort:async()=>{observedReads++;return {
+       schema:"aoe2war.storage-atlas.runtime-cohort.v1",status:"NOT_ADMITTED",
+       sourceHash:null,rows:[],signedSourceAtRead:false
+     };}};
    if(id==="@/lib/storageAtlasMosaic")return {projectStorageAtlas};
    throw Error("UNEXPECTED_API_MODULE:"+id);
  };
@@ -96,11 +101,13 @@ test("private GET enforces real admin gate before source reads; 401,403,200; no 
    const m=routeModule(role);
    const res=await m.get({});
    assert.equal(res.status,expected,role);
-   assert.equal(m.reads(),role==="admin"?3:0,"no evidence reads before admin");
+   assert.equal(m.reads(),role==="admin"?4:0,"no evidence reads before admin");
    if(role==="admin"){
      assert.equal(res.headers["Cache-Control"],"private, no-store, max-age=0");
      assert.equal(res.headers["X-Content-Type-Options"],"nosniff");
      assert.equal(res.body.surfaces.length,4);
+     assert.equal((res.body as {rootRuntimeCohort?:{status:string}}).rootRuntimeCohort?.status,
+       "NOT_ADMITTED");
    }
  }
  assert.doesNotMatch(endpoint,/export async function (POST|PUT|DELETE|PATCH)/);
@@ -243,6 +250,23 @@ test("fresh source observation timestamps remain distinguished from browser poll
  assert.equal(p.surfaces[0].sourceObservedAt,"2026-11-22T04:09:00Z");
  assert.equal(p.surfaces[0].sourceAgeSeconds,60);
  assert.equal(p.surfaces[0].uniqueReclaimBytes,null);
+});
+test("Intel historical archive restoration does not assert current content verified",()=>{
+ const source={
+   schema:"aoe2war.intel-cold.status.v1",source:"SIGNED_PRIVATE_RECEIPT",
+   health:"ONLINE",authority:"READ_ONLY_NO_CLEANUP_OR_REINSTALL",
+   observedAt:"2026-11-22T04:09:00Z",
+   capacity:{availableBytes:70*1024**3},
+   objects:[{alias:"INTEL_0123456789ABCDEF01234567",allocatedBytes:2*1024**3,
+     protectionLevel:null,restore:"HISTORICAL_RESTORE_PROOF_PRESENT",
+     restoreReceiptSha256:"a".repeat(64),contentSha256VerifiedNow:false}]
+ } as unknown as IntelColdView;
+ const c=projectStorageAtlas(null,source,now).surfaces[3].categories[0];
+ assert.equal(c.currentContentHashVerifiedNow,false);
+ assert.equal(c.historicalRestoreReceiptSha256,"a".repeat(64));
+ assert.equal(c.restore,"HISTORICAL_RESTORE_PROOF_PRESENT");
+ assert.equal(c.uniqueReclaimBytes,null);
+ assert.equal(c.allowedToTransfer,false);
 });
 test("1GiB / 100MiB and massive datasets render bounded groups, no 1 tile per inode",()=>{
  assert.equal(ATLAS_SCALES.gib,1024**3);

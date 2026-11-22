@@ -9,6 +9,7 @@
 import type {StorageCommandCenter,StorageReading} from "./storageCommandCenterProjection.ts";
 import type {VisualPlane,VisualHog,StorageVisualView} from "./storageVisualPrivate.ts";
 import type {IntelColdView} from "./intelColdStorageEvidence.ts";
+import type {RootRuntimeCohort} from "./storageAtlasGenerationCohort.ts";
 
 export const ATLAS_SCHEMA="aoe2war.storage-os.spatial-atlas.v1" as const;
 export const ATLAS_IDS=["hel1-root","hel1-data","m1","intel"] as const;
@@ -29,6 +30,8 @@ export type AtlasCategory={
   restore:"HISTORICAL_RESTORE_PROOF_PRESENT"|"RECOVERY_UNVERIFIED"|"UNKNOWN";
   disposition:"KEEP"|"HOLD"|"NOT_AUTHORIZED"; directories:AtlasDirectory[];
   uniqueReclaimBytes:null; allowedToDelete:false; allowedToTransfer:false;
+  currentContentHashVerifiedNow:boolean|null;
+  historicalRestoreReceiptSha256:string|null;
 };
 export type AtlasSurface={
  id:AtlasId; label:string; host:"M1"|"HEL1"|"INTEL"; role:string; mountLabel:string;
@@ -46,6 +49,7 @@ export type AtlasPayload={
  authority:"ADMIN_READ_ONLY_NO_SCAN_COPY_OR_RETIRE";
  polledAt:string;
  surfaces:AtlasSurface[];
+ rootRuntimeCohort?:RootRuntimeCohort;
 };
 const GiB=1024**3;
 const MiB=1024**2;
@@ -116,7 +120,8 @@ function visualCategories(plane:VisualPlane,source:AtlasTrust,current:boolean):A
      directories:aliases.map(i=>({id:i.alias,label:i.alias,bytes:i.grossBytes,
        proof:"SAMPLED_ALIAS_ONLY" as const,overlaps:i.overlaps,
        protectionLevel:i.level,restore:"UNKNOWN" as const})),
-     uniqueReclaimBytes:null,allowedToDelete:false,allowedToTransfer:false
+     uniqueReclaimBytes:null,allowedToDelete:false,allowedToTransfer:false,
+     currentContentHashVerifiedNow:null,historicalRestoreReceiptSha256:null
    };
  });
 }
@@ -191,7 +196,9 @@ function intelProjection(raw:IntelColdView|null|undefined,now:number):AtlasSurfa
      restore:x.restore==="HISTORICAL_RESTORE_PROOF_PRESENT"?
        "HISTORICAL_RESTORE_PROOF_PRESENT":"RECOVERY_UNVERIFIED",
      disposition:"KEEP",directories:[],uniqueReclaimBytes:null,
-     allowedToDelete:false,allowedToTransfer:false
+     allowedToDelete:false,allowedToTransfer:false,
+     currentContentHashVerifiedNow:x.contentSha256VerifiedNow,
+     historicalRestoreReceiptSha256:x.restoreReceiptSha256
    }));
    item.coverage=item.categories.length?"OVERLAP_UNCERTAIN":"NOT_SCANNED";
  }else item.coverage="STALE";

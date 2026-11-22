@@ -73,6 +73,59 @@ proof. Intel absent, unsigned, stale or unadmitted stays UNKNOWN. Bounded
 opaque item aliases only; no protected absolute paths, secrets, financial
 identities or source signer material in browser responses.
 
+## WE4 twenty-six ROOT generations — independently sourced cohort
+
+Original WE4 owner-private source manifest, observed November 22, 2026 at
+04:22:06 UTC, has exact SHA-256
+d0bf8741c5a5852e6bf2dccc07ce774d0726017172c878fb8818c72eecb68b0f.
+The original source is 9,424 bytes, with 26/26 selected ROOT generation
+trees, exactly 41,255,313,408 bytes of gross selected st_blocks allocations.
+It does NOT claim a whole filesystem crawl, a unique reclaim amount, current
+rechecked service PIDs, or an independently verified signing key.
+
+In source, lib/storageAtlasGenerationCohortServer.ts is the bounded,
+server-only owner-private read adapter. It is CLOSED by default. Even after
+a separate reviewed WE2 exact-source enrollment is legitimately installed,
+the adapter will inspect only its fixed /run/private/aoe2war-storage-atlas
+basename, O_NOFOLLOW, a regular non-world-readable single-link file,
+strict 9,424-byte size and SHA-256 match before projectValidatedRuntimeCohort
+validates all 26 selected items, ROOT mount identity, unique generation/source
+prefixes, gross total, timestamp and BUILD_ID metadata. An unadmitted source
+or mismatched content yields NO ROWS / NOT ADMITTED, not a simulated
+generation list. There is no API to upload a snapshot, set the gate, retrieve
+raw files, copy, SSH, scan, transfer or delete.
+
+The public admin projection explicitly labels an eligible future file as
+SOURCE-ONLY DIGEST-PINNED / NOT INDEPENDENTLY SIGNED. Its cards and mosaic
+are a separate measured GROSS cohort, never added into certified ROOT used
+or unique reclaim. It exposes only 12-character generation aliases, exact
+Git source revisions, BUILD_IDs, measured gross bytes, dated modification
+times, historical dependency KEEP versus otherwise REVIEW HOLD, and source
+age. Three historical service-dependency generations are kept protected;
+even their current PID/rollback state is not claimed by this dated receipt.
+All 26 copy and deletion flags are false, unique reclaim NULL. Source files,
+host paths, inode IDs, modes and original receipt bytes stay server-private.
+
+Intel's 23 historic archive metadata rows and six historical restoration
+assertions remain separate from a current receiver-content hash check and
+fresh full restoration. The independently admitted Intel derived receipt
+must qualify before Intel object detail is shown; otherwise the Intel surface
+remains grey UNKNOWN. A previously signed *historical* object is not a
+newly verified source copy, current restore, or transfer permit.
+
+## Actual WE3 DocsV2 review scope
+
+November 22 source/host scoped reviews of DEPLOY.md, docs/PARSER_OBSERVATORY.md
+and docs/WAR_ROOM_FORUM.md were undertaken in WE3. The release runbook's
+historical commands are not direct production authority; dated corpus
+denominators are not new measurements; and the forum direct deploy example
+was retired in favor of protected Factory and separate schema authorization.
+The fourth expired document, prisma/README.md, is C-protected and requires
+a distinct legitimate WE1/source-owner review. WE3 cannot self-approve it
+or rewrite the DocsV2 gate. Until the protected review is source-approved,
+DocsV2 baseline/registry regeneration and all new production release claims
+remain HOLD.
+
 ## Release and acceptance
 
 Source-only draft PR; do not merge/deploy before independent DocsV2,

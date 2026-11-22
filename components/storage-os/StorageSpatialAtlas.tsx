@@ -6,9 +6,10 @@ import {Archive,ArrowLeft,ArrowUpRight,Box,Boxes,ChevronRight,
   Database,HardDrive,Laptop2,LockKeyhole,
   Maximize2,RefreshCw,Search,ZoomIn} from "lucide-react";
 import {useRouter} from "next/navigation";
-import {ATLAS_IDS,KIND_LABELS,KIND_STYLES,
+import {ATLAS_IDS,ATLAS_SCALES,KIND_LABELS,KIND_STYLES,
   formatAtlasBytes,projectStorageAtlas,tileGroups,type AtlasCategory,
   type AtlasId,type AtlasPayload,type AtlasScale,type AtlasSurface} from "@/lib/storageAtlasMosaic";
+import {unknownRuntimeCohort,type RootRuntimeCohort} from "@/lib/storageAtlasGenerationCohort";
 
 const ROUTES:Record<AtlasId,string>={
  "hel1-root":"/admin/storage-os/atlas/hel1-root",
@@ -21,7 +22,7 @@ const LEGS=["LIVE_PROTECTED","RECOVERY_PROTECTED","REVIEW_HOLD",
   "TRANSFER_HOLD","MEASURED_OTHER","UNKNOWN","AVAILABLE"] as const;
 const ICONS={m1:Laptop2,"hel1-root":HardDrive,"hel1-data":Database,intel:Archive};
 const observed=(s:string|null)=>s&&Number.isFinite(Date.parse(s))?
-  new Date(s).toLocaleString("en-CA",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"})+" UTC":"UNKNOWN";
+  new Date(s).toLocaleString("en-CA",{dateStyle:"medium",timeStyle:"short"})+" · local time":"UNKNOWN";
 const sourceLabel=(s:AtlasSurface["source"])=>s==="NATIVE_SOURCE_SIGNED"?"NATIVE SIGNED":
  s==="SERVER_HMAC_ONLY"?"SERVER HMAC ONLY":
  s==="INDEPENDENT_INTEL_SIGNED"?"INTEL SIGNED":"NOT ADMITTED";
@@ -182,12 +183,15 @@ function DetailPanel({category,onClose}:{category:AtlasCategory|null;onClose:()=
    <dl className="mt-4 grid gap-3 text-[11px] sm:grid-cols-2">
      {[
        ["Source trust",category.source.replaceAll("_"," ")],
-       ["Observed UTC",observed(category.observedAt)],
+       ["Observed instant (browser-local)",observed(category.observedAt)],
        ["Coverage",category.coverage.replaceAll("_"," ")],
        ["Classification",KIND_LABELS[category.kind]],
        ["Protection",category.level===null?"UNKNOWN":"L"+category.level],
        ["Owner / producer",category.owner],
        ["Independent restoration",category.restore.replaceAll("_"," ")],
+       ["Current content hash verified",category.currentContentHashVerifiedNow===null?
+         "UNKNOWN":category.currentContentHashVerifiedNow?"VERIFIED AT SOURCE":"NOT VERIFIED NOW"],
+       ["Historical restore receipt",category.historicalRestoreReceiptSha256??"UNKNOWN"],
        ["Unique reclaim", "UNKNOWN · NOT AUTHORIZED"]
      ].map(([a,b])=><div key={a}><dt className="text-slate-300">{a}</dt>
        <dd className="mt-1 break-words font-semibold text-white">{b}</dd></div>)}
@@ -210,6 +214,107 @@ function DetailPanel({category,onClose}:{category:AtlasCategory|null;onClose:()=
    </Link>
  </section>;
 }
+
+function RuntimeCohort({cohort,scale,mode}:{cohort:RootRuntimeCohort;scale:Scale;mode:VisualMode}){
+ const [focused,setFocused]=useState<string|null>(null);
+ const rows=cohort.rows;
+ const selected=rows.find(x=>x.id===focused)??null;
+ const unit=scale==="mib100"?ATLAS_SCALES.mib100:ATLAS_SCALES.gib;
+ const requested=rows.reduce((n,x)=>n+Math.ceil(x.grossBytes/unit),0);
+ const divisor=Math.max(1,Math.ceil(requested/170));
+ const tileUnit=unit*divisor;
+ return <section aria-label="WE4 ROOT runtime generation intelligence" className="rounded-[24px] border border-violet-300/25 bg-[#0b1728] p-4 sm:p-6">
+   <div className="flex flex-wrap items-start justify-between gap-3">
+     <div>
+       <p className="text-[10px] font-black tracking-[.2em] text-violet-200">WE4 OWNER SOURCE / SEPARATE COHORT / ROOT ONLY</p>
+       <h3 className="mt-2 text-xl font-black text-white sm:text-2xl">26 runtime generations</h3>
+       <p className="mt-2 text-xs leading-5 text-slate-200">
+         A separate 26-tree gross allocation cohort—not a complete disk partition.
+         Source SHA-256 pin proves exact file bytes, not independent host signing,
+         current processes, rollback exclusion or recoverable space.
+       </p>
+     </div>
+     <span className="rounded-full border border-amber-200/30 bg-amber-200/[.05] px-3 py-2 text-[10px] font-black text-amber-100">
+       {cohort.status==="SOURCE_ONLY_DIGEST_PINNED_NOT_SIGNED"?"DIGEST PIN · UNSIGNED":"NOT ADMITTED"}
+     </span>
+   </div>
+   <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+     {[
+       ["Measured generation trees",cohort.measuredCount===null?"UNKNOWN":cohort.measuredCount+"/26"],
+       ["Selected gross bytes",formatAtlasBytes(cohort.measuredGrossBytes)],
+       ["Host signer this read",cohort.signedSourceAtRead?"YES":"NO"],
+       ["Unique reclaim", "UNKNOWN / NO PERMIT"]
+     ].map(([name,value])=><div key={name} className="rounded-xl border border-white/10 bg-white/[.025] p-3">
+       <p className="text-[10px] text-slate-300">{name}</p>
+       <p className="mt-2 text-sm font-black tabular-nums text-white">{value}</p>
+     </div>)}
+   </div>
+   {rows.length?<div className="mt-4 grid gap-3 lg:grid-cols-[1.5fr_1fr]">
+     <div className="rounded-2xl border border-white/10 bg-[#071321] p-3">
+       <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-slate-200">
+         <span>26 SELECTED GROSS GENERATION TREES</span>
+         <span>1 cell ≈ {formatAtlasBytes(tileUnit)}</span>
+       </div>
+       <div role="group" aria-label="Select individual runtime generations"
+          className="mt-3 grid grid-cols-10 gap-[3px] sm:grid-cols-12">
+         {rows.flatMap(row=>Array.from({length:Math.ceil(row.grossBytes/tileUnit)},(_,i)=>{
+           const keep=row.disposition==="KEEP_PROTECTED_DEPENDENCY_AT_WE4_OBSERVATION";
+           const sty=KIND_STYLES[keep?"RECOVERY_PROTECTED":"REVIEW_HOLD"];
+           return <button type="button" key={row.id+":"+i}
+             onClick={()=>setFocused(row.id)} aria-pressed={focused===row.id}
+             aria-label={"Inspect runtime "+row.id+" "+formatAtlasBytes(row.grossBytes)+" gross source-only"}
+             title={row.id+" · "+formatAtlasBytes(row.grossBytes)+" GROSS · "+row.buildId}
+             className="relative aspect-square min-h-[10px] rounded-[3px] border focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-white"
+             style={{borderColor:sty.edge,backgroundColor:sty.bg,
+               clipPath:mode==="diamonds"?"polygon(50% 0,100% 50%,50% 100%,0 50%)":undefined}}/>;
+         }))}</div>
+       <p className="mt-3 text-[10px] leading-5 text-slate-300">
+         26 separately sampled source generations; gross st_blocks totals are not unique recovered bytes.
+         Three previously source-identified dependencies are purple KEEP. Orange generations are REVIEW HOLD,
+         not removable, and this source did not perform a fresh process check.
+       </p>
+     </div>
+     <div className="min-w-0 rounded-2xl border border-white/10 bg-[#071321] p-4">
+       {selected?<div>
+         <div className="flex justify-between gap-2"><p className="text-[10px] font-black text-violet-200">SOURCE GENERATION DETAIL</p>
+           <button className="rounded-lg border border-white/10 px-3 py-1 text-[11px] focus-visible:outline-2 focus-visible:outline-white"
+             type="button" onClick={()=>setFocused(null)}>Close</button></div>
+         <p className="mt-3 font-mono text-xl font-bold text-white">{selected.id}</p>
+         {([
+           ["Gross sampled allocation",formatAtlasBytes(selected.grossBytes)],
+           ["BUILD_ID",selected.buildId],
+           ["Source revision",selected.sourceSha],
+           ["Last modified",observed(selected.modifiedAt)],
+           ["Generation age",ageLabel(selected.ageSeconds)],
+           ["Activity",selected.activity],
+           ["Disposition",selected.disposition],
+           ["Transfer / retirement","NOT AUTHORIZED"]
+         ] as const).map(([k,v])=><div key={k} className="mt-3 min-w-0">
+           <p className="text-[10px] text-slate-300">{k}</p>
+           <p className="mt-1 break-all text-[11px] font-bold text-white">{v}</p>
+         </div>)}
+       </div>:<div>
+         <p className="text-[10px] font-black text-violet-200">GENERATION DETAIL</p>
+         <p className="mt-3 text-sm font-semibold text-white">Select a colored block</p>
+         <p className="mt-2 text-xs text-slate-300">
+           Source identity, BUILD_ID, historical age, activity uncertainty and exact review disposition are available.
+           Neither a selected tile nor a negative PID snapshot grants deletion rights.
+         </p>
+       </div>}
+     </div>
+   </div>:<p className="mt-4 rounded-xl border border-slate-300/20 bg-slate-400/[.07] p-4 text-xs leading-6 text-slate-200">
+     The source-qualified 26-object manifest has not been enrolled on this website.
+     {cohort.reason}. No raw M1 private manifest is imported into the browser; all tiles and identities stay UNKNOWN
+     until exact digest-pinned private source delivery is independently authorized.
+   </p>}
+   <div className="mt-3 text-[10px] leading-5 text-slate-300">
+     WE4 observed: {observed(cohort.sourceObservedAt)} · source age: {ageLabel(cohort.sourceAgeSeconds)}
+     · 26/26 measures selected trees only; filesystem residual remains GREY/UNSCALED.
+     Source-only is not an independently signed live host observation.
+   </div>
+ </section>;
+}
+
 export default function StorageSpatialAtlas({initialPlane}:{initialPlane:AtlasId|null}){
  const router=useRouter();
  const [payload,setPayload]=useState<AtlasPayload|null>(null);
@@ -247,6 +352,7 @@ export default function StorageSpatialAtlas({initialPlane}:{initialPlane:AtlasId
    if(focus&&/^[A-Z0-9_-]{1,60}$/.test(focus))setChosen(focus);
  },[initialPlane]);
  const surfaces=payload?.surfaces??UNKNOWN.surfaces;
+ const runtimeCohort=payload?.rootRuntimeCohort??unknownRuntimeCohort();
  const current=initialPlane?surfaces.find(s=>s.id===initialPlane):null;
  const active=useMemo(()=>current?.categories.find(c=>c.id===chosen)??null,[current,chosen]);
  const nav=[{name:"All four",href:"/admin/storage-os/atlas",id:null},
@@ -350,6 +456,7 @@ export default function StorageSpatialAtlas({initialPlane}:{initialPlane:AtlasId
            </div>
          </div>
        </div>
+       {current.id==="hel1-root"?<RuntimeCohort cohort={runtimeCohort} scale={scale} mode={mode}/>:null}
        <div className="min-w-0 rounded-[23px] border border-white/15 bg-[#0a1727] p-4">
          <div className="flex flex-wrap items-center justify-between gap-3">
            <h3 className="text-sm font-black text-white">Source-qualified category index</h3>

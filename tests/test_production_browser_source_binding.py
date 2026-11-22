@@ -226,7 +226,13 @@ class ProductionBrowserSource(unittest.TestCase):
         self.assertNotIn("/admin/storage-os/explorer",routes)
         self.assertIn("/kingdom-construction",{row["href"] for row in pages})
         self.assertEqual(len(protected),len(set(protected)))
-        self.assertEqual(len(protected),39)
+        self.assertEqual(len(protected),44)
+        atlas={"/admin/storage-os/atlas","/admin/storage-os/atlas/hel1-root",
+               "/admin/storage-os/atlas/hel1-data","/admin/storage-os/atlas/m1",
+               "/admin/storage-os/atlas/intel"}
+        self.assertTrue(atlas.issubset(set(protected)))
+        # The old 39-route B owner-browser acceptance pin must STILL reject
+        # the changed 44-route Atlas cohort pending independent acceptance.
         self.assertIn("/admin/aoe2war-os/umbrella-tree",protected)
         self.assertIn("/admin/storage-os/explorer",protected)
         # A newly registered private page is NOT an admitted production

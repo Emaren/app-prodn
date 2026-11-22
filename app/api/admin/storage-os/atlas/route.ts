@@ -6,6 +6,7 @@ import {projectPrivateStorage} from "@/lib/storageCommandCenterProjection";
 import {readPrivateStorageVisual} from "@/lib/storageVisualPrivate";
 import {readIntelColdEvidence} from "@/lib/intelColdStorageEvidence";
 import {projectStorageAtlas} from "@/lib/storageAtlasMosaic";
+import {readRuntimeCohort} from "@/lib/storageAtlasGenerationCohortServer";
 
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
@@ -28,7 +29,11 @@ export async function GET(request:NextRequest){
    const main=projectPrivateStorage(dashboard,signed,new Date(),visual);
    const intel=process.env.AOE2WAR_INTEL_STATUS_CONTRACT_ADMITTED===
      "WE2_ED25519_DERIVED_V1"?await readIntelColdEvidence():null;
-   return NextResponse.json(projectStorageAtlas(main,intel),{headers:HEADERS});
+   // An owner-private digest-pinned source is not an independent host signer;
+   // source-only cohort remains visibly separate from signed gross disk tiles.
+   const runtimeCohort=await readRuntimeCohort();
+   return NextResponse.json({...projectStorageAtlas(main,intel),
+     rootRuntimeCohort:runtimeCohort},{headers:HEADERS});
  }catch{
    // An invalid signed source is not converted into a fabricated empty disk.
    return NextResponse.json({detail:"ATLAS_SOURCE_NOT_ADMITTED"},{
