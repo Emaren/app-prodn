@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1931acbb70c1d7c4ee8281180c177dd17affc5379694b396f88581dacb55bd39",
+      "sha256": "83c7471a308c5c6c0a2d6c121277da719b1d68750a668b25aa5f57d2477b847e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2382,6 +2382,30 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "review-only-policy-proposal-no-new-execution-authority",
+      "id": "aoe2war.app-prodn.storage-classification-disposition-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "0f27f9d3268d3747f8facce7b87b62166003747f01aece196553b8a23863da13",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "aoe2war"
+      ],
+      "title": "Storage Classification and Disposition OS v1",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3572,8 +3596,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/factory-post-t10-retention-20261122",
-    "commit": "c3e30c7f8723bccc99eb0781b64ff448e1d54132"
+    "branch": "session-c/we1-storage-classification-20261122",
+    "commit": "17d2928148e4c772898033e423a5eb1937c28c8e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
