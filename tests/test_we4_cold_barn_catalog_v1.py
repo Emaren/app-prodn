@@ -75,6 +75,41 @@ class CatalogTests(unittest.TestCase):
     def test_invalid_object_name_rejected(self):
         a,b,r=fixtures();a["items"][0]["basename"]="../secret.age"
         with self.assertRaises(ValueError):mod.build_catalog(a,b,r)
+    def test_source_owned_v2_factory_restore_proof_format(self):
+        a,b,r=fixtures()
+        a["proofs"]=[{"namespace":"M1-ARCHIVE","proof_basename":"WE2R3-independent-restore-proof.json",
+            "schema":"aoe2war.we2.intel-v2-independent-factory-restore.v1",
+            "ciphertext_sha256":CIPHER,"independent_decrypt":True,
+            "receiver_hmac_verified":True,"three_member_parity":True,
+            "signed_sender_commit":True,"source_sha256":"e"*64,"proof_sha256":"f"*64}]
+        q=mod.build_catalog(a,b,r)
+        self.assertEqual(q["historical_restore_proof_assertions"],1)
+        self.assertEqual(q["entries"][0]["source_original_sha256"],"e"*64)
+        a["proofs"][0]["receiver_hmac_verified"]=False
+        self.assertEqual(mod.build_catalog(a,b,r)["historical_restore_proof_assertions"],0)
+
+    def test_large_factory_full_ciphertext_reread_schema(self):
+        a,b,r=fixtures()
+        a["proofs"]=[{"namespace":"M1-ARCHIVE","proof_basename":"WE2R3-independent-restore-proof.json",
+            "schema":"aoe2war.we2.intel-v2-restored-large-factory.v1",
+            "ciphertext_sha256":CIPHER,"intel_independent_age_decrypt_pass":True,
+            "intel_independent_ciphertext_full_reread":True,
+            "intel_independent_original_zip_sha_parity":True,
+            "all_three_member_sha_parity":True,
+            "intel_v2_receipt_hmac_verified":True,"proof_sha256":"f"*64}]
+        self.assertEqual(mod.build_catalog(a,b,r)["historical_restore_proof_assertions"],1)
+        a["proofs"][0]["ciphertext_sha256"]="d"*64
+        self.assertEqual(mod.build_catalog(a,b,r)["historical_restore_proof_assertions"],0)
+
+    def test_synthetic_receipt_never_full_factory_restore(self):
+        a,b,r=fixtures()
+        a["proofs"]=[{"namespace":"M1-ARCHIVE","campaign_id":"WE2R3",
+            "schema":"aoe2war.we2.intel-synthetic-independent-restore.v1",
+            "intel_ciphertext_full_reread_verified":True,
+            "intel_receipt_hmac_verified":True,
+            "synthetic_data_only":True}]
+        self.assertEqual(mod.build_catalog(a,b,r)["historical_restore_proof_assertions"],0)
+
     def test_searchable_owner_only_sqlite_and_no_overwrite(self):
         a,b,r=fixtures();idx=mod.build_catalog(a,b,r)
         with tempfile.TemporaryDirectory() as temp:
