@@ -299,3 +299,92 @@ def object_birth_certificate(*, source_sha: str, build_id: str,
     }
     result["canonical_sha256"] = sha(canonical(result))
     return result
+
+# Exact source-owned children from the SAME original Factory producer.
+# These are metadata certificates only; no SSH, collection, COPY or RETIRE.
+GENERATED_CHILD_SCHEMA = "aoe2war.factory.generated-child-birth.v1"
+GENERATED_ROOT_NAMES = frozenset((
+    "release-events-v1.jsonl", "release-summary-v1.json",
+    "release-seal-v1.json", "public-evidence-T7-v1.json",
+    "public-evidence-T8-v1.json", "public-evidence-T9-v1.json",
+    "source-qualification-v1.json", "pr-provenance-v1.json",
+    "deployment-invocation-v1.json",
+))
+GENERATED_PARTIAL_NAMES = frozenset((
+    "runtime.tar.gz", "b-linux-independent-review-v2.json",
+))
+
+
+def generated_child_certificate(*, source_sha: str, build_id: str,
+                                github_run_id: int, kind: str, name: str,
+                                expected_sha256: str,
+                                verified_source_sha256: str | None = None,
+                                acknowledged_bytes: int | None = None) -> dict:
+    """Classify exact original-produced partials and ROOT receipt ACKs.
+
+    A failed rsync is *not* proof that a remote partial exists; the observed
+    remote inode, allocation and independently restored content stay UNKNOWN.
+    """
+    if (type(source_sha) is not str or not HEX40.fullmatch(source_sha)
+            or type(build_id) is not str or not BUILD.fullmatch(build_id)
+            or type(github_run_id) is not int or github_run_id <= 0
+            or type(expected_sha256) is not str
+            or not HEX64.fullmatch(expected_sha256)
+            or type(name) is not str):
+        raise RetentionHold("BIRTH_GENERATED_ORIGINAL_SCOPE")
+    if kind == "RSYNC_PARTIAL_POSSIBLE":
+        if (name not in GENERATED_PARTIAL_NAMES
+                or verified_source_sha256 is not None
+                or acknowledged_bytes is not None):
+            raise RetentionHold("BIRTH_PARTIAL_NO_PHYSICAL_PROOF")
+        path = (f"/home/tony/.aoe2war-b-os-{source_sha[:12]}-run-"
+                f"{github_run_id}/.rsync-partial/{name}")
+        state = "UNCLASSIFIED_HOLD_POSSIBLE_PARTIAL_NOT_PROVEN_PRESENT"
+        consumer = "FACTORY_T5_RESUMABLE_RSYNC"
+        requirements = ["EXACT_REMOTE_INODE_AND_ALLOCATED_BYTE_WITNESS",
+                        "RETRY_OR_VERIFY_ORIGINAL_FACTORY_TRANSPORT",
+                        "OWNER_REVIEW_BEFORE_ANY_RETIRE"]
+    elif kind == "ROOT_RECEIPT":
+        if (name not in GENERATED_ROOT_NAMES
+                or verified_source_sha256 != expected_sha256
+                or type(acknowledged_bytes) is not int
+                or not 0 < acknowledged_bytes <= 8 * 1024 * 1024):
+            raise RetentionHold("BIRTH_ROOT_RECEIPT_ACK_SCOPE")
+        path = f"/var/lib/aoe2war-product-release-v1/{source_sha[:12]}/{name}"
+        state = "UNCLASSIFIED_HOLD_ROOT_ACK_NO_FILE_IDENTITY_OR_RESTORE"
+        consumer = "ORIGINAL_FACTORY_ROOT_T10_READBACK"
+        requirements = ["PIN_ROOT_DEVICE_INODE_AND_ALLOCATED_BYTES",
+                        "INDEPENDENT_OFFHOST_COPY_FULL_SHA_RESTORE",
+                        "SEPARATE_OWNER_L4_RETIRE_AUTHORIZATION"]
+    else:
+        raise RetentionHold("BIRTH_GENERATED_KIND_DENIED")
+    identity = sha(canonical({"source": source_sha, "run": github_run_id,
+                              "kind": kind, "name": name, "path": path}))
+    result = {
+        "schema": GENERATED_CHILD_SCHEMA,
+        "original_factory_stage": "T5" if kind == "RSYNC_PARTIAL_POSSIBLE" else "T10",
+        "source_sha": source_sha, "build_id": build_id,
+        "github_run_id": github_run_id,
+        "object_id": identity,
+        "copy_id": sha(canonical({"object": identity, "expected": expected_sha256})),
+        "kind": kind, "name": name, "surface": "HEL1_ROOT",
+        "path": path, "source_producer": "ORIGINAL_FACTORY",
+        "source_owner": "AOE2WAR_FACTORY", "consumer": consumer,
+        "why_kept": consumer, "retention_floor": "RETAIN_PENDING_SOURCE_OWNER_REVIEW",
+        "expected_complete_sha256": expected_sha256,
+        "verified_source_sha256": verified_source_sha256,
+        "acknowledged_logical_bytes": acknowledged_bytes,
+        "file_identity": None, "allocated_bytes": None,
+        "observed_at_utc": None,
+        "independent_restore_receipt_sha256": None,
+        "cold_destination": "INTEL_COLD_REVIEW_NOT_AUTHORIZED",
+        "recovery_requirements": requirements,
+        "retention_deadline_utc": None, "review_due_utc": None,
+        "state": state,
+        "exists_on_root_certified": False,
+        "copy_authorized": False, "retire_authorized": False,
+        "measured_physically_reclaimed_bytes": None,
+        "original_release_ledger_is_authority": True,
+    }
+    result["canonical_sha256"] = sha(canonical(result))
+    return result
