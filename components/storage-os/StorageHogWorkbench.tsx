@@ -4,6 +4,7 @@ import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
+import StorageReceiptTimeline from "./StorageReceiptTimeline";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
 import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
@@ -16,7 +17,8 @@ import type {VisualHog} from "@/lib/storageVisualPrivate";
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
 import {signedHogInventory,teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 import {
-  teachingDisposition,strongestRecordedProtection,type TeachingLevel,type TeachingPlane,
+  teachingDisposition,strongestRecordedProtection,BUSINESS_DOMAINS,STORAGE_LIFECYCLES,
+  type TeachingLevel,type TeachingPlane,type BusinessDomain,type StorageLifecycle,
 } from "@/lib/storageHogTeachingPolicy";
 
 const IDS:TeachingPlane[]=["mac","hel1-root","hel1-volume-105319120"];
@@ -187,6 +189,8 @@ export default function StorageHogWorkbench(){
   const [active,setActive]=useState<ExplorerPlane>("mac");
   const [selected,setSelected]=useState<string|null>(null);
   const [chosen,setChosen]=useState<TeachingLevel>(2);
+  const [domain,setDomain]=useState<BusinessDomain|"">("");
+  const [lifecycle,setLifecycle]=useState<StorageLifecycle|"">("");
   const [note,setNote]=useState("");
   const [confirmForever,setConfirmForever]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -260,7 +264,7 @@ export default function StorageHogWorkbench(){
   const priorFloor=item?strongestRecordedProtection(events,activeTeaching,item.key):1;
   const effectiveFloor=item?Math.max(item.level,priorFloor):5;
   const disposition=item?teachingDisposition(effectiveFloor,chosen,priorL5):null;
-  const canSave=teachingDeadline!==null&&!!item&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
+  const canSave=teachingDeadline!==null&&!!item&&!!domain&&!!lifecycle&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
     chosen>=effectiveFloor&&disposition?.status==="ACCEPT"&&!priorL5&&
     (chosen!==2||note.trim().length>0)&&(chosen!==5||confirmForever);
   const choosePlane=(id:ExplorerPlane)=>{setActive(id);setSelected(null);setNotice(null);};
@@ -269,6 +273,7 @@ export default function StorageHogWorkbench(){
     const candidate=hogs.find(h=>h.key===key);
     const historical=strongestRecordedProtection(events,activeTeaching,key);
     setSelected(key);setChosen(Math.max(2,candidate?.level??2,historical) as TeachingLevel);setNote("");
+    setDomain("");setLifecycle("");
     setConfirmForever(false);setNotice(null);
   };
   const save=async()=>{
@@ -280,7 +285,7 @@ export default function StorageHogWorkbench(){
         method:"POST",cache:"no-store",credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          plane:activeTeaching,category:item.key,level:chosen,observedAt:sourcePlane.observedAt,
+          plane:activeTeaching,category:item.key,level:chosen,domain,lifecycle,observedAt:sourcePlane.observedAt,
           grossBytes:item.grossBytes,sourceFloor:item.level,overlaps:item.overlaps,
           previousId:last?.id??null,note,confirmPermanent:chosen===5&&confirmForever,
         }),
@@ -417,6 +422,25 @@ export default function StorageHogWorkbench(){
             <div className="mt-2 text-xs leading-5 text-slate-400">{l.description}</div>
           </button>)}
         </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2" aria-label="Owner-selected independent classification dimensions">
+          <label className="text-xs font-semibold text-slate-300">Business domain
+            <select aria-label="Business domain" value={domain} disabled={!item||priorL5}
+              onChange={e=>setDomain(e.target.value as BusinessDomain|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose business domain</option>
+              {BUSINESS_DOMAINS.map(d=><option key={d} value={d}>{d.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-300">Lifecycle
+            <select aria-label="Lifecycle" value={lifecycle} disabled={!item||priorL5}
+              onChange={e=>setLifecycle(e.target.value as StorageLifecycle|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose lifecycle</option>
+              {STORAGE_LIFECYCLES.map(l=><option key={l} value={l}>{l.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-amber-100/80">These are owner-selected descriptions, not inherited source facts. Correction appends a new event. Source protections L1–L5 remain authoritative.</p>
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (Level 2 requires an owner explanation; no passwords or secrets)</label>
@@ -451,6 +475,7 @@ export default function StorageHogWorkbench(){
             {notice??(priorL5?"This category has permanent owner L5 protection.":
               chosen<effectiveFloor?"A stronger signed source or historical owner floor blocks this classification.":
               chosen===2&&!note.trim()?"Enter a written explanation before saving Level 2.":
+              (!domain||!lifecycle)?"Choose both business domain and lifecycle to record your decision.":
               ledgerStatus!=="VERIFIED"?"Learning ledger not admitted: choices remain unsaved previews.":
               !access?.ownerBinding?"Recording requires enrollment of the owner's app account.":
               !access.mayRecord?"Only the enrolled owner account can record a classification.":
@@ -461,6 +486,8 @@ export default function StorageHogWorkbench(){
         </div>
       </section>
         </>}
+      <StorageReceiptTimeline events={events} ledgerStatus={ledgerStatus}
+        ownerBinding={access?.ownerBinding??null}/>
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>

@@ -8,6 +8,24 @@ import {teachingSourceDeadline} from "./storageSignedFreshness.ts";
  */
 export const STORAGE_TEACHING_SCHEMA = "aoe2war.storage-owner-teaching.v1" as const;
 export const CATEGORY_REVIEW_VERSION = "category-review-v1" as const;
+// Source-bound category teaching V2. These owner-selected labels are independent
+// of the signed protection floor; neither label grants retirement authority.
+export const CLASSIFICATION_REVIEW_VERSION = "category-review-v2" as const;
+export const BUSINESS_DOMAINS = [
+  "REPLAY_VAULT","ASSETS","WATCHERS","WEBSITE_PWA","WOLOCHAIN","TRAFFIC",
+  "FACTORY","RECOVERY","DEVELOPER_TOOLS","SIDE_PROJECTS","SYSTEM","OTHER",
+] as const;
+export type BusinessDomain = typeof BUSINESS_DOMAINS[number];
+export const STORAGE_LIFECYCLES = [
+  "ACTIVE","ROLLBACK","WARM","HISTORICAL","REGENERABLE","COLD_ARCHIVE","UNKNOWN",
+] as const;
+export type StorageLifecycle = typeof STORAGE_LIFECYCLES[number];
+export function isBusinessDomain(value:unknown):value is BusinessDomain{
+  return typeof value==="string" && BUSINESS_DOMAINS.includes(value as BusinessDomain);
+}
+export function isStorageLifecycle(value:unknown):value is StorageLifecycle{
+  return typeof value==="string" && STORAGE_LIFECYCLES.includes(value as StorageLifecycle);
+}
 export const TEACHING_LEVELS = [2, 3, 4, 5] as const;
 export type TeachingLevel = typeof TEACHING_LEVELS[number];
 export type ProtectionLevel = 1 | TeachingLevel;
@@ -94,7 +112,8 @@ export function categoryReviewEvidence(events:readonly TeachingEvent[], scope:Re
   for (const event of history.reverse()) {
     // Changed provenance, overlap, floor or owner intent ends the streak.
     if (!ownerBinding || event.ownerBinding !== ownerBinding ||
-        event.reviewVersion !== CATEGORY_REVIEW_VERSION || event.sourceFloor !== scope.sourceFloor ||
+        (event.reviewVersion !== CATEGORY_REVIEW_VERSION &&
+         event.reviewVersion !== CLASSIFICATION_REVIEW_VERSION) || event.sourceFloor !== scope.sourceFloor ||
         event.overlaps !== scope.overlaps) break;
     const at = Date.parse(event.sourceObservedAt);
     if (at === current) return {finding:"ALREADY_REVIEWED", examples:[]};

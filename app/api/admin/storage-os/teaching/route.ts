@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from "next/server";
 import {requireAdmin} from "@/lib/adminSession";
 import {readPrivateStorageVisual} from "@/lib/storageVisualPrivate";
 import {appendTeachingEvent,observedHogFingerprint,readTeachingEvents,teachingOwnerAccess} from "@/lib/storageHogTeachingLedger";
-import {isTeachingLevel,isTeachingPlane,sourceMatchesRequest} from "@/lib/storageHogTeachingPolicy";
+import {isTeachingLevel,isTeachingPlane,sourceMatchesRequest,isBusinessDomain,isStorageLifecycle} from "@/lib/storageHogTeachingPolicy";
 import {teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 
 export const dynamic="force-dynamic";
@@ -63,6 +63,7 @@ export async function POST(request:NextRequest){
     obj=value as Record<string,unknown>;
   }catch{return rejection(400,"TEACHING_BAD_JSON");}
   if(!isTeachingPlane(obj.plane)||!isTeachingLevel(obj.level)||
+     !isBusinessDomain(obj.domain)||!isStorageLifecycle(obj.lifecycle)||
      typeof obj.category!=="string"||!/^[A-Z][A-Z0-9_-]{2,47}$/.test(obj.category)||
      typeof obj.observedAt!=="string"||typeof obj.grossBytes!=="number"||
      typeof obj.sourceFloor!=="number"||typeof obj.overlaps!=="boolean"||
@@ -94,6 +95,7 @@ export async function POST(request:NextRequest){
       plane:plane.id,category:hog.key,sourceObservedAt:plane.observedAt,
       sourceFingerprint,grossBytes:hog.grossBytes,sourceFloor:hog.level,
       overlaps:hog.overlaps,requestedLevel:obj.level,
+      domain:obj.domain,lifecycle:obj.lifecycle,
       previousId:obj.previousId as string|null,
       note:obj.note.trim(),
     });
