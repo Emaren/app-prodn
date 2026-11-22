@@ -217,6 +217,84 @@ class CatalogTests(unittest.TestCase):
         a,b,r=fixtures()
         with self.assertRaises(ValueError):
             mod.plan_hot_runtime(r,active_roles={},exact_hot_rollback_ids=["a"*12,"b"*12,"c"*12])
+
+    def factory_zip_synthetic_census(self):
+        entries = []
+        for n in range(16):
+            digest = f"{n+1:064x}"
+            entries.append({
+                "zip_basename": digest + ".zip",
+                "archive_sha256_full_reread": digest,
+                "zip_artifact_digest_matches_exact_filename": True,
+                "source_sha": f"{n+1:040x}",
+                "build_id": "ACTUAL-BUILD-" + str(n),
+                "source_ino": 200 + n,
+                "source_dev": 16777234, "source_nlink": 1,
+                "source_allocated_blocks_bytes": 615378944,
+                "linux_receipt_source_and_manifest_verified": True,
+                "known_runtime_service_or_rollback_role":
+                    "NO_DIRECT_ACTIVE_WEB_APPEARANCE_SOCIAL_OR_TWO_HOT_MATCH_IN_KNOWN_SET",
+                "prior_historical_independent_restoration_asserted": False,
+                "prior_original_retirement_allowed": None,
+            })
+        return {"schema": mod.FACTORY_ZIP_INVENTORY,
+                "zip_count":16, "source_root_dev":16777234,
+                "source_full_sha256_reread_for_each_zip":True,
+                "source_sha_build_id_crosschecked_per_artifact_and_linux_build_receipt":True,
+                "rows":entries}
+
+    def test_factory_zip_full_16_receipts_historical_no_delete(self):
+        census=self.factory_zip_synthetic_census()
+        row=census["rows"][0]
+        row["prior_historical_independent_restoration_asserted"]=True
+        row["prior_original_retirement_allowed"]=False
+        q=mod.review_exact_factory_zip_for_retention(census,row["archive_sha256_full_reread"])
+        self.assertEqual(q["status"],"HOLD_EXPLICIT_HISTORICAL_L4_RETIREMENT_DENIAL")
+        self.assertFalse(q["apply"])
+        self.assertEqual(q["new_deletions"],0)
+        self.assertEqual(q["new_archives"],0)
+        self.assertIsNone(q["expected_unique_APFS_gain_bytes"])
+        self.assertEqual(q["candidate"]["source_ino"],200)
+        self.assertFalse(q["producer_policy"]["automatic_age_expiry"])
+
+    def test_factory_zip_live_and_hot_roles_protected(self):
+        census=self.factory_zip_synthetic_census()
+        for role in ("LIVE_SOCIAL_WRITER_KEEP","CANDIDATE_HOT_ROLLBACK_1_KEEP"):
+            census["rows"][0]["known_runtime_service_or_rollback_role"]=role
+            q=mod.review_exact_factory_zip_for_retention(
+                census,census["rows"][0]["archive_sha256_full_reread"])
+            self.assertEqual(q["status"],"HOLD_PROTECTED_OR_UNADMITTED_HOT_ROLE")
+            self.assertFalse(q["apply"])
+
+    def test_factory_zip_no_cold_copy_never_auto_transfers(self):
+        census=self.factory_zip_synthetic_census()
+        q=mod.review_exact_factory_zip_for_retention(
+            census,census["rows"][2]["archive_sha256_full_reread"])
+        self.assertEqual(q["status"],"HOLD_SOURCE_CLASS_COPY_AND_INDEPENDENT_RESTORE_MISSING")
+        self.assertFalse(q["apply"])
+        self.assertEqual(q["new_archives"],0)
+
+    def test_factory_zip_incomplete_duplicate_or_mismatched_digest_holds(self):
+        census=self.factory_zip_synthetic_census()
+        target=census["rows"][1]["archive_sha256_full_reread"]
+        census["source_full_sha256_reread_for_each_zip"]=False
+        self.assertEqual(mod.review_exact_factory_zip_for_retention(census,target)["status"],
+                         "HOLD_INCOMPLETE_OR_UNVERIFIED_ZIP_CENSUS")
+        census["source_full_sha256_reread_for_each_zip"]=True
+        census["rows"][1]["archive_sha256_full_reread"]=census["rows"][0]["archive_sha256_full_reread"]
+        self.assertEqual(mod.review_exact_factory_zip_for_retention(census,target)["status"],
+                         "HOLD_SOURCE_METADATA_OR_DUPLICATE_IDENTITY")
+
+    def test_factory_zip_exact_review_not_a_retirement_permit(self):
+        census=self.factory_zip_synthetic_census()
+        census["signed_owner_permit"]="YES"
+        census["rows"][0]["existing_exact_item_retirement_permit_validated"]=True
+        q=mod.review_exact_factory_zip_for_retention(
+            census,census["rows"][0]["archive_sha256_full_reread"])
+        self.assertEqual(q["exact_one_item_L4_retirement_permission"],"NOT_VALIDATED")
+        self.assertFalse(q["apply"])
+        self.assertEqual(q["new_deletions"],0)
+
     def test_original_preserved_tar_stage_remains_keep(self):
         good={"schema":"aoe2war.we2.factory-historical-transport-retention-receipt.v1",
               "items":[{"sourceRemovedAfterVerifiedPreservation":True,"sha256":"a"*64}]}
