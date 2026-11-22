@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we1/factory-birth-after-atlas-20261122` at `4b5f3532c564327e300c98b4182a7e444ba51fe0`
+Implementation baseline: `we1/factory-birth-after-atlas-20261122` at `1f2fdbdbc1eaa75ce09523271b54225a58915ab5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
