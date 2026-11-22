@@ -156,7 +156,7 @@ class BoundaryTests(unittest.TestCase):
                 "723b42341d91ff63201c723b1f4f3f132efa9c864ac602414e31b4a11e652b11",
         }
         self.assertEqual(branch,"we2/factory-post-t10-retention-20261122")
-        self.assertEqual(base,"f59c06745e42fc5375bc428fb3944cf1bb7e3136")
+        self.assertEqual(base,"5ead114347294b345a34700dffdc456c2bcc86ba")
         self.assertEqual(pins,expected)
         self.assertIsNotNone(policy.BRANCH.fullmatch(branch))
         self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-new-controller"))

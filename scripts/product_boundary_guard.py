@@ -187,7 +187,7 @@ EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
 # This does NOT inherit the 2026-11-19 v3 exception, grants no retire/copy,
 # and binds exact branch, base, bytes and the entire changed-file set.
 EXACT_WE2_FACTORY_RETENTION_BRANCH = "we2/factory-post-t10-retention-20261122"
-EXACT_WE2_FACTORY_RETENTION_BASE = "f59c06745e42fc5375bc428fb3944cf1bb7e3136"
+EXACT_WE2_FACTORY_RETENTION_BASE = "5ead114347294b345a34700dffdc456c2bcc86ba"
 EXACT_WE2_FACTORY_RETENTION_PINS = {
     "scripts/aoe2_product_release.py":
         "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015",
