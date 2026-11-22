@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we1/scan-org-learning-source-20261122` at `c459448598bc141d207c556d7f8fff77d53c9ff3`
+Implementation baseline: `we1/scan-org-learning-source-20261122` at `bcb44905e0fb84ae85315b7b559e62822f03682c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
