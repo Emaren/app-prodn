@@ -65,6 +65,33 @@ def archive_application(name: str, namespace: str) -> str:
         return "M1_MEDIA"
     return "M1_OTHER_CIPHERTEXT"
 
+def historical_full_factory_proof(pr: dict, expected_cipher_sha: str | None) -> bool:
+    """Accept only exact known positive restoration schema; never synthetic tests."""
+    if not expected_cipher_sha:
+        return False
+    supplied = pr.get("ciphertext_sha256")
+    if supplied is not None and supplied != expected_cipher_sha:
+        return False
+    if (str(pr.get("independent_restore", "")).startswith("PASS_") and
+            pr.get("independent_age_decrypt_exit") == 0 and
+            pr.get("ciphertext_readback_sha_verified") is True):
+        return True
+    if pr.get("schema") == "aoe2war.we2.intel-v2-independent-factory-restore.v1":
+        return (supplied == expected_cipher_sha and
+                pr.get("independent_decrypt") is True and
+                pr.get("receiver_hmac_verified") is True and
+                pr.get("three_member_parity") is True and
+                pr.get("signed_sender_commit") is True)
+    if pr.get("schema") == "aoe2war.we2.intel-v2-restored-large-factory.v1":
+        return (supplied == expected_cipher_sha and
+                pr.get("intel_independent_age_decrypt_pass") is True and
+                pr.get("intel_independent_ciphertext_full_reread") is True and
+                pr.get("intel_independent_original_zip_sha_parity") is True and
+                pr.get("all_three_member_sha_parity") is True and
+                pr.get("intel_v2_receipt_hmac_verified") is True)
+    return False
+
+
 def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) -> dict:
     if native.get("schema") != "we4.intel.cold-barn.native-readonly.v1":
         raise ValueError("native source schema mismatch")
@@ -154,9 +181,7 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
                     eligible_proofs.append(proof)
         # Require independently asserted full parity, age decrypt and ciphertext readback.
         verified = [pr for pr in eligible_proofs if
-                    str(pr.get("independent_restore", "")).startswith("PASS_") and
-                    pr.get("independent_age_decrypt_exit") == 0 and
-                    pr.get("ciphertext_readback_sha_verified") is True]
+                    ack_evidenced and historical_full_factory_proof(pr, cipher_sha)]
         proof = sorted(verified, key=lambda x: x.get("observed_utc", ""))[-1] if verified else None
         source = proof.get("source_commit") or proof.get("source_sha256") if proof else None
         if not isinstance(source, str) or not HEX40.fullmatch(source):
@@ -180,7 +205,10 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
             "receiver_status_claim": receipt.get("status") if receipt else None,
             "restore_proof_sha256": proof.get("proof_sha256") if proof else None,
             "restore_status": "HISTORICAL_PROOF_ASSERTS_FULL_RESTORE" if proof else "NOT_PROVEN",
-            "source_original_sha256": proof.get("restored_original_zip_sha256") if proof else None,
+            "source_original_sha256": (proof.get("restored_original_zip_sha256") or
+                (proof.get("source_sha256") if proof and
+                 isinstance(proof.get("source_sha256"), str) and
+                 HEX64.fullmatch(proof["source_sha256"]) else None)) if proof else None,
             "logical_bytes": now["logical_bytes"], "allocated_bytes": now["allocated_bytes"],
             "inode": now["inode"], "historical_source_identity_match": matches,
             "current_digest_reverified": False,
