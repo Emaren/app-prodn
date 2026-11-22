@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
+      "sha256": "b78bce7fa21d36acb136d1672e2281e37b2a07093430564ddab49ad08914c15f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ece20b1315c2edc3fb7fa9fd1ae383feb35c5f0495cffda988298e2e8607a72c",
+      "sha256": "41bb2f9413769f2d32a0535e538807bc2cdea6c7cf6eb2f816b11b5cdaf903e8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1375,9 +1375,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_OBSERVATORY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "7f34cc46a2339ea18ce32562527fef3eb590501148115ec335900807cf1ae94e",
+      "sha256": "18c6fe8f739b654e3037b4e25fa96d0e635d0c08fc4ab0eac3884088cc5067f5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2508,9 +2508,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ROOM_FORUM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "15f8dba381542cb9e2d9f0d59ab0613fb6b2de294d47daf9925a2ba136944ab1",
+      "sha256": "4dc3bc720a7962c73f090d30f342ecf16af6bf5330c1c939c24e22519b4c425e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3558,9 +3558,9 @@
       "owner": "aoe2war-web",
       "path": "prisma/README.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
+      "sha256": "0e8196e44b604b5f6ee68777748ad21342f597452a609252ec2bfa496ba178ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we3/teaching-exact-guard-after-bridge-20261121",
-    "commit": "96f3a5f4e8860965b0a54fee37a6821c37822b28"
+    "branch": "we3/bae-storage-control-room-20261121",
+    "commit": "b8ff78448aaabf33ea95f4c1716c9b2a36d7978d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
