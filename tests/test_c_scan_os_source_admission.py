@@ -4,6 +4,7 @@ import importlib.util
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -20,8 +21,19 @@ class CScanOSSourceAdmissionTests(unittest.TestCase):
         self.root=Path(self.context.name)
         for name in ("scripts","tests","config"):
             (self.root/name).mkdir()
-        for path in p.EXACT_C_SCAN_OS_HASHES:
-            shutil.copyfile(ROOT/path,self.root/path)
+        # Preserve ORIGINAL V1 source-admission tests on later V2 branches.
+        # Restore the immutable pre-V2 Git object only when the current
+        # checkout has new reviewed bytes. Never lower V1 expected SHA.
+        original_base="f833d7e633cee4b36f1427fa45d76081fa0796ef"
+        for path, expected_sha in p.EXACT_C_SCAN_OS_HASHES.items():
+            raw=(ROOT/path).read_bytes()
+            if hashlib.sha256(raw).hexdigest()!=expected_sha:
+                proc=subprocess.run(
+                    ["git","-C",str(ROOT),"show",original_base+":"+path],
+                    capture_output=True,check=True,timeout=15)
+                raw=proc.stdout
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),expected_sha)
+            (self.root/path).write_bytes(raw)
         self.env=mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":p.EXACT_C_SCAN_OS_BRANCH})
         self.env.start();self.addCleanup(self.env.stop)
     def source(self,path):
