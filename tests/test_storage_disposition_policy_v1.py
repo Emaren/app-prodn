@@ -107,5 +107,39 @@ class StorageDispositionPolicyTest(unittest.TestCase):
             self.assertIn(key, e["required"])
         self.assertIn("UNKNOWN", e["statuses"])
 
+    def test_new_cache_candidates_are_only_review_not_installed_l1(self):
+        expected = {
+            "node_gyp_header_cache": ("Library/Caches/node-gyp", 55799808),
+            "node_toolchain_cache": (".cache/node", 33996800),
+            "uv_package_cache": (".cache/uv", 21889024),
+            "apple_siri_tts_cache": ("Library/Caches/SiriTTS", 232882176),
+        }
+        candidates = self.p["research_candidates_l1"]
+        self.assertEqual(len(candidates), 4)
+        self.assertEqual({x["id"]: (x["relative_home_path"], x["observed_gross_allocated_bytes"])
+                          for x in candidates}, expected)
+        active = {x["relative_home_path"] for x in self.p["eligible_l1_classes"]}
+        for x in candidates:
+            self.assertNotIn(x["relative_home_path"], active)
+            self.assertEqual(x["disposition"], "PROTECTED")
+            self.assertFalse(x["proven_producer"])
+            self.assertFalse(x["current_controller_admitted"])
+            self.assertFalse(x["prune_authorized"])
+        self.assertIn("PROTECTED", candidates[-1]["classification"])
+
+    def test_future_generated_class_is_not_retrospective_l4_delete(self):
+        x = self.p["future_generated_retention_contract"]
+        self.assertEqual(x["mode"], "DESIGN_ONLY_NO_CURRENT_GENERATION_RETIREMENT")
+        self.assertIs(x["standing_class_may_override_l4_l5"], False)
+        self.assertIs(x["existing_l4_l5_eligible"], False)
+        self.assertIs(x["deletion_allowed_now"], False)
+        self.assertEqual(x["controller_transaction_max_objects"], 1)
+        self.assertIn("INDEPENDENT_ISOLATED_RESTORE_EXACT_ARTIFACT", x["new_object_evidence"])
+        self.assertIn("THREE_INDEPENDENT_COLD_CHECKPOINTS_RETAINED", x["new_object_evidence"])
+        y = self.p["future_l1_enrollment_contract"]
+        self.assertTrue(y["design_only"])
+        self.assertFalse(y["automatic_category_pruning"])
+        self.assertTrue(y["eligible_only_after_source_owner_and_signed_controller_install"])
+
 if __name__ == "__main__":
     unittest.main()
