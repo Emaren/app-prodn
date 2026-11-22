@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fc6f5f6f7389de91969f873c8108157075ab4a4b2036a2863bc9c1c22a10ebe7",
+      "sha256": "0a1016479a4afc1c4803f100e87647781f1d268f44abbff30114d7d4dd18d393",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2796,6 +2796,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-we3-storage-atlas-five-page-contract-20261122",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_STORAGE_ATLAS_FIVE_PAGE_CONTRACT_20261122.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "4e93c30d47840f45a1bce4bfc423cd4f3bf9a16f065926c330f66d5470cf9c0c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Private Five-Page Storage Atlas \u2014 Source and Visual Truth",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -3618,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-bae-advanced-extreme-20261122",
-    "commit": "f329a0b236df19a76397eca61727dffa9e3b5664"
+    "branch": "session-c/we3-storage-atlas-five-pages-20261122",
+    "commit": "6466f26f535e6cd956febeb81fd6159c59b4e426"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
