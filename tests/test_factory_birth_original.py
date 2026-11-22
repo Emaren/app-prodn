@@ -59,6 +59,101 @@ def certificate(phase="T5",**overrides):
 
 
 class FactoryBirthContract(unittest.TestCase):
+    def test_source_generated_partial_is_only_possible_not_claimed_present(self):
+        p=M.generated_child_certificate(
+            source_sha=SOURCE,build_id=BUILD,github_run_id=101,
+            kind="RSYNC_PARTIAL_POSSIBLE",name="runtime.tar.gz",
+            expected_sha256=SHA)
+        self.assertEqual(p["schema"],M.GENERATED_CHILD_SCHEMA)
+        self.assertEqual(p["state"],"UNCLASSIFIED_HOLD_POSSIBLE_PARTIAL_NOT_PROVEN_PRESENT")
+        self.assertEqual(p["path"],
+            "/home/tony/.aoe2war-b-os-"+SOURCE[:12]+"-run-101/.rsync-partial/runtime.tar.gz")
+        self.assertIsNone(p["allocated_bytes"])
+        self.assertIsNone(p["file_identity"])
+        self.assertFalse(p["exists_on_root_certified"])
+        self.assertFalse(p["copy_authorized"])
+        self.assertFalse(p["retire_authorized"])
+        self.assertIsNone(p["independent_restore_receipt_sha256"])
+        self.assertEqual(p["canonical_sha256"],
+            hashlib.sha256(M.canonical({k:v for k,v in p.items()
+                                        if k!="canonical_sha256"})).hexdigest())
+
+    def test_generated_root_receipt_ack_not_false_identity_or_restore(self):
+        p=M.generated_child_certificate(
+            source_sha=SOURCE,build_id=BUILD,github_run_id=101,
+            kind="ROOT_RECEIPT",name="release-seal-v1.json",
+            expected_sha256=SHA,verified_source_sha256=SHA,
+            acknowledged_bytes=2048)
+        self.assertEqual(p["path"],
+            "/var/lib/aoe2war-product-release-v1/"+SOURCE[:12]+"/release-seal-v1.json")
+        self.assertEqual(p["acknowledged_logical_bytes"],2048)
+        self.assertEqual(p["verified_source_sha256"],SHA)
+        self.assertEqual(p["state"],"UNCLASSIFIED_HOLD_ROOT_ACK_NO_FILE_IDENTITY_OR_RESTORE")
+        for key in ("file_identity","allocated_bytes","observed_at_utc",
+                    "independent_restore_receipt_sha256","measured_physically_reclaimed_bytes"):
+            self.assertIsNone(p[key])
+        self.assertFalse(p["copy_authorized"])
+        self.assertFalse(p["retire_authorized"])
+
+    def test_generated_source_strict_negative_classes(self):
+        base={"source_sha":SOURCE,"build_id":BUILD,"github_run_id":101,
+              "kind":"RSYNC_PARTIAL_POSSIBLE","name":"runtime.tar.gz",
+              "expected_sha256":SHA}
+        for field,bad,code in (
+            ("name","../../private","BIRTH_PARTIAL_NO_PHYSICAL_PROOF"),
+            ("name","retire-root.tar.gz","BIRTH_PARTIAL_NO_PHYSICAL_PROOF"),
+            ("verified_source_sha256",SHA,"BIRTH_PARTIAL_NO_PHYSICAL_PROOF"),
+            ("acknowledged_bytes",100,"BIRTH_PARTIAL_NO_PHYSICAL_PROOF"),
+            ("kind","UNBOUNDED_ROOT_FILE","BIRTH_GENERATED_KIND_DENIED"),
+            ("source_sha","bad","BIRTH_GENERATED_ORIGINAL_SCOPE"),
+            ("github_run_id",0,"BIRTH_GENERATED_ORIGINAL_SCOPE"),
+            ("expected_sha256","bad","BIRTH_GENERATED_ORIGINAL_SCOPE"),
+        ):
+            with self.subTest(field=field,bad=bad),self.assertRaisesRegex(
+                    M.RetentionHold,code):
+                M.generated_child_certificate(**(base|{field:bad}))
+        accepted=base|{"kind":"ROOT_RECEIPT","name":"release-seal-v1.json",
+                       "verified_source_sha256":SHA,"acknowledged_bytes":100}
+        for field,bad in (
+            ("name","../../private"),
+            ("name","arbitrary-finance.json"),
+            ("verified_source_sha256","b"*64),
+            ("acknowledged_bytes",None),
+            ("acknowledged_bytes",0),
+        ):
+            with self.subTest(root_field=field),self.assertRaisesRegex(
+                    M.RetentionHold,"BIRTH_ROOT_RECEIPT_ACK_SCOPE"):
+                M.generated_child_certificate(**(accepted|{field:bad}))
+
+    def test_original_factory_generated_child_seal_is_idempotent_and_hold(self):
+        import aoe2_product_release as R
+        with tempfile.TemporaryDirectory() as td:
+            work=Path(td)
+            approval={"sourceSha":SOURCE,"buildId":BUILD,"runId":101}
+            report=R.record_factory_generated_birth(
+                approval,work,kind="RSYNC_PARTIAL_POSSIBLE",
+                name="runtime.tar.gz",expected_sha256=SHA)
+            receipt=work/"factory-birth-generated-rsync_partial_possible-runtime_tar_gz-v1.json"
+            self.assertEqual(json.loads(receipt.read_text()),report)
+            original=receipt.read_bytes()
+            self.assertTrue(original.endswith(b"\\n"))
+            R.record_factory_generated_birth(
+                approval,work,kind="RSYNC_PARTIAL_POSSIBLE",
+                name="runtime.tar.gz",expected_sha256=SHA)
+            self.assertEqual(receipt.read_bytes(),original)
+            self.assertFalse(report["exists_on_root_certified"])
+            self.assertFalse(report["copy_authorized"])
+            self.assertFalse(report["retire_authorized"])
+
+    def test_existing_factory_call_sites_register_generated_children_only(self):
+        text=(Path(M.__file__).parent/"aoe2_product_release.py").read_text()
+        self.assertIn('kind="RSYNC_PARTIAL_POSSIBLE"',text)
+        self.assertIn('kind="ROOT_RECEIPT"',text)
+        self.assertIn('birth_context=(approval, work)',text)
+        self.assertNotIn("birth_register_daemon",text)
+        self.assertNotIn("owner_private_key",text)
+        self.assertFalse(hasattr(M,"transfer_generated_children"))
+
     def test_phase_source_classes_exact(self):
         for phase in M.BIRTH_PHASES:
             with self.subTest(phase=phase):
