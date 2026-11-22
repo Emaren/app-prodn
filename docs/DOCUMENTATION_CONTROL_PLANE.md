@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-storage-owner-session-dbceb-20261122` at `fe8f450c11ce3b3d2a80be65afc64e774b88fc06`
+Implementation baseline: `we1/factory-retention-original-authority-20261122` at `c53757ab50fd6ed9e742c5bf85021e4c69db60df`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
