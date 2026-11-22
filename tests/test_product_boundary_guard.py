@@ -54,9 +54,23 @@ class BoundaryTests(unittest.TestCase):
                 {"docs/DOCUMENTATION_CONTROL_PLANE.md",
                  "docs/document-registry.json"} |
                 {x for x in doc_paths if x.endswith(".md")})
+        # Preserve the old v3 runner pin even though THIS PR legitimately
+        # updates the live source under a distinct, reviewed branch/base/pin.
+        self.assertEqual(policy.EXACT_WE2_FACTORY_SHA256["scripts/aoe2_product_release.py"],
+                         "84d9a0e277595b1492d88f19e7c9829dc2896929738328ec37419c792f1f23f5")
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
-            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
-                             expected)
+            if relative != "scripts/aoe2_product_release.py":
+                self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
+                                 expected)
+        # The old guard's negative-contract fixtures must use a temporary
+        # matching runner blob, never update the real legacy policy pin.
+        temporary_runner_sha = hashlib.sha256(
+            (source/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
+        legacy_test_patch = mock.patch.dict(policy.EXACT_WE2_FACTORY_SHA256, {
+            "scripts/aoe2_product_release.py": temporary_runner_sha
+        })
+        legacy_test_patch.start()
+        self.addCleanup(legacy_test_patch.stop)
         # The existing runner's SINGLE pinned root hash follows this exact
         # source controller, never a wildcard or runtime-discovered SHA.
         import ast
@@ -126,6 +140,79 @@ class BoundaryTests(unittest.TestCase):
             # Do not allow non-exact branch fallback to an arbitrary Factory
             # source: the generic branch grammar remains closed.
             self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
+
+    def test_we2_factory_retention_new_exact_bae_source_admission(self):
+        import hashlib
+        source=GUARD.parent.parent
+        branch=policy.EXACT_WE2_FACTORY_RETENTION_BRANCH
+        base=policy.EXACT_WE2_FACTORY_RETENTION_BASE
+        pins=policy.EXACT_WE2_FACTORY_RETENTION_PINS
+        expected={
+            "scripts/aoe2_product_release.py":
+                "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015",
+            "scripts/aoe2_factory_retention_post_t10.py":
+                "81eeea068721bf751d11366b13d6c75f876bce72d3629e58cde6b3f31151ca12",
+            "tests/test_factory_retention_post_t10.py":
+                "723b42341d91ff63201c723b1f4f3f132efa9c864ac602414e31b4a11e652b11",
+        }
+        self.assertEqual(branch,"we2/factory-post-t10-retention-20261122")
+        self.assertEqual(base,"f59c06745e42fc5375bc428fb3944cf1bb7e3136")
+        self.assertEqual(pins,expected)
+        self.assertIsNotNone(policy.BRANCH.fullmatch(branch))
+        self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-new-controller"))
+        expected_changes=set(expected)|{
+            "scripts/product_boundary_guard.py",
+            "tests/test_product_boundary_guard.py",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+            "docs/document-registry.json"}
+        self.assertEqual(set(policy.EXACT_WE2_FACTORY_RETENTION_CHANGED),expected_changes)
+        for relative,digest in pins.items():
+            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),digest)
+        changed=sorted(expected_changes)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            for relative in pins:
+                p=root/relative
+                p.parent.mkdir(parents=True,exist_ok=True)
+                p.write_bytes((source/relative).read_bytes())
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+                for relative in pins:
+                    self.assertEqual(policy.authorize_changed_source(root,base,relative),relative)
+                self.assertIsNone(policy.check_exact_we2_factory_retention_source(
+                    root,"Emaren/app-prodn",branch,base,changed))
+            for candidate_base,candidate_repo,candidate_changes in (
+                ("0"*40,"Emaren/app-prodn",changed),
+                (base,"Emaren/kingdom-traders",changed),
+                (base,"Emaren/app-prodn",changed[:-1]),
+                (base,"Emaren/app-prodn",changed+["scripts/another_controller.py"]),
+                (base,"Emaren/app-prodn",changed+[changed[0]]),
+            ):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.check_exact_we2_factory_retention_source(
+                        root,candidate_repo,branch,candidate_base,candidate_changes)
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.authorize_changed_source(
+                        root,base,"scripts/aoe2_product_release.py")
+            candidate=root/"scripts/aoe2_factory_retention_post_t10.py"
+            raw=candidate.read_bytes()
+            candidate.write_bytes(raw+b"\n# unauthorized future mutation\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_RETENTION_SOURCE_HASH_DRIFT"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
+            candidate.write_bytes(raw)
+            link=root/"extra-hardlink"
+            os.link(candidate,link)
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RETENTION_SOURCE_CUSTODY"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
+            link.unlink()
+            candidate.unlink()
+            candidate.symlink_to(source/"scripts/aoe2_factory_retention_post_t10.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RETENTION_SOURCE_SYMLINK"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
 
     def test_we2_storage_exact_root_source_admission_and_negative_cases(self):
         import hashlib
