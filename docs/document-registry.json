@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8d9209084619f6d9699b77a87f77342ef49cf7b35376a735c8dc3c421bdd5fac",
+      "sha256": "d16f2101e75b960424fccf1abedd1637a952001394ba66c0cb56ba289c727335",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1064,6 +1064,30 @@
       ],
       "title": "Kingdom Knowledge Router",
       "type": "explanation"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "source-only-read-only-operations",
+      "id": "aoe2war.app-prodn.kingdom-grading-history-source",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_SCORECARD_HISTORICAL_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "9ad2cec81f912f08afff0f79e318d9a10f47803108a84458041e372921b8c0b8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "aoe2war",
+        "vpssentry"
+      ],
+      "title": "Kingdom Scorecard and Historical OS Source Contracts",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3620,8 +3644,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we1/scan-org-learning-source-20261122",
-    "commit": "bcb44905e0fb84ae85315b7b559e62822f03682c"
+    "branch": "we1/scorecard-historical-source-20261122",
+    "commit": "2a1420cf08c4d59bbf537b127ff25e8c0cdd2024"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
