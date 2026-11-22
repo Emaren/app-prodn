@@ -136,7 +136,7 @@ class FactoryBirthContract(unittest.TestCase):
             receipt=work/"factory-birth-generated-rsync_partial_possible-runtime_tar_gz-v1.json"
             self.assertEqual(json.loads(receipt.read_text()),report)
             original=receipt.read_bytes()
-            self.assertTrue(original.endswith(b"\\n"))
+            self.assertTrue(original.endswith(b"\n"))
             R.record_factory_generated_birth(
                 approval,work,kind="RSYNC_PARTIAL_POSSIBLE",
                 name="runtime.tar.gz",expected_sha256=SHA)
