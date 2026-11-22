@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a980015ff42785d57d3fd9a693d89c0691de026ca508c8e4db6cc6545183d825",
+      "sha256": "8f476388e5557c3572809a40722fe4d5e31dc1a338f81a7404ec703a6254aedd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3597,7 +3597,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we1/factory-birth-after-atlas-20261122",
-    "commit": "564855d21ff47461405697e42cd3a07987e789f1"
+    "commit": "931c2698a9e34c8e4cf62e7c36a9fbb4aeeb6334"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
