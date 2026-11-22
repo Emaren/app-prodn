@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
+      "sha256": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d14b398f531695d03532909704ea0a7e1b8334e104c1967ccec5e09d230b983b",
+      "sha256": "55efae19bd3554d5bdd944b6eae7f0389c42ead3347e50485cf74ecc438ad713",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1375,9 +1375,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_OBSERVATORY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "7f34cc46a2339ea18ce32562527fef3eb590501148115ec335900807cf1ae94e",
+      "sha256": "4002ace1b36a2ffbb18985df402c8382a7cac41a5b959f3b6db89479e0d07171",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2508,9 +2508,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ROOM_FORUM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "15f8dba381542cb9e2d9f0d59ab0613fb6b2de294d47daf9925a2ba136944ab1",
+      "sha256": "e0fdc110a01c2eb05ee833d952cb6323dc12b5d5f5ffaab05cb4803a73526612",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3558,9 +3558,9 @@
       "owner": "aoe2war-web",
       "path": "prisma/README.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
+      "sha256": "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/bridge-dual-path-20261121",
-    "commit": "c1226465465e9999ddc69cb225dbbc8d80b8897c"
+    "branch": "session-c/we1-prisma-readme-protected-review-20261122",
+    "commit": "aafde8acc19501a291f0228443b71dfe36d9e514"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

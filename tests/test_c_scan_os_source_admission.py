@@ -32,7 +32,7 @@ class CScanOSSourceAdmissionTests(unittest.TestCase):
             base or p.EXACT_C_SCAN_OS_BASE,
             sorted(changes if changes is not None else p.EXACT_C_SCAN_OS_REQUIRED))
     def test_expected_branch_and_base(self):
-        self.assertEqual(p.EXACT_C_SCAN_OS_BASE,"6f900b1e7bf9ed96486bebdb6b17624b14c1a942")
+        self.assertEqual(p.EXACT_C_SCAN_OS_BASE,"204bf5c37560dfd705ee0b46803eec3ad396b082")
         self.assertTrue(p.BRANCH.fullmatch(p.EXACT_C_SCAN_OS_BRANCH))
         self.assertEqual(self.source("scripts/scan_os.py"),"scripts/scan_os.py")
         self.assertIsNone(self.exact())

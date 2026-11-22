@@ -99,16 +99,38 @@ EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
 EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
 
+# C/WE1 one-object Prisma DOCUMENT review. Never permits schema/migrations/SQL.
+# This exact reviewed payload is a schema REFERENCE, not a DB write permit.
+EXACT_C_PRISMA_DOC_PATH = "prisma/README.md"
+EXACT_C_PRISMA_DOC_BRANCH = "session-c/we1-prisma-readme-protected-review-20261122"
+EXACT_C_PRISMA_DOC_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
+EXACT_C_PRISMA_DOC_SHA256 = "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816"
+EXACT_C_PRISMA_DOC_TEST_SHA256 = "fde644a3adbf3b7a4d9bd26de66ffa5387b6cf93680b6d6d7ada4f8c13e45afc"
+EXACT_C_PRISMA_WE3_DOC_SHA256 = {
+    "DEPLOY.md": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
+    "docs/PARSER_OBSERVATORY.md": "4002ace1b36a2ffbb18985df402c8382a7cac41a5b959f3b6db89479e0d07171",
+    "docs/WAR_ROOM_FORUM.md": "e0fdc110a01c2eb05ee833d952cb6323dc12b5d5f5ffaab05cb4803a73526612",
+}
+EXACT_C_PRISMA_DOC_REQUIRED = frozenset({
+    EXACT_C_PRISMA_DOC_PATH,
+    "scripts/product_boundary_guard.py",
+    "tests/test_c_prisma_doc_admission.py",
+}) | frozenset(EXACT_C_PRISMA_WE3_DOC_SHA256)
+EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2 = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 # C/WE1 one exact, nonexecuting Scan OS catalog/planner admission.
 # Source-only; does NOT grant scanner execution, receiver, schedule or delete.
 EXACT_C_SCAN_OS_BRANCH = "session-c/we1-scan-os-exact-review-20261122"
-EXACT_C_SCAN_OS_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
+EXACT_C_SCAN_OS_BASE = "204bf5c37560dfd705ee0b46803eec3ad396b082"
 EXACT_C_SCAN_OS_HASHES = {
     "scripts/scan_os.py": "7fe37c5b934e4f912814dfa9efb6988692e37da31de3d47ca3450a49e841320a",
     "config/scan-os-catalog.v1.json": "5399ba92c6b93de08bc3f78c74847b88656d2371a5d21102035455209209e794",
     "tests/test_scan_os.py": "b6d22508eb694a5812451451a25104bff34cbd87f29c4ba073172c0cd2fa92aa",
     "tests/test_scan_os_we1_adversarial.py": "ddb268159bf89b8d7d249b618d78360d5968681e913a04c22d0254b4000bb48f",
-    "tests/test_c_scan_os_source_admission.py": "aa009e3e15585e40de501a2ccd07a5ccd142a952241e2016147655665af911ca",
+    "tests/test_c_scan_os_source_admission.py": "a6f20d044d136f897df973ad9b7847a54b9f078ff92ac76eba1f30a7a7a810aa",
 }
 EXACT_C_SCAN_OS_REQUIRED = frozenset(EXACT_C_SCAN_OS_HASHES) | {
     "scripts/product_boundary_guard.py",
@@ -310,6 +332,13 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         if base != EXACT_C_SCAN_OS_BASE:
             raise BoundaryHold("C_SCAN_WRONG_BASE")
         _exact_c_scan_source_blob(checkout, raw)
+        return raw
+    if raw == EXACT_C_PRISMA_DOC_PATH:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_PRISMA_DOC_BRANCH:
+            raise BoundaryHold("C_PRISMA_WRONG_BRANCH")
+        if base != EXACT_C_PRISMA_DOC_BASE:
+            raise BoundaryHold("C_PRISMA_WRONG_BASE")
+        _exact_c_prisma_source_blob(checkout, raw, EXACT_C_PRISMA_DOC_SHA256)
         return raw
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_REVIEWED_KINGDOM_MENU_BRANCH:
@@ -682,6 +711,60 @@ def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
         exact_we2_bridge_blob(checkout, name)
 
 
+def _exact_c_prisma_source_blob(checkout: Path, relative: str, expected: str) -> None:
+    """Bounded regular-file verification; no symlink, hardlink, unsafe mode or source drift."""
+    if relative not in ({EXACT_C_PRISMA_DOC_PATH, "tests/test_c_prisma_doc_admission.py"} |
+                        set(EXACT_C_PRISMA_WE3_DOC_SHA256)):
+        raise BoundaryHold("C_PRISMA_UNREVIEWED_SOURCE_PATH")
+    target = checkout
+    for name in relative.split("/"):
+        target = target / name
+        if target.is_symlink():
+            raise BoundaryHold("C_PRISMA_SYMLINK_ANCESTOR")
+    limit = 100_000 if relative in EXACT_C_PRISMA_WE3_DOC_SHA256 else 20_000
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= limit or
+            stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("C_PRISMA_SINGLE_FILE_REQUIRED")
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if ((live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) !=
+                (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)):
+            raise BoundaryHold("C_PRISMA_SOURCE_CHANGED_DURING_READ")
+        content = os.read(fd, limit + 1)
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        if relative == EXACT_C_PRISMA_DOC_PATH:
+            raise BoundaryHold("C_PRISMA_SHA256_DRIFT")
+        if relative in EXACT_C_PRISMA_WE3_DOC_SHA256:
+            raise BoundaryHold("C_PRISMA_REVIEWED_DOC_SHA256_DRIFT")
+        raise BoundaryHold("C_PRISMA_TEST_SHA256_DRIFT")
+
+
+def check_exact_c_prisma_doc_source(checkout: Path, repo: str, branch: str,
+                                    base: str, changes: list[str]) -> None:
+    """One C-reviewed documentation-only source transition, never a general Prisma rule."""
+    if branch != EXACT_C_PRISMA_DOC_BRANCH or repo != "Emaren/app-prodn":
+        raise BoundaryHold("C_PRISMA_SOURCE_BRANCH_OR_REPO")
+    if base != EXACT_C_PRISMA_DOC_BASE:
+        raise BoundaryHold("C_PRISMA_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+            not EXACT_C_PRISMA_DOC_REQUIRED.issubset(files) or
+            not files.issubset(EXACT_C_PRISMA_DOC_REQUIRED |
+                               EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2)):
+        raise BoundaryHold("C_PRISMA_CHANGED_FILE_SET")
+    _exact_c_prisma_source_blob(checkout, EXACT_C_PRISMA_DOC_PATH,
+                                EXACT_C_PRISMA_DOC_SHA256)
+    _exact_c_prisma_source_blob(checkout, "tests/test_c_prisma_doc_admission.py",
+                                EXACT_C_PRISMA_DOC_TEST_SHA256)
+    for reviewed, expected in EXACT_C_PRISMA_WE3_DOC_SHA256.items():
+        _exact_c_prisma_source_blob(checkout, reviewed, expected)
+
+
 def _exact_c_scan_source_blob(checkout: Path, raw: str) -> None:
     expected = EXACT_C_SCAN_OS_HASHES.get(raw)
     if expected is None:
@@ -746,6 +829,9 @@ def main() -> int:
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_bridge_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_PRISMA_DOC_BRANCH:
+            check_exact_c_prisma_doc_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
         if branch == EXACT_C_SCAN_OS_BRANCH:
             check_exact_c_scan_os_source(
                 checkout,repo_name,branch,base,receipt["changed_files"])
