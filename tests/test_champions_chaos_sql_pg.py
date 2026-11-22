@@ -34,9 +34,9 @@ class ChaosSqlParity(unittest.TestCase):
     @unittest.skipUnless(ENABLED,"RUN_CHAMPIONS_CHAOS_SQL_PG_TESTS=1 required")
     def test_legacy_public_full_history_equivalence_and_temp_io(self):
         queries={
-            "old_legacy": original("champions-chaos-original-legacy.sql"),
+            "old_legacy": original("champions-chaos-original-legacy.txt"),
             "new_legacy": legacy_sql((ROOT/"lib/champions/championsV2.ts").read_text()),
-            "old_public": original("champions-chaos-original-public.sql"),
+            "old_public": original("champions-chaos-original-public.txt"),
             "new_public": public_sql((ROOT/"config/nonfinancial-public-champions-v6.sql").read_text())
         }
         self.assertIn("COUNT(DISTINCT",queries["old_public"])
