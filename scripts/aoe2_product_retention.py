@@ -31,6 +31,9 @@ RECEIPT_SCHEMA = "aoe2war.product.artifact-retention-receipt.v1"
 COPY_ONLY_SCHEMA = "aoe2war.product.compressed-archive-copy-only-receipt.v1"
 COPY_ONLY_PURPOSE = "HEL1_HISTORICAL_FACTORY_COMPRESSED_ARCHIVE_COPY_ONLY"
 RETIRE_PURPOSE = "HEL1_HISTORICAL_FACTORY_COMPRESSED_ARCHIVE_ONE_ITEM_RETIRE"
+# Source-only source-class protection; never infer the 50b T8 predecessor's
+# independent recovery and human ROOT retirement from a root-owned boolean.
+DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE = "dbceb5df20f98ff783a2af1a83d79cf17abae035"
 PLAN_FIELDS = {
     "schema", "pins_sha256", "created_at", "destination", "storage_identity", "items",
     "root_free_bytes_before", "volume_free_bytes_before",
@@ -373,6 +376,8 @@ def copy_only(q, qsha, p, pinsha):
     live_identity(p)
     entry = q["items"][0]
     c = entry["classification"]
+    need(c.get("source") != DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE,
+         "DBCEB_OWNER_COPY_VERIFIER_AND_DURABLE_NONCE_LEDGER_NOT_ENROLLED")
     need(c in p["candidates"] and candidate(c, p) == entry,
          "COPY_ONLY_SOURCE_PROOF_DRIFT")
     need(free(dest) >= c["archive_bytes"] + GIB, "COPY_ONLY_VOLUME_HEADROOM")
@@ -426,6 +431,16 @@ def copy_only(q, qsha, p, pinsha):
 
 
 def apply(q, qsha, p, pinsha):
+    # The original 50b T8 predecessor has a distinct recovery floor.  Neither
+    # the COPY-only receipt nor self-asserted root pin booleans are authentic
+    # owner-retirement grants; this source cannot retire dbceb until a distinct
+    # original cryptographic verifier/nonce ledger is genuinely installed.
+    if type(q) is dict and type(q.get("items")) is list:
+        for item in q["items"]:
+            if type(item) is dict and type(item.get("classification")) is dict:
+                need(item["classification"].get("source") !=
+                     DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE,
+                     "DBCEB_SIGNED_RETIRE_AND_RESTORE_RECEIPT_VERIFIER_ABSENT")
     need(p.get("purpose") == RETIRE_PURPOSE
          and p.get("retirement_authorized") is True
          and p.get("independent_restoration_verified") is True
