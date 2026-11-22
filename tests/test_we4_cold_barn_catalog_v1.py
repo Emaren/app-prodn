@@ -51,6 +51,36 @@ class CatalogTests(unittest.TestCase):
         self.assertFalse(row["current_digest_reverified"])
         self.assertFalse(q["current_full_restore_validated"])
         self.assertEqual(q["all_copy_and_retirement_authority"],"HOLD")
+    def test_generation_only_from_exact_verified_source_and_build(self):
+        a,b,r=fixtures()
+        row=mod.build_catalog(a,b,r)["entries"][0]
+        self.assertEqual(row["generation"],"aaaaaaaaaaaa")
+        self.assertIsNone(row["source_filesystem"])
+        self.assertEqual(row["receiver_object_id"],row["object_id"])
+        self.assertEqual(row["receiver_ack_state"],"RECEIVER_READBACK_RECEIPT_CLAIM")
+        self.assertIsNone(row["original_source_bytes"])
+        self.assertFalse(row["current_digest_reverified"])
+        r["rows"][0]["build_id"]="NOT-THE-RESTORED-BUILD"
+        row=mod.build_catalog(a,b,r)["entries"][0]
+        self.assertIsNone(row["generation"])
+        self.assertIsNone(row["source_sha"])
+
+    def test_receiver_ack_not_inferred_from_file_presence(self):
+        a,b,r=fixtures()
+        a["receipts"]=[]
+        row=mod.build_catalog(a,b,r)["entries"][0]
+        self.assertEqual(row["receiver_ack_state"],"NO_AUTHENTICATED_RECEIVER_ACK")
+        self.assertIsNone(row["archive_sha256_receipt_claim"])
+        self.assertIsNone(row["source_filesystem"])
+
+    def test_receiver_hmac_separate_from_restoration_and_current_readback(self):
+        a,b,r=fixtures()
+        a["proofs"][0]["receiver_receipt_HMAC_verified"]=True
+        row=mod.build_catalog(a,b,r)["entries"][0]
+        self.assertEqual(row["receiver_ack_state"],"HISTORICAL_HMAC_VERIFIED")
+        self.assertFalse(row["current_digest_reverified"])
+        self.assertIsNone(row["source_filesystem"])
+
     def test_no_restoration_from_receiver_receipt_alone(self):
         a,b,r=fixtures();a["proofs"]=[]
         q=mod.build_catalog(a,b,r)
