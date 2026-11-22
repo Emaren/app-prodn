@@ -6,7 +6,7 @@ import {Script} from "node:vm";
 const require=createRequire(import.meta.url);
 const ts=require("typescript");
 const source=readFileSync("lib/storageM1PlacementDated.ts","utf8");
-const page=readFileSync("app/admin/storage-os/atlas/m1/placement/page.tsx","utf8");
+const page=readFileSync("components/storage-os/StorageM1PlacementBoard.tsx","utf8");
 const parent=readFileSync("app/admin/storage-os/atlas/m1/page.tsx","utf8");
 const code=ts.transpileModule(source,{
  fileName:"storageM1PlacementDated.ts",
@@ -81,17 +81,19 @@ test("16 original Factory ZIPs are disjoint cohort totals, not a second free-spa
  assert.equal(byId["m1-financial-cache"].approvalLevel,"L5_PROTECTED");
 });
 
-test("Private page gates owner UI server-side and links from existing M1 Atlas",()=>{
- assert.match(page,/await requireServerAdmin\(\)/);
- assert.ok(page.indexOf("await requireServerAdmin()")<page.indexOf("getDatedM1Placement()"));
- assert.match(page,/dynamic="force-dynamic"/);
+test("existing M1 Atlas admin gate encloses the owner-dated board, no new route",()=>{
+ assert.match(parent,/await requireServerAdmin\\(\\)/);
+ assert.ok(parent.indexOf("await requireServerAdmin()")<parent.indexOf("<StorageM1PlacementBoard/>"));
+ assert.match(parent,/dynamic="force-dynamic"/);
+ assert.match(parent,/import StorageM1PlacementBoard from/);
+ assert.match(page,/getDatedM1Placement\\(\\)/);
  assert.match(page,/NOT SIGNED|NOT A DELETION PERMIT/);
  assert.match(page,/EXPECTED UNIQUE|Expected unique reclaim/i);
  assert.match(page,/overflow-x-auto/);
- assert.match(parent,/await requireServerAdmin\(\)/);
- assert.match(parent,/\/admin\/storage-os\/atlas\/m1\/placement/);
+ assert.doesNotMatch(page,/requireServerAdmin\\(\\)/);
+ assert.doesNotMatch(parent,/\/admin\/storage-os\/atlas\/m1\/placement/);
  for(const text of [page,parent,source]){
   assert.doesNotMatch(text,/export async function (?:POST|PUT|PATCH|DELETE)/);
-  assert.doesNotMatch(text,/execSync\(|spawn\(|ssh |rm -rf|unlink\(/);
+  assert.doesNotMatch(text,/execSync\\(|spawn\\(|ssh |rm -rf|unlink\\(/);
  }
 });
