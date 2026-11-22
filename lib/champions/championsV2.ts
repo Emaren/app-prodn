@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { createStaleWhileRevalidateBackoff } from "@/lib/champions/chaosActivityRetry";
 
 import { summarizeChampionshipHall } from "@/lib/champions/championshipSummary";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
@@ -434,17 +435,11 @@ function dedupeContenders(rows: TitleContender[], holderName?: string | null) {
 const CHAOS_ACTIVITY_CACHE_TTL_MS =
   30_000;
 
-type ChaosActivityCacheEntry = {
-  expiresAt: number;
-  value: WatcherActivityRow[];
-};
-
-let chaosActivityCache:
-  ChaosActivityCacheEntry | null =
-  null;
-let chaosActivityPromise:
-  Promise<WatcherActivityRow[]> | null =
-  null;
+// A failed cold read is unavailable, not a successful zero-row snapshot.
+const chaosActivityRowsCache = createStaleWhileRevalidateBackoff<WatcherActivityRow[]>({
+  ttlMs: CHAOS_ACTIVITY_CACHE_TTL_MS,
+  retryMs: 30_000,
+});
 
 async function loadChaosActivityRowsFresh(
   prisma: PrismaClient,
@@ -503,71 +498,21 @@ async function loadChaosActivityRowsFresh(
       "Champion Chaos watcher activity unavailable:",
       error,
     );
-    // A missing reviewed public view is not evidence of zero Watcher games.
-    if (isNonfinancialPublicReadProfile()) throw error;
-    return [];
+    // An unavailable Watcher aggregate never proves there are zero games,
+    // including the legacy database profile. Preserve stale successful rows
+    // through the cache; a first failure stays explicitly unavailable.
+    throw error;
   }
-}
-
-function startChaosActivityRefresh(
-  prisma: PrismaClient,
-) {
-  if (chaosActivityPromise) {
-    return chaosActivityPromise;
-  }
-
-  const run =
-    loadChaosActivityRowsFresh(
-      prisma,
-    )
-      .then((value) => {
-        chaosActivityCache = {
-          expiresAt:
-            Date.now() +
-            CHAOS_ACTIVITY_CACHE_TTL_MS,
-          value,
-        };
-        return value;
-      })
-      .finally(() => {
-        if (
-          chaosActivityPromise ===
-          run
-        ) {
-          chaosActivityPromise = null;
-        }
-      });
-
-  chaosActivityPromise = run;
-  return run;
 }
 
 async function loadChaosActivityRows(
   prisma: PrismaClient,
-) {
-  const cached =
-    chaosActivityCache;
-
-  if (cached) {
-    if (
-      cached.expiresAt <= Date.now() &&
-      !chaosActivityPromise
-    ) {
-      void startChaosActivityRefresh(
-        prisma,
-      ).catch((error) => {
-        console.warn(
-          "Champion Chaos activity background refresh failed:",
-          error,
-        );
-      });
-    }
-
-    return cached.value;
-  }
-
-  return startChaosActivityRefresh(
-    prisma,
+): Promise<WatcherActivityRow[]> {
+  return chaosActivityRowsCache.get(
+    () => loadChaosActivityRowsFresh(prisma),
+    (error) => {
+      console.warn("Champion Chaos activity background refresh failed:", error);
+    },
   );
 }
 
