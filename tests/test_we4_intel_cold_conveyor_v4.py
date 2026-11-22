@@ -68,12 +68,37 @@ class ConveyorTests(unittest.TestCase):
         self.assertEqual(sum(x["decision"]=="KEEP_ACTIVE_OR_HOT" for x in z),5)
         self.assertEqual(sum(x["intel_receiver_object_id"] is None for x in z),11)
         self.assertEqual(sum(x["decision"]=="COLD_COPY_CANDIDATE_WITH_REQUIRED_NEW_AUTH" for x in z),6)
-        self.assertEqual(sum(x["source_full_content_verified"] for x in r),1)
+        self.assertEqual(sum(x["historical_full_content_proof_present"] for x in r),0)
         self.assertTrue(all(x["creation_date_utc"] is None for x in z+r))
         self.assertTrue(all(x["eligible_to_delete"] is False for x in z+r))
         self.assertTrue(all(x["fresh_independent_restore_this_catalog"] is False for x in z))
         self.assertEqual(z[5]["origin_fs_uuid"],m.SOURCE_FS_UUID)
         self.assertEqual(r[20]["origin_fs_uuid"],m.ROOT_FS_UUID)
+
+    def test_historical_full_root_needs_separate_exact_docket(self):
+        f,r,c=fixture()
+        row=r["rows"][20]
+        row["source_sha"]="4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7"
+        row["build_id"]="w-tDoD2iUw6P2P4oTw3Ti"
+        row["inode"]=4493824
+        docket={"schema":"aoe2war.we4.first-generation-copy-admission-docket.v1",
+          "target":{
+            "generation":"4c14cbc7c518",
+            "source_sha":"4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7",
+            "build_id":"w-tDoD2iUw6P2P4oTw3Ti",
+            "fs_uuid":m.ROOT_FS_UUID,
+            "root_dev":2049,"root_inode":4493824,
+            "regular_files_hashed":45036,
+            "file_content_manifest_sha256":
+              "60ba8c3561bed95b8f72dcb97f805516a55c5963a0f6c182ea94536c4f6f6647"},
+          "source_evidence":{"integrity_manifest_sha256":
+            "d96aa4edf0dcf2a117b2cb46a1e4ee4a69da8bdcf22db779610adff5043c50bc"}}
+        z,roots=m.compile_sources(f,r,c,full_root_docket=docket)
+        self.assertEqual(sum(x["historical_full_content_proof_present"] for x in roots),1)
+        self.assertFalse(any(x["eligible_to_delete"] for x in roots))
+        docket["target"]["fs_uuid"]="17f6fb02-4fed-4836-a33b-86e8993afdfa"
+        with self.assertRaisesRegex(ValueError,"UNBOUND_HISTORICAL_ROOT"):
+            m.compile_sources(f,r,c,full_root_docket=docket)
 
     def test_missing_or_dishonest_cold_proof_fails(self):
         f,r,c=fixture()
