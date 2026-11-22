@@ -1,0 +1,475 @@
+{
+  "schema": "aoe2war.storage-disposition-policy.v1",
+  "mode": "REVIEW_ONLY_NO_NEW_EXECUTION_AUTHORITY",
+  "owner": "WE1_SOURCE_POLICY",
+  "source_of_truth": {
+    "repo": "Emaren/app-prodn",
+    "controller": "scripts/aoe2_storage.py",
+    "existing_contract": "docs/STORAGE_OS.md"
+  },
+  "default_disposition": "PROTECTED",
+  "disposition_labels": [
+    "KEEP",
+    "COLD",
+    "PRUNE",
+    "PROTECTED"
+  ],
+  "levels": {
+    "L1": "EXACT_REGENERABLE_CONTROLLER_SCOPED",
+    "L2": "EXACT_ACTION_OWNER_CONSENT_AFTER_SIGNED_ITEM_AND_REBUILD_PROOF",
+    "L3": "EXACT_SOURCE_OWNER_REVIEW_NO_MUTATION",
+    "L4": "HUMAN_ONLY_NO_SOFTWARE_DELETE",
+    "L5": "NEVER_DELETE_NO_DOWNGRADE_OR_WEB_REVOKE"
+  },
+  "protection_precedence": "MAX_OF_SOURCE_FLOOR_AND_ANY_AUTHENTIC_HISTORICAL_OWNER_PROTECTION",
+  "authority": {
+    "standing_source_classification_only": true,
+    "new_deletion_controller_authorized": false,
+    "new_auto_apply_or_scheduler_authorized": false,
+    "l1_existing_approved_controller_required": true,
+    "l1_existing_owner_apply_action_required": true,
+    "l2_category_training_is_not_item_admission": true,
+    "l2_exact_item_requires_independent_signed_source": true,
+    "l3_l4_l5_delete_authorized": false,
+    "financial_authorized": false,
+    "intel_transfer_authorized": false,
+    "scanner_execution_authorized": false
+  },
+  "eligible_l1_classes": [
+    {
+      "id": "yarn_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/Yarn",
+      "controller_mode": "standard",
+      "producer": "Yarn download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "go_build_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/go-build",
+      "controller_mode": "standard",
+      "producer": "Go generated build cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "pnpm_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/pnpm",
+      "controller_mode": "standard",
+      "producer": "pnpm download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "core_simulator_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Developer/CoreSimulator/Caches",
+      "controller_mode": "standard",
+      "producer": "CoreSimulator generated cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "npm_content_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": ".npm/_cacache",
+      "controller_mode": "extended",
+      "producer": "npm content-addressed download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "homebrew_download_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/Homebrew",
+      "controller_mode": "extended",
+      "producer": "Homebrew downloads cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "pip_download_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/pip",
+      "controller_mode": "extended",
+      "producer": "pip downloads cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "pip_user_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": ".cache/pip",
+      "controller_mode": "extended",
+      "producer": "pip user download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "electron_binary_download_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/electron",
+      "controller_mode": "electron_only",
+      "producer": "Electron binary download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    },
+    {
+      "id": "electron_builder_download_cache",
+      "host": "M1_DEV",
+      "mount": "APFS_DATA_SAME_VOLUME_VERIFIED_AT_RUNTIME",
+      "relative_home_path": "Library/Caches/electron-builder",
+      "controller_mode": "electron_only",
+      "producer": "Electron Builder download cache",
+      "default_disposition": "PRUNE",
+      "level": "L1",
+      "authority": "EXISTING_AOE2WAR_STORAGE_LOCAL_MAINTAIN_ONLY",
+      "requires": [
+        "EXACT_ALLOWLIST_PATH",
+        "NO_SYMLINK_OR_ANCESTOR_ESCAPE",
+        "COMPLETE_REQUIRED_PROCESS_AND_FD_EXCLUSION",
+        "NO_PROTECTED_SUBTREE_OR_CONSUMER",
+        "EXISTING_OWNER_APPLY_MODE",
+        "DURABLE_RECEIPT",
+        "SAME_FILESYSTEM_AVAILABLE_PRE_POST"
+      ],
+      "not_allowed": [
+        "WILDCARD_DELETE",
+        "AGE_ONLY_DELETE",
+        "SCHEDULER_APPLY",
+        "CROSS_VOLUME_RECLAIM_INFERENCE"
+      ]
+    }
+  ],
+  "allowed_controller_modes": {
+    "standard": "aoe2war storage local-maintain --apply",
+    "extended": "aoe2war storage local-maintain --apply --extended",
+    "electron_only": "aoe2war storage local-maintain --apply --electron-only"
+  },
+  "protected_exclusions": {
+    "always_keep_generations": [
+      "9cf670724c82",
+      "50b943a44a2e",
+      "dbceb5df20f9",
+      "f50ead889c61",
+      "da0bee282e52"
+    ],
+    "recovery_services": [
+      "3030_LEGACY",
+      "3033_EMERGENCY"
+    ],
+    "classes": [
+      "ACTIVE_RUNTIME",
+      "CURRENT_SOURCE",
+      "HOT_ROLLBACKS",
+      "ORIGINAL_FACTORY_ARTIFACTS",
+      "INTEL_RECOVERY_ORIGINALS",
+      "FINANCIAL_OR_CUSTODY",
+      "PRIVATE_EVIDENCE",
+      "CODEX_ACTIVE_RUNTIME",
+      "UNMERGED_WORKTREE",
+      "DATABASE",
+      "ACTIVE_OR_HISTORIC_PROTECTED_SWAP",
+      "UNCLASSIFIED_OR_PARTIAL"
+    ],
+    "unknown_is": "PROTECTED_HOLD_NOT_ZERO"
+  },
+  "exact_items": {
+    "M1_ZIP_60011": {
+      "source_sha": "39a2d8b2eba9b5cc37d7351003d464554dc692f9",
+      "build_id": "4tBu8UVAzwIkIyVfR-hpD",
+      "content_sha256": "60011e8fda8ba9aefabae3f32723f6f5fb0a306d963a936851477a52e219d3db",
+      "disposition": "PROTECTED",
+      "level": "L4",
+      "original_retirement": "EXPLICIT_NO",
+      "factory_refs": "TEN_POSITIVE_ORIGINAL_SOURCE_REFERENCES_REPORTED",
+      "requires": "NEW_ORIGINAL_SOURCE_AND_RECOVERY_EXCLUSION_PLUS_AUTHENTIC_HUMAN_L4_REDECISION",
+      "software_deletion_authorized": false
+    },
+    "HEL1_ROOT_4C14": {
+      "generation": "4c14cbc7c518",
+      "source_sha": "4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7",
+      "build_id": "w-tDoD2iUw6P2P4oTw3Ti",
+      "root_uuid": "64f6fb02-4fed-4836-a33b-86e8993afdfa",
+      "inode": 4493824,
+      "disposition": "PROTECTED",
+      "level": "L4",
+      "exact_copy_class": "HEL1_HISTORICAL_FACTORY_RUNTIME/COPY_ONLY_NO_RETIRE/4c14cbc7c518",
+      "requires": "SEPARATE_SOURCE_CLASS_OWNER_NONCE_PERMIT_INTEL_ACK_FULL_CIPHERTEXT_AND_ISOLATED_RESTORE",
+      "copy_authorized": false,
+      "retirement_authorized": false
+    },
+    "HEL1_DATA_OLD_SWAP": {
+      "inode": 3276802,
+      "uuid": "a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42",
+      "disposition": "PROTECTED",
+      "level": "L5",
+      "requires": "ORIGINAL_L5_PROTECTION_AUTHORITY_CHANGE_NOT_AVAILABLE",
+      "deletion_authorized": false
+    }
+  },
+  "evidence_contract": {
+    "schema": "aoe2war.storage-provenance-disposition.v1",
+    "required": [
+      "subject",
+      "source",
+      "bytes",
+      "owner",
+      "coverage",
+      "classification",
+      "destination",
+      "recovery",
+      "authority",
+      "outcome"
+    ],
+    "source": [
+      "machine",
+      "fs_uuid",
+      "mount",
+      "dev",
+      "inode",
+      "nlink",
+      "path_alias",
+      "source_sha",
+      "build_id",
+      "object_sha256",
+      "manifest_sha256",
+      "producer",
+      "timestamp_utc"
+    ],
+    "bytes": [
+      "logical_bytes",
+      "gross_allocated_bytes",
+      "sampled_allocated_bytes",
+      "proven_unique_reclaim_bytes",
+      "ordinary_available_before_bytes",
+      "ordinary_available_after_bytes",
+      "physically_reclaimed_bytes"
+    ],
+    "owner": [
+      "source_owner",
+      "admission_principal",
+      "source_signer_spki",
+      "owner_decision_receipt",
+      "independent_verifier"
+    ],
+    "coverage": [
+      "status",
+      "roots",
+      "excluded",
+      "errors",
+      "truncated",
+      "overlap",
+      "observed_at_utc",
+      "received_at_utc"
+    ],
+    "classification": [
+      "disposition",
+      "level",
+      "strongest_historical_level",
+      "reason",
+      "active_consumers",
+      "hot_pins",
+      "original_dependencies"
+    ],
+    "destination": [
+      "purpose",
+      "host",
+      "recipient_identity",
+      "copy_class",
+      "copy_permit",
+      "durable_ack",
+      "ciphertext_sha256"
+    ],
+    "recovery": [
+      "original_restore_receipt",
+      "restore_timestamp_utc",
+      "full_source_digest",
+      "restore_status"
+    ],
+    "authority": [
+      "action",
+      "issuer",
+      "nonce",
+      "expiry_utc",
+      "signature_verifier",
+      "scope",
+      "admitted"
+    ],
+    "outcome": [
+      "operation_receipt",
+      "result",
+      "physically_reclaimed_bytes",
+      "same_volume_pre_post",
+      "measured_at_utc"
+    ],
+    "incomplete_value": null,
+    "statuses": [
+      "SIGNED_EXACT",
+      "SIGNED_PARTIAL",
+      "UNSIGNED_SOURCE",
+      "NOT_ADMITTED",
+      "HOLD",
+      "UNKNOWN"
+    ],
+    "gross_is_not_unique_reclaim": true,
+    "copy_is_not_retirement": true,
+    "historical_restore_is_not_fresh_restore": true
+  }
+}
