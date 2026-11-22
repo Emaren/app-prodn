@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
 const data=JSON.parse(readFileSync(new URL("../config/renaissance-campaign.json",import.meta.url),"utf8"));
 const routes=data.phases.flatMap((p:{id:string;routes:string[]})=>p.routes);
-test("all 161 source templates have one canonical campaign assignment",()=>{
- assert.equal(routes.length,161);assert.equal(new Set(routes).size,161);assert.equal(data.phases.length,7);
+test("all 166 source templates have one canonical campaign assignment",()=>{
+ assert.equal(routes.length,166);assert.equal(new Set(routes).size,166);assert.equal(data.phases.length,7);
  assert.equal(data.modules.length,12);
  for(const r of routes){const path=new URL("../app"+(r==="/"?"/":r+"/")+"page.tsx",import.meta.url);assert.ok(existsSync(path),r);}
 });
@@ -14,8 +14,16 @@ test("ordered phases and intentional independent views",()=>{
  for(const m of data.modules){const target=m.slug==="command"?"../app/renaissance/page.tsx":"../app/renaissance/"+m.slug+"/page.tsx";assert.ok(existsSync(new URL(target,import.meta.url)),m.slug);}
 });
 test("public visibility explicitly separates admin, private, invoice and public index",()=>{
- assert.equal(routes.filter((r:string)=>r==="/admin"||r.startsWith("/admin/")).length,40);
+ assert.equal(routes.filter((r:string)=>r==="/admin"||r.startsWith("/admin/")).length,45);
  assert.ok(routes.includes("/admin/aoe2war-os/umbrella-tree"),"new route counted privately");
+ for(const path of ["/admin/storage-os/atlas","/admin/storage-os/atlas/hel1-root",
+   "/admin/storage-os/atlas/hel1-data","/admin/storage-os/atlas/m1",
+   "/admin/storage-os/atlas/intel"]){
+   assert.ok(routes.includes(path),"each Atlas admin route is source indexed: "+path);
+ }
+ const control=data.phases.find((p:{id:string})=>p.id==="I");
+ assert.ok(control);
+ assert.equal(control.routes.filter((r:string)=>r.startsWith("/admin/storage-os/atlas")).length,5);
  assert.equal(routes.filter((r:string)=>r.includes("[")).length,21);
  const view=readFileSync(new URL("../lib/renaissance/registry.ts",import.meta.url),"utf8");
  assert.match(view,/isRestricted/);assert.match(view,/market\/invoices/);
