@@ -32,8 +32,8 @@ FIRST_OWNER_SELECTED = {
 PROTECTED = {
     "appearance": "f50ead889c61",
     "social": "da0bee282e52",
-    "fallback_3030": "PROTECT_ORIGINAL_RESCUE_WORKDIR",
-    "emergency_3033": "PROTECT_ORIGINAL_RECOVERY_WORKDIR",
+    "fallback_3030": "KEEP_3030_ORIGINAL:/var/www/AoE2HDBets/app-prodn",
+    "emergency_3033": "KEEP_3033_ORIGINAL:/",
 }
 
 class RetentionHold(ValueError):
@@ -69,6 +69,8 @@ def plan_only_after_exact_t10(*, source_sha: str, build_id: str,
     if not (type(source_sha) is str and HEX40.fullmatch(source_sha) and
             type(build_id) is str and BUILD.fullmatch(build_id)):
         raise RetentionHold("CURRENT_SOURCE_BUILD_IDENTITY")
+    if type(ledger_raw) is not bytes or not 20 <= len(ledger_raw) <= 2_000_000:
+        raise RetentionHold("T10_LEDGER_BUDGET")
     seal = _document(seal_raw, 16384)
     t8 = _document(t8_raw, 131072)
     if not (seal.get("schema") == "aoe2war.product.release-seal.v1"
@@ -81,14 +83,13 @@ def plan_only_after_exact_t10(*, source_sha: str, build_id: str,
             and type(seal.get("summarySha256")) is str
             and HEX64.fullmatch(seal["summarySha256"])):
         raise RetentionHold("T10_SEAL_ORIGINAL_LEDGER_MISMATCH")
-    if type(ledger_raw) is not bytes or not 20 <= len(ledger_raw) <= 2_000_000:
-        raise RetentionHold("T10_LEDGER_BUDGET")
     try:
         events = [json.loads(line) for line in ledger_raw.splitlines()]
     except ValueError:
         raise RetentionHold("T10_LEDGER_PARSE") from None
-    if not (1 <= len(events) <= 512 and
-            events[-1].get("event") == "T10" and
+    if not (1 <= len(events) <= 512
+            and all(type(e) is dict for e in events)
+            and events[-1].get("event") == "T10" and
             events[-1].get("state") == "pass" and
             events[-1].get("eventHash") == seal["lastEventHash"] and
             all(isinstance(e,dict) and e.get("sourceSha") == source_sha for e in events)):
