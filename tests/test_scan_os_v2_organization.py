@@ -90,7 +90,8 @@ class ScanLearningV2Tests(unittest.TestCase):
         self.assertEqual(x["content_bytes_read"], 0)
         self.assertIsNone(x["source_coverage_fraction"])
         self.assertEqual(x["status"], "CACHED_UNVERIFIED")
-        self.assertEqual(x["cached_hashes_reused"], 2)
+        self.assertEqual(x["cached_hashes_reused"], 0)
+        self.assertEqual(x["cached_references_unverified"], 2)
         self.assertFalse(x["original_source_crypto_verified"])
 
     def test_deep_explicit_reason_and_no_full_tree_walk(self):
