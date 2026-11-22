@@ -113,7 +113,7 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
             raise ValueError("invalid runtime source")
         for gen in runtimes.get("rows", []):
             source = gen.get("source_sha")
-            if isinstance(source, str) and HEX64.fullmatch(source):
+            if isinstance(source, str) and HEX40.fullmatch(source):
                 runtime_src[source] = gen
     result = []
     seen = set()
