@@ -99,6 +99,25 @@ EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
 EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
 
+# C/WE1 one exact, nonexecuting Scan OS catalog/planner admission.
+# Source-only; does NOT grant scanner execution, receiver, schedule or delete.
+EXACT_C_SCAN_OS_BRANCH = "session-c/we1-scan-os-exact-review-20261122"
+EXACT_C_SCAN_OS_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
+EXACT_C_SCAN_OS_HASHES = {
+    "scripts/scan_os.py": "7fe37c5b934e4f912814dfa9efb6988692e37da31de3d47ca3450a49e841320a",
+    "config/scan-os-catalog.v1.json": "5399ba92c6b93de08bc3f78c74847b88656d2371a5d21102035455209209e794",
+    "tests/test_scan_os.py": "b6d22508eb694a5812451451a25104bff34cbd87f29c4ba073172c0cd2fa92aa",
+    "tests/test_scan_os_we1_adversarial.py": "ddb268159bf89b8d7d249b618d78360d5968681e913a04c22d0254b4000bb48f",
+    "tests/test_c_scan_os_source_admission.py": "aa009e3e15585e40de501a2ccd07a5ccd142a952241e2016147655665af911ca",
+}
+EXACT_C_SCAN_OS_REQUIRED = frozenset(EXACT_C_SCAN_OS_HASHES) | {
+    "scripts/product_boundary_guard.py",
+}
+EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -285,6 +304,13 @@ def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
 
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == "scripts/scan_os.py":
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_SCAN_OS_BRANCH:
+            raise BoundaryHold("C_SCAN_WRONG_BRANCH")
+        if base != EXACT_C_SCAN_OS_BASE:
+            raise BoundaryHold("C_SCAN_WRONG_BASE")
+        _exact_c_scan_source_blob(checkout, raw)
+        return raw
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_REVIEWED_KINGDOM_MENU_BRANCH:
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_WRONG_BRANCH")
@@ -656,6 +682,50 @@ def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
         exact_we2_bridge_blob(checkout, name)
 
 
+def _exact_c_scan_source_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_C_SCAN_OS_HASHES.get(raw)
+    if expected is None:
+        raise BoundaryHold("C_SCAN_UNREVIEWED_PATH")
+    p = checkout
+    for name in raw.split("/"):
+        p = p / name
+        if p.is_symlink():
+            raise BoundaryHold("C_SCAN_SYMLINK_ANCESTOR")
+    st = p.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 20_000 or
+            stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("C_SCAN_SINGLE_FILE")
+    fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("C_SCAN_FILE_CHANGED")
+        blob = os.read(fd, 20001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("C_SCAN_SHA256_DRIFT")
+
+
+def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
+                                 base: str, changes: list[str]) -> None:
+    if branch != EXACT_C_SCAN_OS_BRANCH:
+        raise BoundaryHold("C_SCAN_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("C_SCAN_SOURCE_REPO")
+    if base != EXACT_C_SCAN_OS_BASE:
+        raise BoundaryHold("C_SCAN_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+        not EXACT_C_SCAN_OS_REQUIRED.issubset(files) or
+        not files.issubset(EXACT_C_SCAN_OS_REQUIRED | EXACT_C_SCAN_OS_OPTIONAL_DOCS)):
+        raise BoundaryHold("C_SCAN_CHANGED_FILE_SET")
+    for raw in EXACT_C_SCAN_OS_HASHES:
+        _exact_c_scan_source_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -676,6 +746,9 @@ def main() -> int:
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_bridge_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_SCAN_OS_BRANCH:
+            check_exact_c_scan_os_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
