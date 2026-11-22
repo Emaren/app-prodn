@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LINKS = ROOT / "config/organization-os-source-links.v1.json"
 SCHEMA = "aoe2war.organization-os.source-links.v1"
 ID = re.compile(r"^[A-Z][A-Z0-9_]{2,79}$")
-PATH = re.compile(r"^(scripts|config|docs|lib)/[A-Za-z0-9_./-]+$")
+PATH = re.compile(r"^(scripts|config|docs|lib|ops)/[A-Za-z0-9_./-]+$")
 VIEWS = ("catalog", "index", "contents", "glossary", "encyclopedia",
          "appendix", "ledger", "accounting")
 NODE_FIELDS = frozenset(("id", "kind", "repo", "path", "owner", "producer",
