@@ -47,7 +47,8 @@ def mtime_string(ns: int) -> str | None:
         return None
     return dt.datetime.fromtimestamp(ns / 1e9, dt.timezone.utc).isoformat()
 
-def compile_sources(factory: dict, runtime: dict, cold: dict) -> tuple[list[dict], list[dict]]:
+def compile_sources(factory: dict, runtime: dict, cold: dict,
+                    full_root_docket: dict | None = None) -> tuple[list[dict], list[dict]]:
     if (factory.get("schema") != ZIP_SCHEMA or factory.get("zip_count") != 16
             or factory.get("source_root_dev") != 16777234
             or factory.get("source_full_sha256_reread_for_each_zip") is not True
@@ -131,6 +132,29 @@ def compile_sources(factory: dict, runtime: dict, cold: dict) -> tuple[list[dict
         x["decision"] == "RESTORED_HISTORICALLY_BUT_RETIREMENT_PERMIT_DENIED"
         for x in factory_rows) != 5:
         raise ValueError("HOLD_FACTORY_PROTECTION_COUNTS_CHANGED")
+    # The 26-root metadata inventory does NOT prove 26 full content hashes.
+    # Qualify the one historical full-content proof only against the exact
+    # separately captured 4c14 native source docket; no fresh hash is run.
+    historical_full_4c14 = False
+    if full_root_docket is not None:
+        target=full_root_docket.get("target",{})
+        evidence=full_root_docket.get("source_evidence",{})
+        if (full_root_docket.get("schema") !=
+             "aoe2war.we4.first-generation-copy-admission-docket.v1" or
+            target.get("generation") != "4c14cbc7c518" or
+            target.get("source_sha") !=
+             "4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7" or
+            target.get("build_id") != "w-tDoD2iUw6P2P4oTw3Ti" or
+            target.get("fs_uuid") != ROOT_FS_UUID or
+            target.get("root_dev") != 2049 or
+            target.get("root_inode") != 4493824 or
+            target.get("regular_files_hashed") != 45036 or
+            target.get("file_content_manifest_sha256") !=
+             "60ba8c3561bed95b8f72dcb97f805516a55c5963a0f6c182ea94536c4f6f6647" or
+            evidence.get("integrity_manifest_sha256") !=
+             "d96aa4edf0dcf2a117b2cb46a1e4ee4a69da8bdcf22db779610adff5043c50bc"):
+            raise ValueError("HOLD_UNBOUND_HISTORICAL_ROOT_FULL_CONTENT")
+        historical_full_4c14=True
     root_rows = []
     generations = set()
     for row in runtime["rows"]:
@@ -154,8 +178,8 @@ def compile_sources(factory: dict, runtime: dict, cold: dict) -> tuple[list[dict
             "creation_date_utc": None, "source_mtime_utc": mtime_string(row.get("mtime_ns")),
             "native_source_inode": row.get("inode"),
             "source_allocated_bytes_gross": row.get("allocated_bytes"),
-            "protection": role, "source_full_content_verified":
-                gen == "4c14cbc7c518",
+            "protection": role, "historical_full_content_proof_present":
+                bool(historical_full_4c14 and gen == "4c14cbc7c518"),
             "intel_receiver_object_id": None,
             "archive_sha256": None, "receiver_ack_state": None,
             "independent_restore_status": "NOT_PROVEN",
@@ -180,7 +204,7 @@ FACTORY_FIELDS = (
 ROOT_FIELDS = (
     "generation","source_sha","build_id","origin_machine","origin_fs_uuid",
     "creation_date_utc","source_mtime_utc","native_source_inode",
-    "source_allocated_bytes_gross","protection","source_full_content_verified",
+    "source_allocated_bytes_gross","protection","historical_full_content_proof_present",
     "intel_receiver_object_id","archive_sha256","receiver_ack_state",
     "independent_restore_status","one_use_copy_permit","retirement_permit",
     "eligible_to_delete",
@@ -212,7 +236,7 @@ def output_conveyor(old_database: Path, index: dict, json_out: Path, sqlite_out:
                     else f"{f} TEXT" for f in FACTORY_FIELDS) + ")")
                 new.execute("CREATE TABLE hel1_generations (" + ",".join(
                     f"{f} INTEGER" if f in ("native_source_inode","source_allocated_bytes_gross",
-                    "source_full_content_verified","eligible_to_delete") else f"{f} TEXT"
+                    "historical_full_content_proof_present","eligible_to_delete") else f"{f} TEXT"
                     for f in ROOT_FIELDS) + ")")
                 new.executemany("INSERT INTO factory_zips VALUES (" +
                     ",".join("?" for _ in FACTORY_FIELDS) + ")",
@@ -246,18 +270,21 @@ def main() -> None:
     p.add_argument("--original-index-sqlite",type=Path,required=True)
     p.add_argument("--factory-evidence",type=Path,required=True)
     p.add_argument("--hel1-evidence",type=Path,required=True)
+    p.add_argument("--4c14-full-content-docket",type=Path,required=True)
     p.add_argument("--output-json",type=Path,required=True)
     p.add_argument("--output-sqlite",type=Path,required=True)
     a=p.parse_args()
     old,old_sha=safe_read(a.original_index_json)
     fac,fac_sha=safe_read(a.factory_evidence)
     root,root_sha=safe_read(a.hel1_evidence)
-    factory_rows,root_rows=compile_sources(fac,root,old)
+    full_docket,docket_sha=safe_read(a.__dict__["4c14_full_content_docket"])
+    factory_rows,root_rows=compile_sources(fac,root,old,full_root_docket=full_docket)
     index={"schema":SCHEMA,"generated_at_utc":dt.datetime.now(dt.timezone.utc).isoformat(),
            "original_23_archive_records":old["entries"],
            "factory_zips":factory_rows,"hel1_generations":root_rows,
            "source_sha256":{"cold_json_v3":old_sha,"factory_fullsha_16":fac_sha,
-                            "hel1_26_native_source":root_sha},
+                            "hel1_26_native_source":root_sha,
+                            "4c14_historical_full_file_manifest_docket":docket_sha},
            "coverage":{"historical_intel_objects":23,"factory_zips":16,
                        "factory_historically_restored":5,"factory_unarchived":6,
                        "factory_active_or_hot_protected":5,"hel1_generations":26},
@@ -266,6 +293,7 @@ def main() -> None:
                     "hel1_observation_utc":root.get("observed_utc"),
                     "fresh_ciphertext_rehash_by_this_script":False,
                     "fresh_isolated_restore_by_this_script":False,
+                    "fresh_root_content_reread_by_this_script":False,
                     "read_only_indexing_only":True,"new_transfers":0,
                     "new_deletions":0,"authorized_retirements":0}}
     output_conveyor(a.original_index_sqlite,index,a.output_json,a.output_sqlite)
