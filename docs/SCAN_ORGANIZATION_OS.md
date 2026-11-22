@@ -146,9 +146,40 @@ UTC, 16 runs covered five HOT, six INCREMENTAL, five DEEP. Before the
 measurement-window correction, pre-receipt internal medians were
 0.169 ms HOT, 0.264 ms INCREMENTAL and 0.330 ms DEEP; initial two
 sources totalled 28,324 content bytes. Five unchanged incremental
-runs reread zero content. **These values were from an older candidate
-head and are historical, not the final-head benchmark.** Compare the
-new exact-head native baseline before claiming any improvement.
+runs reread zero content. **These values were from an older candidate head and are historical,
+not the final-head benchmark.**
+
+### Final measured candidate (source-only) at 2026-11-22 16:xx UTC
+
+The expanded measurement window includes original catalog admission,
+receipt-cache loading, exact metadata and content investigation and
+checkpoint writing, but excludes process startup and final immutable
+receipt sealing. In one owner-owned isolated native M1 run at the code
+HEAD `3205567329fdbc23eb30bc742a4f912572556bf5`, 16 actual
+observations produced:
+
+| Profile | Runs | Measured p50 wall | Measured p95 wall | Median content bytes read |
+|---|---:|---:|---:|---:|
+| HOT | 5 | 2.440 ms | 2.694 ms | 0 |
+| INCREMENTAL | 6 | 2.324 ms | 4.450 ms | 0 |
+| DEEP | 5 | 2.349 ms | 2.670 ms | 28,324 |
+
+The first incremental run hashed both original CI files (28,324 B);
+the next five reused both unchanged hashes (10 verified incremental
+hash reuses in total, **no** content reread). HOT referenced ten
+unverified cached entries but did not claim those as verified reuse.
+DEEP performed ten deliberate file hashes across five runs. The host
+M1 APFS device was `16777234`; filesystem UUID and physical I/O
+bytes remain `UNKNOWN`. Independent false-positive review remains
+`UNKNOWN`.
+
+There is **no statistically meaningful wall-time speedup claim**
+from this tiny, cache-warm cohort: HOT's median was slightly slower
+than INCREMENTAL in this run. The real measured improvement is avoided
+content reads on unchanged bounded sources. The 35-gate scorecard
+reports **Scanning 80–100** and **Organization 60–100** as LOCAL
+source-only evidence ranges, while signed production recovery and
+owner automation remain unscored/UNKNOWN. Certified score is NULL.
 
 ## Physical recovery and production lineage boundaries
 
