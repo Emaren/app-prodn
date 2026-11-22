@@ -166,15 +166,26 @@ class BoundaryTests(unittest.TestCase):
             "docs/DOCUMENTATION_CONTROL_PLANE.md",
             "docs/document-registry.json"}
         self.assertEqual(set(policy.EXACT_WE2_FACTORY_RETENTION_CHANGED),expected_changes)
+        def reviewed_preimage(relative):
+            if relative in ("scripts/aoe2_product_release.py",
+                            "scripts/aoe2_factory_retention_post_t10.py"):
+                # Freeze the original F1/post-T10 bytes under the exact
+                # pre-birth canonical Git commit. Never change old SHA pins.
+                result=subprocess.run(
+                    ["git","-C",str(source),"show",
+                     "f833d7e633cee4b36f1427fa45d76081fa0796ef:"+relative],
+                    capture_output=True,check=True,timeout=25)
+                return result.stdout
+            return (source/relative).read_bytes()
         for relative,digest in pins.items():
-            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),digest)
+            self.assertEqual(hashlib.sha256(reviewed_preimage(relative)).hexdigest(),digest)
         changed=sorted(expected_changes)
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
             for relative in pins:
                 p=root/relative
                 p.parent.mkdir(parents=True,exist_ok=True)
-                p.write_bytes((source/relative).read_bytes())
+                p.write_bytes(reviewed_preimage(relative))
             with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
                 for relative in pins:
                     self.assertEqual(policy.authorize_changed_source(root,base,relative),relative)
@@ -792,6 +803,61 @@ class BoundaryTests(unittest.TestCase):
             with self.assertRaises((policy.BoundaryHold, OSError)):
                 policy.authorize_output("reports/product-boundary/receipt.json",
                                          root / "repo", root)
+
+
+    def test_we1_factory_birth_exact_review_no_previous_f1_pin_drift(self):
+        import hashlib
+        root=GUARD.parent.parent
+        bp=policy.EXACT_WE1_BIRTH_BRANCH
+        base=policy.EXACT_WE1_BIRTH_BASE
+        pins=policy.EXACT_WE1_BIRTH_PINS
+        self.assertEqual(bp,"we1/factory-birth-after-atlas-20261122")
+        self.assertEqual(base,"f833d7e633cee4b36f1427fa45d76081fa0796ef")
+        self.assertEqual(set(pins),{
+            "scripts/aoe2_product_release.py",
+            "scripts/aoe2_factory_retention_post_t10.py",
+            "tests/test_factory_birth_original.py",
+            "tests/test_product_boundary_guard.py",
+        })
+        self.assertIsNotNone(policy.BRANCH.fullmatch(bp))
+        self.assertIsNone(policy.BRANCH.fullmatch("we1/factory-birth-arbitrary"))
+        self.assertEqual(policy.EXACT_WE2_FACTORY_RETENTION_PINS[
+                         "scripts/aoe2_factory_retention_post_t10.py"],
+                         "81eeea068721bf751d11366b13d6c75f876bce72d3629e58cde6b3f31151ca12")
+        for name,h in pins.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),h)
+        with tempfile.TemporaryDirectory() as td:
+            q=Path(td)
+            for name in pins:
+                p=q/name
+                p.parent.mkdir(parents=True,exist_ok=True)
+                p.write_bytes((root/name).read_bytes())
+            changes=sorted(policy.EXACT_WE1_BIRTH_CHANGED)
+            self.assertIsNone(policy.check_exact_we1_factory_birth_source(
+                q,"Emaren/app-prodn",bp,base,changes))
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":bp}):
+                for name in ("scripts/aoe2_product_release.py",
+                             "scripts/aoe2_factory_retention_post_t10.py"):
+                    self.assertEqual(policy.authorize_changed_source(q,base,name),name)
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.authorize_changed_source(
+                        q,base,"scripts/aoe2_product_release.py")
+            for changes_bad in (changes[:-1],
+                                changes+["scripts/arbitrary-executor.py"],
+                                changes+[changes[0]]):
+                with self.assertRaisesRegex(policy.BoundaryHold,
+                                            "WE1_BIRTH_CHANGED_FILE_SET"):
+                    policy.check_exact_we1_factory_birth_source(
+                        q,"Emaren/app-prodn",bp,base,changes_bad)
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE1_BIRTH_SOURCE_BASE"):
+                policy.check_exact_we1_factory_birth_source(
+                    q,"Emaren/app-prodn",bp,"a"*40,changes)
+            p=q/"scripts/aoe2_product_release.py"
+            p.write_bytes(p.read_bytes()+b"\\n# unauthorized change\\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE1_BIRTH_SHA256"):
+                policy.check_exact_we1_factory_birth_source(
+                    q,"Emaren/app-prodn",bp,base,changes)
 
 
 if __name__ == "__main__":
