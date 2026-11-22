@@ -601,6 +601,14 @@ class BoundaryTests(unittest.TestCase):
                              policy.EXACT_WE2_FACTORY_BASE+":"+name],
                             capture_output=True,check=True,timeout=25)
                         original_fixture=result.stdout
+                    elif name == "scripts/aoe2_product_retention.py":
+                        # ORIGINAL frozen F1 preimage; the new protected
+                        # retention branch must not rewrite this old SHA.
+                        result = subprocess.run(
+                            ["git","-C",str(GUARD.parent.parent),"show",
+                             "e21a4a8272f81bb64d035fa19316c5e5c8528e7a:"+name],
+                            capture_output=True,check=True,timeout=25)
+                        original_fixture=result.stdout
                     target = checkout / name
                     target.write_bytes(original_fixture)
                     self.assertEqual(
@@ -793,6 +801,64 @@ class BoundaryTests(unittest.TestCase):
                 policy.authorize_output("reports/product-boundary/receipt.json",
                                          root / "repo", root)
 
+
+
+    def test_we1_original_retention_controller_separate_exact_admission(self):
+        import hashlib
+        root = GUARD.parent.parent
+        names = policy.EXACT_WE1_ORIGINAL_RETENTION_SOURCE
+        self.assertEqual(policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH,
+                         "we1/factory-retention-original-authority-20261122")
+        self.assertEqual(policy.EXACT_WE1_ORIGINAL_RETENTION_BASE,
+                         "8a3298a5e792b07c5e2616d832afa69cfd22a6e6")
+        self.assertEqual(set(names), {
+            "scripts/aoe2_product_retention.py",
+            "tests/test_product_retention.py",
+            "tests/test_product_boundary_guard.py"})
+        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE,
+                         "1b6e36e2bf4b823b9192488f12074798232c22ab")
+        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE[
+                         "scripts/aoe2_product_retention.py"],
+                         "a169f1ddd6c541e45c05b3792750931e9ddfa6164399aabe998dc724924e53ae")
+        for path,expected in names.items():
+            with self.subTest(path=path):
+                self.assertEqual(hashlib.sha256((root/path).read_bytes()).hexdigest(),
+                                 expected)
+        with tempfile.TemporaryDirectory() as tmp:
+            q=Path(tmp)
+            for name in names:
+                (q/name).parent.mkdir(parents=True,exist_ok=True)
+                (q/name).write_bytes((root/name).read_bytes())
+            expected_changes=sorted(policy.EXACT_WE1_ORIGINAL_RETENTION_CHANGED)
+            with mock.patch.dict(os.environ,{
+                     "BOUNDARY_BRANCH":policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH}):
+                self.assertIsNone(policy.check_exact_we1_original_retention_source(
+                    q,"Emaren/app-prodn",policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH,
+                    policy.EXACT_WE1_ORIGINAL_RETENTION_BASE,expected_changes))
+                self.assertEqual(policy.authorize_changed_source(
+                    q,policy.EXACT_WE1_ORIGINAL_RETENTION_BASE,
+                    "scripts/aoe2_product_retention.py"),
+                    "scripts/aoe2_product_retention.py")
+            for bad in (
+                expected_changes[:-1],
+                expected_changes + ["scripts/unreviewed_root_command.py"]):
+                with self.assertRaisesRegex(policy.BoundaryHold,
+                                            "ORIGINAL_RETENTION_CHANGED_FILES"):
+                    policy.check_exact_we1_original_retention_source(
+                        q,"Emaren/app-prodn",policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH,
+                        policy.EXACT_WE1_ORIGINAL_RETENTION_BASE,bad)
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "ORIGINAL_RETENTION_SOURCE_BASE"):
+                policy.check_exact_we1_original_retention_source(
+                    q,"Emaren/app-prodn",policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH,
+                    "f"*40,expected_changes)
+            changed=q/"scripts/aoe2_product_retention.py"
+            changed.write_bytes(changed.read_bytes()+b"\\nnot_authorized=True\\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "ORIGINAL_RETENTION_SHA256"):
+                policy.check_exact_we1_original_retention_source(
+                    q,"Emaren/app-prodn",policy.EXACT_WE1_ORIGINAL_RETENTION_BRANCH,
+                    policy.EXACT_WE1_ORIGINAL_RETENTION_BASE,expected_changes)
 
 if __name__ == "__main__":
     unittest.main()

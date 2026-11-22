@@ -11,6 +11,7 @@ SPEC = importlib.util.spec_from_file_location(
     "retention", Path(__file__).parents[1] / "scripts/aoe2_product_retention.py")
 m = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(m)
+ORIGINAL_CRYPTO_GATE = m.require_original_storage_authority
 
 
 class ProductRetentionTests(unittest.TestCase):
@@ -64,7 +65,10 @@ class ProductRetentionTests(unittest.TestCase):
             patch.object(m, "live_identity", return_value=None),
             patch.object(m, "storage_identity", return_value=self.identity),
             patch.object(m, "free", return_value=32 * m.GIB),
-            patch.object(m, "rename_no_replace", side_effect=self.fixture_rename)]
+            patch.object(m, "rename_no_replace", side_effect=self.fixture_rename),
+            # Legacy copy/restore mechanics are exercised with an EXPLICIT
+            # fixture-only mocked authority; the real CLI has no bypass.
+            patch.object(m, "require_original_storage_authority", return_value=None)]
         for p in self.patchers:
             p.start()
 
@@ -90,6 +94,34 @@ class ProductRetentionTests(unittest.TestCase):
         path.write_bytes(m.raw(p))
         path.chmod(0o600)
         return path
+
+    def test_any_historical_copy_denied_by_real_gate_despite_forged_flags(self):
+        q = self.q()
+        self.p.update({"purpose": m.COPY_ONLY_PURPOSE,
+                       "copy_authorized": True,
+                       "retirement_authorized": False,
+                       "independent_restoration_verified": True})
+        before = m.regular(self.file, m.OWNER)
+        with patch.object(m, "require_original_storage_authority",
+                          side_effect=ORIGINAL_CRYPTO_GATE):
+            with self.assertRaisesRegex(ValueError, "GENUINE_SIGNED_OWNER_GRANT"):
+                m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertEqual(m.regular(self.file, m.OWNER), before)
+        self.assertEqual(list(self.volume.rglob("copy-only-*.json")), [])
+
+    def test_any_historical_retirement_denied_by_real_gate_despite_true_flags(self):
+        q = self.q()
+        self.p.update({"purpose": m.RETIRE_PURPOSE,
+                       "retirement_authorized": True,
+                       "independent_restoration_verified": True})
+        before = m.regular(self.file, m.OWNER)
+        with patch.object(m, "require_original_storage_authority",
+                          side_effect=ORIGINAL_CRYPTO_GATE):
+            with self.assertRaisesRegex(ValueError, "GENUINE_SIGNED_OWNER_GRANT"):
+                m.apply(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertEqual(m.regular(self.file, m.OWNER), before)
+        self.assertEqual(list(self.folder.glob("*.retiring-*")), [])
+        self.assertEqual(list(self.volume.rglob("*.json")), [])
 
     def test_dbceb_owner_copy_boolean_cannot_bypass_missing_issuer(self):
         q = self.q()
