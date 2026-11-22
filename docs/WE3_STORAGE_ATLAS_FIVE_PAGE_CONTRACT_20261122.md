@@ -83,7 +83,10 @@ Node's read-only statfs metadata at the existing fixed HEL1 / and
 mount devices; absent/mismounted volumes withhold both values. No walk,
 spawn, shell, SSH, file contents, signed-receipt generation or write occurs.
 All four values (total, used, ordinarily available, reserved) must be safe
-integers and independently sum exactly. The source is explicitly
+integers and independently sum exactly. The displayed ordinary utilization
+percentage matches native df used/(used+ordinarily-available), while the
+segmented block shares use used/total and retain the separately shown reserved
+portion; neither denominator certifies category allocation. The source is explicitly
 NATIVE_HEL1_STATFS_UNCERTIFIED, not a signed collector receipt.
 
 M1 shows the original owner UID501's **dated** November 22, 2026

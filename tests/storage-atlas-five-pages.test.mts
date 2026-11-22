@@ -160,6 +160,9 @@ test("three native capacity observations keep exact numeric truth but never cert
   assert.equal(s.capacityObservedAt,obs[i].observedAt);
   assert.equal(s.capacityAgeSeconds,60);
   assert.equal(s.capacityAuthority,obs[i].source);
+  assert.equal(s.usedPercent,Math.round(obs[i].usedBytes/
+    (obs[i].usedBytes+obs[i].availableBytes)*1000)/10,
+    "native df ordinary denominator excludes reserved blocks");
   assert.equal(s.partitionCertified,false);
   assert.equal(s.unattributedBytes,null);
   assert.equal(s.uniqueReclaimBytes,null);

@@ -245,7 +245,9 @@ export function projectStorageAtlas(raw:StorageCommandCenter|null,
    if(total===null||used===null||available===null||reserved===null||
       !total||used+available+reserved!==total||elapsed===null)continue;
    item.totalBytes=total;item.usedBytes=used;item.availableBytes=available;
-   item.reservedBytes=reserved;item.usedPercent=Math.round(used/total*1000)/10;
+   // Native df Use% excludes reserved blocks from ordinary availability.
+   item.reservedBytes=reserved;item.usedPercent=used+available>0?
+     Math.round(used/(used+available)*1000)/10:null;
    item.capacityObservedAt=observation.observedAt;
    item.capacityAgeSeconds=elapsed;
    item.capacityDeviceIdentity=observation.deviceIdentity;

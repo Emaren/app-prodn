@@ -153,7 +153,8 @@ function CapacityRail({surface}:{surface:AtlasSurface}){
      <div><p className="text-[10px] text-slate-300">USED / NATIVE FILESYSTEM ACCOUNTING</p>
        <p className="mt-1 text-lg font-black tabular-nums text-white">{formatAtlasBytes(used)}
          <span className="text-xs font-semibold text-slate-300"> / {formatAtlasBytes(total)}</span></p></div>
-     <p className="text-xs font-black tabular-nums text-sky-100">{Math.round(usedPercent*10)/10}% used</p>
+     <p className="text-xs font-black tabular-nums text-sky-100">
+       {surface.usedPercent===null?"UNKNOWN":surface.usedPercent+"%"} ordinary utilization</p>
    </div>
    <div role="img" aria-label={surface.label+" native observed disk capacity: "+
      formatAtlasBytes(used)+" used, "+formatAtlasBytes(free)+" available, "+
@@ -172,6 +173,8 @@ function CapacityRail({surface}:{surface:AtlasSurface}){
    </div>
    <p className="mt-2 break-words text-[10px] leading-5 text-slate-300">
      {surface.capacityDeviceIdentity?"Device: "+surface.capacityDeviceIdentity+" · ":""}
+     Native ordinary utilization excludes reserved blocks from its denominator;
+     the segmented bar includes used, ordinarily available and reserved shares.
      Capacity observation is NOT signed category proof. The grey mosaic remains unscanned;
      no bytes are called reclaimable by this observation.
    </p>
