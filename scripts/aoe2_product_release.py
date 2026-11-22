@@ -399,7 +399,8 @@ def publish_invocation(invocation, approval, work, journal):
     # Keep a per-process private copy as well as the one immutable source receipt.
     seal_once(invocation.path.with_suffix(".json"), raw)
     seal_once(work / INVOCATION_RECEIPT_NAME, raw)
-    root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw)
+    root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw,
+                 birth_context=(approval, work))
     root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw, verify_only=True)
     invocation.record("INVOCATION RECEIPT PUBLISHED", proof=hashlib.sha256(raw).hexdigest())
     publication = refresh_factory_publication(approval, expected_raw=raw)
@@ -437,7 +438,7 @@ def reconcile_invocation(invocation, approval, work, journal, permit_write=False
         raw = local.read_bytes()
         need(permit_write, "INVOCATION_PUBLICATION_REQUIRES_RELEASE_PERMISSION")
         # This is the original stopped clock, not the retry process's clock.
-        root_receipt(root_path, raw)
+        root_receipt(root_path, raw, birth_context=(approval, work))
         root_receipt(root_path, raw, verify_only=True)
         state = "original-invocation-publication-recovered"
     else:
@@ -796,6 +797,26 @@ def record_factory_birth(approval, release_work, phase, evidence_sha256, objects
     return report
 
 
+def record_factory_generated_birth(approval, release_work, *, kind, name,
+                                   expected_sha256, verified_source_sha256=None,
+                                   acknowledged_bytes=None):
+    """Append-once metadata through the existing Factory receipt seal/readback."""
+    from aoe2_factory_retention_post_t10 import generated_child_certificate, canonical
+    report = generated_child_certificate(
+        source_sha=approval["sourceSha"], build_id=approval["buildId"],
+        github_run_id=approval["runId"], kind=kind, name=name,
+        expected_sha256=expected_sha256,
+        verified_source_sha256=verified_source_sha256,
+        acknowledged_bytes=acknowledged_bytes)
+    suffix = kind.lower() + "-" + name.replace(".", "_")
+    receipt = Path(release_work) / ("factory-birth-generated-" + suffix + "-v1.json")
+    raw = canonical(report) + b"\\n"
+    seal_once(receipt, raw)
+    transport.checked_file(receipt)
+    need(receipt.read_bytes() == raw, "GENERATED_BIRTH_ORIGINAL_READBACK")
+    return report
+
+
 def prepare_artifacts(approval, work, log, invocation=None):
     cache = transport.private_dir(work / "cache")
     stage = transport.private_dir(work / approval["sourceSha"][:12])
@@ -879,12 +900,22 @@ def deliver(approval, stage, proof, log, invocation=None):
         # macOS /usr/bin/rsync is openrsync protocol-29 (2.6.9-compatible).
         # It rejects --chmod=F600,D700; do not assume GNU rsync behavior.
         # Keep strict SSH host keys, resumable partials, and visible progress.
-        process = subprocess.run([
-            "/usr/bin/rsync", "-t", "--partial-dir=.rsync-partial", "--progress",
-            "-e", "/usr/bin/ssh -o BatchMode=yes "
-                  "-o StrictHostKeyChecking=yes -o ConnectTimeout=8",
-            str(stage / name), "hel1:" + remote + "/",
-        ], timeout=1800)
+        try:
+            process = subprocess.run([
+                "/usr/bin/rsync", "-t", "--partial-dir=.rsync-partial", "--progress",
+                "-e", "/usr/bin/ssh -o BatchMode=yes "
+                      "-o StrictHostKeyChecking=yes -o ConnectTimeout=8",
+                str(stage / name), "hel1:" + remote + "/",
+            ], timeout=1800)
+        except subprocess.TimeoutExpired:
+            record_factory_generated_birth(
+                approval, Path(log).parent, kind="RSYNC_PARTIAL_POSSIBLE",
+                name=name, expected_sha256=expected)
+            raise RuntimeError("HOLD_RSYNC_INTERRUPTED_RESUME_AVAILABLE") from None
+        if process.returncode != 0:
+            record_factory_generated_birth(
+                approval, Path(log).parent, kind="RSYNC_PARTIAL_POSSIBLE",
+                name=name, expected_sha256=expected)
         need(process.returncode == 0, "RSYNC_INTERRUPTED_RESUME_AVAILABLE")
         if name == "runtime.tar.gz":
             runtime_copied = True
@@ -1057,7 +1088,7 @@ def seal_once(path, raw):
 
 
 
-def root_receipt(path, raw, verify_only=False):
+def root_receipt(path, raw, verify_only=False, *, birth_context=None):
     source12, name = receipt_location(path)
     digest = hashlib.sha256(raw).hexdigest()
     mode = "verify" if verify_only else "write"
@@ -1071,6 +1102,15 @@ def root_receipt(path, raw, verify_only=False):
          and result.get("name") == name and result.get("sha256") == digest
          and result.get("bytes") == len(raw) and result.get("mode") == mode,
          "ROOT_RECEIPT_READBACK")
+    if not verify_only and birth_context is not None:
+        approval, release_work = birth_context
+        need(approval["sourceSha"][:12] == source12,
+             "GENERATED_ROOT_RECEIPT_SOURCE_SCOPE")
+        record_factory_generated_birth(
+            approval, release_work, kind="ROOT_RECEIPT", name=name,
+            expected_sha256=digest, verified_source_sha256=digest,
+            acknowledged_bytes=len(raw))
+    return result
 
 
 def release(approval, remote, proof, log, work, invocation=None):
@@ -1237,7 +1277,8 @@ def seal_acceptance(approval, log, work, journal, invocation=None):
                  "public-evidence-T8-v1.json", "public-evidence-T9-v1.json",
                  "source-qualification-v1.json", "pr-provenance-v1.json"):
         path = work / name
-        root_receipt(journal + "/" + name, path.read_bytes())
+        root_receipt(journal + "/" + name, path.read_bytes(),
+                     birth_context=(approval, work))
     if invocation is not None:
         invocation.accepted(hashlib.sha256(receipt_raw).hexdigest())
     print(json.dumps({
