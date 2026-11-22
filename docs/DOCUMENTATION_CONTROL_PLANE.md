@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-scan-os-exact-review-20261122` at `61b09b02e08c7f6dbdffd59ad958b98af576e1aa`
+Implementation baseline: `session-c/we1-storage-classification-20261122` at `17d2928148e4c772898033e423a5eb1937c28c8e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **157**
+- Authoritative repository documents: **158**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 13
-- `reference`: 82
+- `reference`: 83
 - `runbook`: 50
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 91
-- `draft`: 49
+- `draft`: 50
 - `generated`: 1
 - `historical`: 13
 - `superseded`: 3
@@ -155,6 +155,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
+| [Storage Classification and Disposition OS v1](STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md) | `reference` | `draft` | `review-only-policy-proposal-no-new-execution-authority` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
