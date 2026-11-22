@@ -485,6 +485,76 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(q["status"],"HOLD_INCOMPLETE_SOURCE_INVENTORY")
         self.assertIsNone(q["candidate"])
 
+
+    def pinned_4c14_source_fixture(self):
+        pin=dict(mod.OWNER_FIRST_HEL1_4C14_FINGERPRINT)
+        docket={"schema":"aoe2war.we4.first-generation-copy-admission-docket.v1",
+           "target":dict(pin,host="HEL1",fs="/dev/sda1"),
+           "source_evidence":{"integrity_manifest_sha256":
+               mod.OWNER_FIRST_HEL1_4C14_PRIVATE_MANIFEST_SHA256}}
+        hotrows=[
+          {"generation":gen,"source_sha":gen+"a"*28,"build_id":f"ROLLBACK-BUILD-{i}",
+           "device":2049,"inode":100+i,"allocated_bytes":1200,
+           "allocation_status":"MEASURED_SELECTED_TREE"}
+          for i,gen in enumerate(("9cf670724c82","50b943a44a2e","dbceb5df20f9"))
+        ]
+        target={"generation":pin["generation"],"source_sha":pin["source_sha"],
+          "build_id":pin["build_id"],"device":pin["root_dev"],"inode":pin["root_inode"],
+          "allocated_bytes":pin["gross_allocated_bytes"],
+          "allocation_status":"MEASURED_SELECTED_TREE"}
+        runtime={"schema":"we4.hel1.actual-runtime-inventory.v1","mount_dev":2049,
+            "rows":hotrows+[target],"count":4,"measured_count":4}
+        hot={"schema":"aoe2war.we2.factory-current-two-hot-source-dossier.v1",
+             "active":hotrows[0],"hot_rollback_candidates":hotrows[1:],
+             "owner_admission":"PENDING_EXACT_DECISION","hot_pinset_admitted":False}
+        return runtime,docket,hot
+
+    def test_pinned_4c14_never_redirects_to_auto_nominee(self):
+        runtime,docket,hot=self.pinned_4c14_source_fixture()
+        q=mod.review_owner_pinned_first_4c14_copy_only(runtime,docket,hot)
+        self.assertEqual(q["requested_generation"],"4c14cbc7c518")
+        self.assertEqual(q["candidate"]["generation"],"4c14cbc7c518")
+        self.assertEqual(q["status"],"HOLD_CURRENT_TWO_HOT_OWNER_ADMISSION")
+        self.assertFalse(q["apply"])
+        self.assertEqual(q["new_copies"],0)
+        self.assertEqual(q["new_deletions"],0)
+        hot["owner_admission"]="ADMITTED";hot["hot_pinset_admitted"]=True
+        q=mod.review_owner_pinned_first_4c14_copy_only(runtime,docket,hot)
+        self.assertEqual(q["status"],"HOLD_EXTERNAL_OWNER_SIGNATURE_AND_COPY_CLASS_VERIFIER")
+        self.assertFalse(q["one_use_owner_COPY_permit_verified"])
+
+    def test_pinned_4c14_refuses_valid_wrong_uuid_inode_manifest_or_source(self):
+        runtime,docket,hot=self.pinned_4c14_source_fixture()
+        drift=[
+          ("fs_uuid","17f6fb02-4fed-4836-a33b-86e8993afdfa"),
+          ("root_inode",4493825),
+          ("build_id","w-tDoD2iUw6P2P4oTw3TX"),
+          ("source_sha","4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e8"),
+          ("file_content_manifest_sha256","6"*64),
+          ("generation","31a70ba2dd4d"),
+        ]
+        for key,value in drift:
+            modded={"schema":docket["schema"],"target":dict(docket["target"]),
+                    "source_evidence":dict(docket["source_evidence"])}
+            modded["target"][key]=value
+            with self.subTest(field=key):
+                q=mod.review_owner_pinned_first_4c14_copy_only(runtime,modded,hot)
+                self.assertEqual(q["status"],"HOLD_OWNER_PINNED_SOURCE_FINGERPRINT_DRIFT")
+                self.assertIsNone(q["candidate"])
+                self.assertEqual(q["new_copies"],0)
+        modded={"schema":docket["schema"],"target":dict(docket["target"]),
+               "source_evidence":{"integrity_manifest_sha256":"f"*64}}
+        self.assertEqual(mod.review_owner_pinned_first_4c14_copy_only(runtime,modded,hot)["status"],
+                         "HOLD_OWNER_PINNED_SOURCE_FINGERPRINT_DRIFT")
+
+    def test_pinned_4c14_declines_missing_hot_source_or_missing_runtime(self):
+        runtime,docket,hot=self.pinned_4c14_source_fixture()
+        self.assertEqual(mod.review_owner_pinned_first_4c14_copy_only(runtime,docket,{})["status"],
+                         "HOLD_WE2_NATIVE_TWO_HOT_DOSSIER_MISSING")
+        runtime["rows"]=runtime["rows"][:-1];runtime["count"]=3;runtime["measured_count"]=3
+        self.assertEqual(mod.review_owner_pinned_first_4c14_copy_only(runtime,docket,hot)["status"],
+                         "HOLD_EXACT_GENERATION_MISSING_OR_DUPLICATE")
+
     def test_original_preserved_tar_stage_remains_keep(self):
         good={"schema":"aoe2war.we2.factory-historical-transport-retention-receipt.v1",
               "items":[{"sourceRemovedAfterVerifiedPreservation":True,"sha256":"a"*64}]}
