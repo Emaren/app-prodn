@@ -76,9 +76,10 @@ test("Champions retains historical distinct-game SQL and nonfinancial public-vie
   assert.match(src, /COUNT\(replay_key\)::bigint AS streamed_games/);
   assert.match(src, /FROM aoe2war_public_v6\.champions_chaos_activity/);
   assert.match(src, /createStaleWhileRevalidateBackoff/);
-  assert.match(sql, /GROUP BY COALESCE\(w\.user_uid,u\.uid\),/);
-  assert.match(sql, /SUM\(event_count\)::bigint AS event_count/);
-  assert.match(sql, /COUNT\(replay_key\)::bigint AS streamed_games/);
+  assert.match(sql, /COUNT\(DISTINCT COALESCE\(/);
+  const proposal = fs.readFileSync("tests/fixtures/champions-chaos-proposed-public.txt", "utf8");
+  assert.match(proposal, /SUM\(event_count\)::bigint AS event_count/);
+  assert.match(proposal, /COUNT\(replay_key\)::bigint AS streamed_games/);
   assert.match(sql, /REVOKE ALL ON aoe2war_public_v6\.champions_chaos_activity/);
   assert.doesNotMatch(src, /return \[\];\s*}\s*\nfunction startChaosActivityRefresh/);
 });

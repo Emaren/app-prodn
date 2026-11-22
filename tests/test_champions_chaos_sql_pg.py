@@ -37,10 +37,12 @@ class ChaosSqlParity(unittest.TestCase):
             "old_legacy": original("champions-chaos-original-legacy.txt"),
             "new_legacy": legacy_sql((ROOT/"lib/champions/championsV2.ts").read_text()),
             "old_public": original("champions-chaos-original-public.txt"),
-            "new_public": public_sql((ROOT/"config/nonfinancial-public-champions-v6.sql").read_text())
+            "new_public": "\n".join((ROOT/"tests/fixtures/champions-chaos-proposed-public.txt").read_text().splitlines()[2:]).strip()
         }
         self.assertIn("COUNT(DISTINCT",queries["old_public"])
         self.assertIn("GROUP BY user_uid",queries["new_public"])
+        self.assertIn("COUNT(DISTINCT", public_sql((ROOT/"config/nonfinancial-public-champions-v6.sql").read_text()),
+                      "original DB-owner protected view must remain unchanged in PRODUCT PR")
         self.assertIn("COUNT(replay_key)",queries["new_legacy"])
         root=Path(tempfile.mkdtemp(prefix="chaos-",dir="/tmp"))
         data=root/"data"
