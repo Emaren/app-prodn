@@ -128,7 +128,7 @@ class ApprovalTests(unittest.TestCase):
         spec.loader.exec_module(fixture)
         work, log = fixture.accepted_fixture(Path(self.temp.name), self.approval, R)
         first = []
-        def fails_partway(path, raw, verify_only=False):
+        def fails_partway(path, raw, verify_only=False, birth_context=None):
             first.append((path, raw, verify_only))
             if len(first) == 4:
                 raise RuntimeError("simulated root receipt interruption")
@@ -139,7 +139,7 @@ class ApprovalTests(unittest.TestCase):
         resumed = []
         with patch.object(
             R, "root_receipt",
-            side_effect=lambda path,raw,verify_only=False: resumed.append((path,raw,verify_only))
+            side_effect=lambda path,raw,verify_only=False,birth_context=None: resumed.append((path,raw,verify_only))
         ):
             R.seal_acceptance(self.approval, log, work, "/fixture/journal")
         self.assertEqual(len(resumed), 8)

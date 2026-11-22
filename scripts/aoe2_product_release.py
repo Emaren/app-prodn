@@ -399,7 +399,8 @@ def publish_invocation(invocation, approval, work, journal):
     # Keep a per-process private copy as well as the one immutable source receipt.
     seal_once(invocation.path.with_suffix(".json"), raw)
     seal_once(work / INVOCATION_RECEIPT_NAME, raw)
-    root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw)
+    root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw,
+                 birth_context=(approval, work))
     root_receipt(journal + "/" + INVOCATION_RECEIPT_NAME, raw, verify_only=True)
     invocation.record("INVOCATION RECEIPT PUBLISHED", proof=hashlib.sha256(raw).hexdigest())
     publication = refresh_factory_publication(approval, expected_raw=raw)
@@ -437,7 +438,7 @@ def reconcile_invocation(invocation, approval, work, journal, permit_write=False
         raw = local.read_bytes()
         need(permit_write, "INVOCATION_PUBLICATION_REQUIRES_RELEASE_PERMISSION")
         # This is the original stopped clock, not the retry process's clock.
-        root_receipt(root_path, raw)
+        root_receipt(root_path, raw, birth_context=(approval, work))
         root_receipt(root_path, raw, verify_only=True)
         state = "original-invocation-publication-recovered"
     else:
@@ -700,6 +701,122 @@ def event(path, approval, name, state="pass", extra=None, at="NOW"):
                          at=at, historical=(at != "NOW"))
 
 
+def _factory_birth_object(kind, path, *, source, build, expected_sha256=None,
+                          verified_sha256=None):
+    """Original producer's exact path, with M1 identity reused from prior IO.
+
+    HEL1 generation remote inode/allocated bytes stay UNKNOWN until an
+    independently source-owned host adapter attests; NEVER guess or scan.
+    """
+    path = Path(path)
+    identity = observed = None
+    if kind.startswith("M1_"):
+        try:
+            info = transport.checked_file(path)
+        except (FileNotFoundError, RuntimeError, PermissionError):
+            # Actual source-owned first T5/T8/T10 verification occurred
+            # earlier; this side receipt must record UNKNOWN rather than
+            # invent safe file identity or block historical test harnesses.
+            verified_sha256 = None
+        else:
+            need(info.st_uid == 501 and info.st_nlink == 1 and
+                 not stat.S_IMODE(info.st_mode) & 0o022 and
+                 info.st_dev > 0 and info.st_ino > 0,
+                 "BIRTH_ORIGINAL_SOURCE_CUSTODY")
+            identity = {
+                "device": info.st_dev, "inode": info.st_ino,
+                "logical_bytes": info.st_size,
+                "allocated_bytes": info.st_blocks * 512,
+                "uid": info.st_uid, "mode": stat.S_IMODE(info.st_mode),
+                "nlink": info.st_nlink, "mtime_ns": info.st_mtime_ns,
+            }
+            observed = dt.datetime.fromtimestamp(
+                info.st_mtime_ns / 1_000_000_000, dt.timezone.utc
+            ).isoformat().replace("+00:00", "Z")
+    return {
+        "kind": kind, "path": str(path),
+        "generation_source_sha": source, "generation_build_id": build,
+        "expected_sha256": expected_sha256,
+        "verified_source_sha256": verified_sha256,
+        "identity": identity, "observed_at_utc": observed,
+    }
+
+
+def record_factory_birth(approval, release_work, phase, evidence_sha256, objects):
+    """Mandatory source-owned append-once certificate of T5/T8/T10 births.
+
+    Extends original Factory receipt lifecycle; no new ledger/privilege/runtime.
+    Missing remote identities and restore evidence remain explicit HOLD.
+    """
+    from aoe2_factory_retention_post_t10 import object_birth_certificate, canonical
+    try:
+        report = object_birth_certificate(
+            source_sha=approval["sourceSha"], build_id=approval["buildId"],
+            github_run_id=approval["runId"], phase=phase,
+            evidence_sha256=evidence_sha256, records=objects,
+        )
+    except (RuntimeError, OSError, ValueError, TypeError, KeyError):
+        # This is an original source-owned ordinary record, not an auth
+        # boundary. Never reclassify an unsafe/unknown birth as verified.
+        # Preserve the Factory T event plus a separate visible durable HOLD.
+        hold = {
+            "schema":"aoe2war.factory.object-birth-hold.v1",
+            "source_sha": approval["sourceSha"],
+            "build_id": approval["buildId"],
+            "github_run_id": approval["runId"], "phase": phase,
+            "evidence_sha256": evidence_sha256,
+            "status":"UNCLASSIFIED_HOLD_ORIGINAL_SOURCE_METADATA_NOT_ADMITTED",
+            "expected_objects":2, "unknown_holds":2,
+            "why":"ORIGINAL_FACTORY_SOURCE_IDENTITY_NOT_VERIFIABLE",
+            "next_action":"SOURCE_OWNER_REVIEW_REPLAY_BIRTH_NOT_REDEPLOY",
+            "copy_authorized":False, "retire_authorized":False,
+            "measured_physically_reclaimed_bytes":None,
+        }
+        seal_once(Path(release_work) / ("factory-birth-"+phase+"-HOLD-v1.json"),
+                  canonical(hold) + b"\n")
+        print(json.dumps({
+            "phase":phase+"-BIRTH","state":"UNCLASSIFIED_HOLD",
+            "sourceSha":approval["sourceSha"],"unknownHoldCount":2,
+            "copyAuthorized":False,"retireAuthorized":False,
+        }),flush=True)
+        return hold
+    receipt = Path(release_work) / ("factory-birth-" + phase + "-v1.json")
+    seal_once(receipt, canonical(report) + b"\n")
+    transport.checked_file(receipt)
+    need(hashlib.sha256(receipt.read_bytes()).hexdigest()
+         == hashlib.sha256(canonical(report) + b"\n").hexdigest(),
+         "BIRTH_RECEIPT_READBACK")
+    print(json.dumps({
+        "phase": phase + "-BIRTH", "state": "registered",
+        "sourceSha": approval["sourceSha"], "buildId": approval["buildId"],
+        "receiptSha256": report["canonical_sha256"],
+        "originalObjects": len(report["records"]),
+        "unknownHoldCount": report["unknown_holds"],
+        "copyAuthorized": False, "retireAuthorized": False,
+    }), flush=True)
+    return report
+
+
+def record_factory_generated_birth(approval, release_work, *, kind, name,
+                                   expected_sha256, verified_source_sha256=None,
+                                   acknowledged_bytes=None):
+    """Append-once metadata through the existing Factory receipt seal/readback."""
+    from aoe2_factory_retention_post_t10 import generated_child_certificate, canonical
+    report = generated_child_certificate(
+        source_sha=approval["sourceSha"], build_id=approval["buildId"],
+        github_run_id=approval["runId"], kind=kind, name=name,
+        expected_sha256=expected_sha256,
+        verified_source_sha256=verified_source_sha256,
+        acknowledged_bytes=acknowledged_bytes)
+    suffix = kind.lower() + "-" + name.replace(".", "_")
+    receipt = Path(release_work) / ("factory-birth-generated-" + suffix + "-v1.json")
+    raw = canonical(report) + b"\n"
+    seal_once(receipt, raw)
+    transport.checked_file(receipt)
+    need(receipt.read_bytes() == raw, "GENERATED_BIRTH_ORIGINAL_READBACK")
+    return report
+
+
 def prepare_artifacts(approval, work, log, invocation=None):
     cache = transport.private_dir(work / "cache")
     stage = transport.private_dir(work / approval["sourceSha"][:12])
@@ -783,12 +900,22 @@ def deliver(approval, stage, proof, log, invocation=None):
         # macOS /usr/bin/rsync is openrsync protocol-29 (2.6.9-compatible).
         # It rejects --chmod=F600,D700; do not assume GNU rsync behavior.
         # Keep strict SSH host keys, resumable partials, and visible progress.
-        process = subprocess.run([
-            "/usr/bin/rsync", "-t", "--partial-dir=.rsync-partial", "--progress",
-            "-e", "/usr/bin/ssh -o BatchMode=yes "
-                  "-o StrictHostKeyChecking=yes -o ConnectTimeout=8",
-            str(stage / name), "hel1:" + remote + "/",
-        ], timeout=1800)
+        try:
+            process = subprocess.run([
+                "/usr/bin/rsync", "-t", "--partial-dir=.rsync-partial", "--progress",
+                "-e", "/usr/bin/ssh -o BatchMode=yes "
+                      "-o StrictHostKeyChecking=yes -o ConnectTimeout=8",
+                str(stage / name), "hel1:" + remote + "/",
+            ], timeout=1800)
+        except subprocess.TimeoutExpired:
+            record_factory_generated_birth(
+                approval, Path(log).parent, kind="RSYNC_PARTIAL_POSSIBLE",
+                name=name, expected_sha256=expected)
+            raise RuntimeError("HOLD_RSYNC_INTERRUPTED_RESUME_AVAILABLE") from None
+        if process.returncode != 0:
+            record_factory_generated_birth(
+                approval, Path(log).parent, kind="RSYNC_PARTIAL_POSSIBLE",
+                name=name, expected_sha256=expected)
         need(process.returncode == 0, "RSYNC_INTERRUPTED_RESUME_AVAILABLE")
         if name == "runtime.tar.gz":
             runtime_copied = True
@@ -809,6 +936,19 @@ def deliver(approval, stage, proof, log, invocation=None):
         "proofSha256": proof["runtime_archive_sha256"], "elapsedMs": elapsed,
         "bytes": incoming, "verification": "pass",
     })
+    record_factory_birth(approval, Path(log).parent, "T5",
+        proof["runtime_archive_sha256"], [
+            _factory_birth_object(
+                "M1_STAGED_TAR", stage / "runtime.tar.gz",
+                source=approval["sourceSha"], build=approval["buildId"],
+                expected_sha256=proof["runtime_archive_sha256"],
+                verified_sha256=proof["runtime_archive_sha256"]),
+            _factory_birth_object(
+                "HEL1_TRANSPORT_TAR", remote + "/runtime.tar.gz",
+                source=approval["sourceSha"], build=approval["buildId"],
+                expected_sha256=proof["runtime_archive_sha256"],
+                verified_sha256=proof["runtime_archive_sha256"]),
+        ])
     if invocation is not None:
         invocation.remote_state = "transferred" if runtime_copied else "cached"
         invocation.remote_cache_bytes = 0 if runtime_copied else incoming
@@ -948,7 +1088,7 @@ def seal_once(path, raw):
 
 
 
-def root_receipt(path, raw, verify_only=False):
+def root_receipt(path, raw, verify_only=False, *, birth_context=None):
     source12, name = receipt_location(path)
     digest = hashlib.sha256(raw).hexdigest()
     mode = "verify" if verify_only else "write"
@@ -962,6 +1102,15 @@ def root_receipt(path, raw, verify_only=False):
          and result.get("name") == name and result.get("sha256") == digest
          and result.get("bytes") == len(raw) and result.get("mode") == mode,
          "ROOT_RECEIPT_READBACK")
+    if not verify_only and birth_context is not None:
+        approval, release_work = birth_context
+        need(approval["sourceSha"][:12] == source12,
+             "GENERATED_ROOT_RECEIPT_SOURCE_SCOPE")
+        record_factory_generated_birth(
+            approval, release_work, kind="ROOT_RECEIPT", name=name,
+            expected_sha256=digest, verified_source_sha256=digest,
+            acknowledged_bytes=len(raw))
+    return result
 
 
 def release(approval, remote, proof, log, work, invocation=None):
@@ -1026,6 +1175,18 @@ def release(approval, remote, proof, log, work, invocation=None):
             invocation.record("ROLLBACK VERIFIED", proof=digest)
         if "T8" not in accepted:
             event(log, approval, "T8", extra={"proofSha256": digest})
+        record_factory_birth(approval, work, "T8", digest, [
+            _factory_birth_object(
+                "M1_T8_WITNESS", work / "public-evidence-T8-v1.json",
+                source=selected["previous_source"],
+                build=selected["previous_build"],
+                expected_sha256=digest, verified_sha256=digest),
+            _factory_birth_object(
+                "HEL1_ROLLBACK_GENERATION",
+                "/var/lib/aoe2war-web-prod-" + selected["previous_source"][:12],
+                source=selected["previous_source"],
+                build=selected["previous_build"]),
+        ])
         event(log, approval, "reactivate", "running")
         approved_controller("reactivate", manifest, approval)
     if invocation is not None and "T8" in accepted and not any(
@@ -1048,6 +1209,25 @@ def release(approval, remote, proof, log, work, invocation=None):
     before = hashlib.sha256(log.read_bytes()).hexdigest()
     event(log, approval, "T10", extra={"proofSha256": before})
     seal_acceptance(approval, log, work, journal, invocation=invocation)
+    seal_file = work / "release-seal-v1.json"
+    try:
+        transport.checked_file(seal_file)
+        need(seal_file.stat().st_size <= 16384, "BIRTH_T10_SEAL_SIZE")
+        t10_sha = hashlib.sha256(seal_file.read_bytes()).hexdigest()
+    except (OSError, RuntimeError, ValueError):
+        # Only the optional *birth classifier* is weaker: original release
+        # T10 acceptance above is unchanged. Preserve explicit UNKNOWN
+        # rather than fabricating a missing local seal for old fixtures.
+        t10_sha = None
+    record_factory_birth(approval, work, "T10", t10_sha or before, [
+        _factory_birth_object("M1_T10_SEAL", seal_file,
+                              source=source, build=approval["buildId"],
+                              expected_sha256=t10_sha,
+                              verified_sha256=t10_sha),
+        _factory_birth_object("HEL1_LIVE_GENERATION",
+                              "/var/lib/aoe2war-web-prod-" + source[:12],
+                              source=source, build=approval["buildId"]),
+    ])
     if invocation is not None:
         publish_invocation(invocation, approval, work, journal)
 
@@ -1097,7 +1277,8 @@ def seal_acceptance(approval, log, work, journal, invocation=None):
                  "public-evidence-T8-v1.json", "public-evidence-T9-v1.json",
                  "source-qualification-v1.json", "pr-provenance-v1.json"):
         path = work / name
-        root_receipt(journal + "/" + name, path.read_bytes())
+        root_receipt(journal + "/" + name, path.read_bytes(),
+                     birth_context=(approval, work))
     if invocation is not None:
         invocation.accepted(hashlib.sha256(receipt_raw).hexdigest())
     print(json.dumps({
