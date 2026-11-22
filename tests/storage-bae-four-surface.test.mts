@@ -71,16 +71,16 @@ test("zero signed hog buckets means signed partial observation, not empty disk c
 });
 test("estate snapshot free bytes alone are not certified",()=>{
  const d=storage() as unknown as StorageArg;
- d.planes[0]={id:"mac",status:"RECEIPT",source:"OPERATOR_ESTATE_SNAPSHOT",
-  freeBytes:1234,usedPercent:null};
+ Object.assign(d.planes[0],{id:"mac",status:"RECEIPT",source:"OPERATOR_ESTATE_SNAPSHOT",
+  freeBytes:1234,usedPercent:null});
  const m=projectStorageBaeTopology(d,intelUnknown as unknown as IntelArg,null,now).machines[0];
  assert.equal(m.certifiedCapacity.present,false);
  assert.equal(m.certifiedCapacity.availableBytes,null);
 });
 test("only separately admitted signed current capacity is surfaced",()=>{
  const d=storage() as unknown as StorageArg;
- d.planes[0]={id:"mac",status:"RECEIPT",source:"WE2_NATIVE_V2_SIGNED_PLANE",
-  freeBytes:1234,usedPercent:null};
+ Object.assign(d.planes[0],{id:"mac",status:"RECEIPT",source:"WE2_NATIVE_V2_SIGNED_PLANE",
+  freeBytes:1234,usedPercent:null});
  const m=projectStorageBaeTopology(d,intelUnknown as unknown as IntelArg,null,now).machines[0];
  assert.equal(m.certifiedCapacity.present,true);
  assert.equal(m.certifiedCapacity.availableBytes,1234);
