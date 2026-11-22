@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6244267743d969320fb4eb5b299a009c83321b692581ffb5e9981079752e0182",
+      "sha256": "d14b398f531695d03532909704ea0a7e1b8334e104c1967ccec5e09d230b983b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3572,8 +3572,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-four-plane-owner-teaching-20261120",
-    "commit": "bb2b861c9506e8eee3d23f3f9e7b69a2fbbec5e3"
+    "branch": "we2/bridge-dual-path-20261121",
+    "commit": "c1226465465e9999ddc69cb225dbbc8d80b8897c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -308,10 +308,29 @@ http.Server.prototype.emit = function (event, ...args) {
       Number(bridgeLength) <= 49152 &&
       request.headers?.["transfer-encoding"] === undefined &&
       request.headers?.["content-type"] === "application/json";
+    // Separate trusted Nginx path preserves the existing operator commands
+    // and heartbeat without weakening storage_visual's signed-submission lane.
+    // Nginx MUST overwrite the client-supplied scope on the exact control
+    // endpoint; downstream route independently checks the bearer credential.
+    const operatorBridgeWrite =
+      request.method === "POST" &&
+      request.url === "/api/internal/aoe2war-os/bridge" &&
+      request.socket?.remoteAddress === "127.0.0.1" &&
+      request.headers?.host === "aoe2war.com" &&
+      request.headers?.["x-forwarded-proto"] === "https" &&
+      request.headers?.["x-aoe2war-bridge-scope"] === "operator_control" &&
+      typeof bridgeToken === "string" &&
+      bridgeToken.length >= 32 && bridgeToken.length <= 256 &&
+      typeof bridgeLength === "string" &&
+      /^[1-9][0-9]{0,6}$/.test(bridgeLength) &&
+      Number(bridgeLength) <= 262144 &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      request.headers?.["content-type"] === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
-      appearanceWrite || socialWrite || storageVisualOnlyWrite;
+      appearanceWrite || socialWrite || storageVisualOnlyWrite ||
+      operatorBridgeWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;
