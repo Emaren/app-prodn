@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we1-scan-os-exact-review-20261122` at `61b09b02e08c7f6dbdffd59ad958b98af576e1aa`
+Implementation baseline: `we2/factory-post-t10-retention-20261122` at `c3e30c7f8723bccc99eb0781b64ff448e1d54132`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
