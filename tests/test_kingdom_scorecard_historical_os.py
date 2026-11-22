@@ -252,6 +252,7 @@ class HistoricalModelTests(unittest.TestCase):
     def test_protected_type_never_l1(self):
         x=copy.deepcopy(self.cohorts)
         x["objects"][8]["level"]="L1"
+        x["objects"][8]["role"]="COLD"  # isolate hard-protected type from live-role guard
         with self.assertRaisesRegex(history.HistoricalHold,"HARD_PROTECTED_TYPE"):
             history.validate_cohorts(x,self.classes,self.ids)
 
