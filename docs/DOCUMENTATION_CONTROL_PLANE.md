@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-storage-atlas-five-pages-20261122` at `8969cf02d272d74c99213301f109ffb45f9fc5ae`
+Implementation baseline: `session-c/we3-atlas-sql-integrated-20261122` at `ed37a1ec6979cf1a456c777010e94c980060ad5c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
