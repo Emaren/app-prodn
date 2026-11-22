@@ -133,6 +133,17 @@ class CatalogTests(unittest.TestCase):
         result=mod.plan_hot_runtime(r,active_roles={"web":"aaaaaaaaaaaa",
            "appearance":"bbbbbbbbbbbb","social":"cccccccccccc"})
         self.assertTrue(all("FACTORY_ROLLBACK_PINS_NOT_ADMITTED" in x["missing_evidence"] for x in result["actions"]))
+    def test_three_cold_proof_pins_fail_closed(self):
+        a,b,r=fixtures()
+        z=mod.plan_hot_runtime(r,active_roles={"web":"aaaaaaaaaaaa"},
+            exact_hot_rollback_ids=["bbbbbbbbbbbb","cccccccccccc"],catalog=mod.build_catalog(a,b,r))
+        self.assertTrue(all("THREE_SOURCE_ADMITTED_COLD_CHECKPOINTS_NOT_PROVEN" in row["missing_evidence"]
+                            for row in z["actions"]))
+        with self.assertRaises(ValueError):
+            mod.plan_hot_runtime(r,active_roles={},exact_proven_cold_checkpoint_ids=["a"*40,"b"*40])
+        with self.assertRaises(ValueError):
+            mod.plan_hot_runtime(r,active_roles={},exact_proven_cold_checkpoint_ids=["a"*40]*3)
+
     def test_more_than_two_hot_pins_rejected(self):
         a,b,r=fixtures()
         with self.assertRaises(ValueError):
