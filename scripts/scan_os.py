@@ -179,6 +179,14 @@ def main() -> int:
     p.add_argument("--goal", choices=sorted(VALID_GOALS), required=True)
     p.add_argument("--scope", choices=sorted(VALID_SCOPES))
     subs.add_parser("lessons", help="Read the source-owned scan lessons and fixes")
+    m = subs.add_parser("measure", help="Run local read-only HOT/INCREMENTAL/DEEP observation")
+    m.add_argument("--goal", choices=("release",), required=True)
+    m.add_argument("--profile", choices=("HOT", "INCREMENTAL", "DEEP"), required=True)
+    m.add_argument("--source-root", type=Path, required=True)
+    m.add_argument("--state-dir", type=Path, required=True)
+    m.add_argument("--reason", default="")
+    b = subs.add_parser("benchmark", help="Summarize real local learning receipts")
+    b.add_argument("--state-dir", type=Path, required=True)
     args = parser.parse_args()
     try:
         data = load_catalog()
@@ -186,6 +194,19 @@ def main() -> int:
             output = {"schema": data["schema"], "status": data["authority"], "scans": data["scans"]}
         elif args.command == "lessons":
             output = {"status": "SOURCE_REVIEWED_LESSONS_ONLY", "lessons": data["lessons"]}
+        elif args.command in ("measure", "benchmark"):
+            # Same original catalog and planner; unprivileged observation-only extension.
+            # No external producer process, signed verifier or host authorization delegated.
+            from scan_os_learning import ObservationHold, perform, learning_summary
+            try:
+                if args.command == "measure":
+                    output = perform(data, goal=args.goal, profile=args.profile,
+                                     source_root=args.source_root,
+                                     state_dir=args.state_dir, reason=args.reason)
+                else:
+                    output = learning_summary(args.state_dir)
+            except (ObservationHold, OSError, ValueError, KeyError, TypeError) as exc:
+                raise CatalogError("LEARNING_HOLD_" + str(exc)) from exc
         else:
             output = plan(data, goal=args.goal, scope=args.scope)
     except CatalogError as exc:
