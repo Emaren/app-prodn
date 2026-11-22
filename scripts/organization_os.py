@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LINKS = ROOT / "config/organization-os-source-links.v1.json"
 SCHEMA = "aoe2war.organization-os.source-links.v1"
 ID = re.compile(r"^[A-Z][A-Z0-9_]{2,79}$")
+TERM_ID = re.compile(r"^[A-Z][A-Z0-9_]{1,79}$")
 PATH = re.compile(r"^(scripts|config|docs|lib|ops)/[A-Za-z0-9_./-]+$")
 VIEWS = ("catalog", "index", "contents", "glossary", "encyclopedia",
          "appendix", "ledger", "accounting")
@@ -137,7 +138,7 @@ def validate_links(data):
     term_names = set()
     for term in terms:
         need(type(term) is dict and set(term) == {"term", "definition"}
-             and type(term["term"]) is str and ID.fullmatch(term["term"])
+             and type(term["term"]) is str and TERM_ID.fullmatch(term["term"])
              and term["term"] not in term_names and
              type(term["definition"]) is str and term["definition"],
              "TERM_DUPLICATE_OR_BAD")
