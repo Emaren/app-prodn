@@ -295,6 +295,116 @@ class CatalogTests(unittest.TestCase):
         self.assertFalse(q["apply"])
         self.assertEqual(q["new_deletions"],0)
 
+
+    def exact_hel1_owner_nomination_fixture(self):
+        _, _, r = fixtures()
+        for row in r["rows"]:
+            row.update(device=2049, inode=100 + len(row["generation"]),
+                       allocation_status="MEASURED_SELECTED_TREE", mtime_ns=123)
+        r["count"] = len(r["rows"])
+        r["measured_count"] = len(r["rows"])
+        r["mount_dev"] = 2049
+        r["rows"].append({
+            "generation":"4c14cbc7c518",
+            "source_sha":"4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7",
+            "build_id":"w-tDoD2iUw6P2P4oTw3Ti",
+            "device":2049,"inode":4493824,"allocated_bytes":1584885760,
+            "allocation_status":"MEASURED_SELECTED_TREE","mtime_ns":200,
+        })
+        r["count"]=r["measured_count"]=len(r["rows"])
+        target={
+            "generation":"4c14cbc7c518",
+            "source_sha":"4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7",
+            "build_id":"w-tDoD2iUw6P2P4oTw3Ti",
+            "host":"HEL1", "fs":"/dev/sda1", "root_dev":2049,
+            "root_inode":4493824,
+            "fs_uuid":"64f6fb02-4fed-4836-a33b-86e8993afdfa",
+            "file_content_manifest_sha256":"6"*64,
+            "regular_files_hashed":45036,"entries":51438,
+            "gross_allocated_bytes":1584885760,
+        }
+        # Bind synthetic current + hot source to fixture without granting them authority.
+        hot={"schema":"aoe2war.we2.factory-current-two-hot-source-dossier.v1",
+             "active":{k:r["rows"][0][k] for k in ("generation","source_sha","build_id")},
+             "hot_rollback_candidates":[
+                 {k:r["rows"][i][k] for k in ("generation","source_sha","build_id")}
+                 for i in (1,2)],
+             "hot_pinset_admitted":False,
+             "owner_admission":"PENDING_EXACT_DECISION"}
+        docket={"schema":"aoe2war.we4.first-generation-copy-admission-docket.v1",
+                "target":target}
+        return r,docket,hot
+
+    def test_explicit_4c14_nomination_is_not_automatic_31a(self):
+        r,d,h=self.exact_hel1_owner_nomination_fixture()
+        r["rows"].append({
+            "generation":"31a70ba2dd4d","source_sha":"31a70ba2dd4d"+"a"*28,
+            "build_id":"OLD-BUILD-31A","device":2049,"inode":2072202,
+            "allocated_bytes":1580572672,"allocation_status":"MEASURED_SELECTED_TREE",
+            "mtime_ns":1})
+        r["count"]=r["measured_count"]=len(r["rows"])
+        x=mod.review_explicit_hel1_owner_copy_nomination(
+            r,d,h,owner_selected_generation="4c14cbc7c518")
+        self.assertEqual(x["candidate"]["generation"],"4c14cbc7c518")
+        self.assertEqual(x["candidate"]["root_inode"],4493824)
+        self.assertEqual(x["status"],"HOLD_CURRENT_TWO_HOT_OWNER_ADMISSION")
+        self.assertFalse(x["automatic_oldest_candidate_override"])
+        self.assertFalse(x["apply"])
+        self.assertEqual(x["new_copies"],0)
+        self.assertEqual(x["new_deletions"],0)
+
+    def test_explicit_nomination_wrong_requested_generation_is_held(self):
+        r,d,h=self.exact_hel1_owner_nomination_fixture()
+        x=mod.review_explicit_hel1_owner_copy_nomination(
+            r,d,h,owner_selected_generation="31a70ba2dd4d")
+        self.assertEqual(x["status"],"HOLD_EXACT_ROOT_IDENTITY_MISMATCH")
+        self.assertIsNone(x["candidate"])
+
+    def test_explicit_nomination_catches_inode_uuid_build_manifest_drift(self):
+        r,d,h=self.exact_hel1_owner_nomination_fixture()
+        for key,value in (("root_inode",11),("build_id","NOT-WRONG-BUILD"),
+                          ("source_sha","f"*40),("gross_allocated_bytes",1)):
+            changed=dict(d["target"],**{key:value})
+            out=mod.review_explicit_hel1_owner_copy_nomination(
+                r,{"schema":d["schema"],"target":changed},h,
+                owner_selected_generation="4c14cbc7c518")
+            self.assertIn("HOLD_",out["status"])
+            self.assertNotEqual(out["status"],"HOLD_CURRENT_TWO_HOT_OWNER_ADMISSION")
+            self.assertFalse(out["apply"])
+        changed=dict(d["target"],fs_uuid="not-an-original-fs")
+        out=mod.review_explicit_hel1_owner_copy_nomination(
+            r,{"schema":d["schema"],"target":changed},h,
+            owner_selected_generation="4c14cbc7c518")
+        self.assertEqual(out["status"],"HOLD_EXACT_ROOT_IDENTITY_MISMATCH")
+        changed=dict(d["target"],file_content_manifest_sha256="notsha")
+        out=mod.review_explicit_hel1_owner_copy_nomination(
+            r,{"schema":d["schema"],"target":changed},h,
+            owner_selected_generation="4c14cbc7c518")
+        self.assertEqual(out["status"],"HOLD_EXACT_ROOT_IDENTITY_MISMATCH")
+
+    def test_explicit_nomination_fake_hot_admission_cannot_grant_copy(self):
+        r,d,h=self.exact_hel1_owner_nomination_fixture()
+        h["owner_admission"]="ADMITTED"
+        h["hot_pinset_admitted"]=True
+        h["independent_approval_signature"]="FAKE"
+        x=mod.review_explicit_hel1_owner_copy_nomination(
+            r,d,h,owner_selected_generation="4c14cbc7c518")
+        self.assertEqual(x["status"],"HOLD_EXTERNAL_OWNER_SIGNATURE_AND_COPY_CLASS_VERIFIER")
+        self.assertFalse(x["hot_pinset_source_dossier_checked_as_signature"])
+        self.assertFalse(x["one_use_copy_permission_validated"])
+        self.assertEqual(x["new_archives"],0)
+
+    def test_explicit_nomination_protected_live_hot_conflict(self):
+        r,d,h=self.exact_hel1_owner_nomination_fixture()
+        h["hot_rollback_candidates"][0]={
+            "generation":"4c14cbc7c518",
+            "source_sha":d["target"]["source_sha"],
+            "build_id":d["target"]["build_id"]}
+        x=mod.review_explicit_hel1_owner_copy_nomination(
+            r,d,h,owner_selected_generation="4c14cbc7c518")
+        self.assertEqual(x["status"],"HOLD_CURRENT_OR_HOT_PIN_SOURCE_CONFLICT")
+        self.assertFalse(x["apply"])
+
     def test_original_preserved_tar_stage_remains_keep(self):
         good={"schema":"aoe2war.we2.factory-historical-transport-retention-receipt.v1",
               "items":[{"sourceRemovedAfterVerifiedPreservation":True,"sha256":"a"*64}]}
