@@ -91,6 +91,32 @@ class ProductRetentionTests(unittest.TestCase):
         path.chmod(0o600)
         return path
 
+    def test_dbceb_owner_copy_boolean_cannot_bypass_missing_issuer(self):
+        q = self.q()
+        q["items"][0]["classification"]["source"] = (
+            m.DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE)
+        self.p.update({"purpose": m.COPY_ONLY_PURPOSE, "copy_authorized": True,
+                       "retirement_authorized": False,
+                       "independent_restoration_verified": True})
+        with self.assertRaisesRegex(ValueError,
+                                    "DBCEB_OWNER_COPY_VERIFIER"):
+            m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertTrue(self.file.exists())
+        self.assertEqual(list(self.volume.rglob("copy-only-*.json")), [])
+
+    def test_dbceb_forged_retirement_and_restore_booleans_always_hold(self):
+        q = self.q()
+        q["items"][0]["classification"]["source"] = (
+            m.DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE)
+        self.p.update({"purpose": m.RETIRE_PURPOSE,
+                       "retirement_authorized": True,
+                       "independent_restoration_verified": True})
+        with self.assertRaisesRegex(ValueError,
+                                    "DBCEB_SIGNED_RETIRE_AND_RESTORE"):
+            m.apply(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertTrue(self.file.exists())
+        self.assertEqual(list(self.folder.glob("*.retiring-*")), [])
+
     def test_copy_only_data_receipt_and_idempotence_preserves_root(self):
         q = self.q()
         self.p["purpose"] = m.COPY_ONLY_PURPOSE
