@@ -8,12 +8,21 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # War Room Forum
+
+## November 22, 2026 — scoped view-preference isolation review
+
+WE3 adds a distinct Storage Explorer B/A/E local browser preference. It does
+**not** reuse the War Room forum's account-backed view preference, change forum
+publishing/authentication or admit new forum metrics. The existing `app/forum`
+route is still present. This is a bounded source-boundary review, not an
+independent browser recertification of the forum.
+
 
 ## Product contract
 

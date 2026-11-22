@@ -8,12 +8,23 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Parser Observatory
+
+## November 22, 2026 — scoped source-contract review
+
+The WE3 BAE Storage OS presentation change does not touch Parser Observatory
+source, corpus classification or result adjudication. The documented July 28
+census and historical parser observations retain their ORIGINAL timestamps and
+denominators; this review does **not** rerun a corpus census or convert absent
+physical-archive telemetry into zero. The current app still has its
+`app/api/replay` routes; any new parser certification requires separate
+source receipts.
+
 
 ## Dated corpus census — 2026-07-28
 

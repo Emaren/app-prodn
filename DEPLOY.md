@@ -8,12 +8,27 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # app-prodn Deploy
+
+## November 22, 2026 — scoped BAE release readback
+
+Current source/host evidence for the Storage OS release is the protected
+Factory/Bridge receipt, not the historical `Production truth` example below.
+Bridge #1439 was physically activated, rolled back and reactivated with T10
+sealed; its source is `9cf670724c82e29861e539c03c4d3165893da8f3`,
+BUILD_ID `fvPCvEd_aFucA_X3hSfn9`, running the existing 3032 website service.
+The earlier 3030 systemd references below are **historical runbook context**;
+3030 rollback and 3033 emergency remain protected. The new WE3 BAE Atlas and
+Extreme UI modes do not approve a new Next.js runtime, host mutation, Factory
+permit, database migration, financial operation or deletion. This was a scoped
+review of release identity and BAE's non-authority boundary, **not** a
+recertification of every historical deployment, host metric or dated example.
+
 
 ## October 22, 2026 — targeted release-safety review
 

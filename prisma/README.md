@@ -8,12 +8,22 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "schema-reference"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Prisma Schema and Migration Reference
+
+## November 22, 2026 — scoped schema-boundary review
+
+The current source includes `User` and `GameStats` models and still declares
+Prisma 7 (`@prisma/client`, `@prisma/adapter-pg`, `prisma`) in
+`package.json`. WE3's BAE Storage Explorer modes change React presentation,
+not Prisma schema, authorization or migrations. No `prisma db push` or schema
+migration was run during this review. This scope is **not** an assertion that
+all production tables or migrations were independently revalidated.
+
 
 This schema maps the existing Postgres tables currently used by the backend:
 
