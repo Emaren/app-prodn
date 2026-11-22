@@ -5,6 +5,9 @@ import {fileURLToPath} from "node:url";
 import {dirname,resolve} from "node:path";
 import {BAE_SCHEMA,LANE_GATES,projectStorageBaeTopology} from "../lib/storageBaeReadContract.ts";
 
+type StorageArg=Parameters<typeof projectStorageBaeTopology>[0];
+type IntelArg=Parameters<typeof projectStorageBaeTopology>[1];
+type AckArg=Parameters<typeof projectStorageBaeTopology>[2];
 const HERE=dirname(fileURLToPath(import.meta.url));
 const now=new Date("2026-11-22T02:20:00Z");
 function storage(){
@@ -35,7 +38,7 @@ const ack={
  replayProtection:"DURABLE_UNIQUE_SUBMISSION_LEDGER_PRESENT_REPLAY_DENIAL_NOT_CHALLENGED",
 };
 test("fixed four surfaces and exactly five prescribed lanes across three physical hosts",()=>{
- const x=projectStorageBaeTopology(storage() as any,intelUnknown as any,null,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intelUnknown as unknown as IntelArg,null,now);
  assert.equal(x.schema,BAE_SCHEMA);
  assert.equal(x.authority,"ADMIN_READ_ONLY_NO_TRANSFER_OR_RETIREMENT");
  assert.deepEqual(x.machines.map(m=>m.id),["mac","hel1-root","hel1-volume-105319120","intel"]);
@@ -47,7 +50,7 @@ test("fixed four surfaces and exactly five prescribed lanes across three physica
  assert.deepEqual(Object.keys(x.lanes[0].gates),[...LANE_GATES]);
 });
 test("gross overlapping HMAC receipts never create certified capacity or reclaim",()=>{
- const x=projectStorageBaeTopology(storage() as any,intelUnknown as any,ack as any,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intelUnknown as unknown as IntelArg,ack as unknown as AckArg,now);
  const mac=x.machines[0];
  assert.equal(mac.trust,"SERVER_HMAC_VERIFIED_NOT_SOURCE_RECHECK");
  assert.equal(mac.grossInventory.present,true);
@@ -61,30 +64,30 @@ test("gross overlapping HMAC receipts never create certified capacity or reclaim
  assert.ok(x.lanes.every(l=>l.gates["RETIREMENT ELIGIBLE"]==="NOT_PROVEN"));
 });
 test("zero signed hog buckets means signed partial observation, not empty disk capacity",()=>{
- const x=projectStorageBaeTopology(storage() as any,intelUnknown as any,null,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intelUnknown as unknown as IntelArg,null,now);
  assert.equal(x.machines[1].grossInventory.present,true);
  assert.equal(x.machines[1].grossInventory.categoryCount,0);
  assert.equal(x.machines[1].certifiedCapacity.present,false);
 });
 test("estate snapshot free bytes alone are not certified",()=>{
- const d=storage();
- (d.planes[0] as any)={id:"mac",status:"RECEIPT",source:"OPERATOR_ESTATE_SNAPSHOT",
+ const d=storage() as unknown as StorageArg;
+ d.planes[0]={id:"mac",status:"RECEIPT",source:"OPERATOR_ESTATE_SNAPSHOT",
   freeBytes:1234,usedPercent:null};
- const m=projectStorageBaeTopology(d as any,intelUnknown as any,null,now).machines[0];
+ const m=projectStorageBaeTopology(d,intelUnknown as unknown as IntelArg,null,now).machines[0];
  assert.equal(m.certifiedCapacity.present,false);
  assert.equal(m.certifiedCapacity.availableBytes,null);
 });
 test("only separately admitted signed current capacity is surfaced",()=>{
- const d=storage();
- (d.planes[0] as any)={id:"mac",status:"RECEIPT",source:"WE2_NATIVE_V2_SIGNED_PLANE",
+ const d=storage() as unknown as StorageArg;
+ d.planes[0]={id:"mac",status:"RECEIPT",source:"WE2_NATIVE_V2_SIGNED_PLANE",
   freeBytes:1234,usedPercent:null};
- const m=projectStorageBaeTopology(d as any,intelUnknown as any,null,now).machines[0];
+ const m=projectStorageBaeTopology(d,intelUnknown as unknown as IntelArg,null,now).machines[0];
  assert.equal(m.certifiedCapacity.present,true);
  assert.equal(m.certifiedCapacity.availableBytes,1234);
  assert.equal(m.certifiedCapacity.usedPercent,null);
 });
 test("signed Intel remains independent and unavailable until source admission",()=>{
- const x=projectStorageBaeTopology(storage() as any,intelUnknown as any,null,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intelUnknown as unknown as IntelArg,null,now);
  assert.equal(x.machines[3].trust,"NOT_ADMITTED");
  assert.equal(x.machines[3].certifiedCapacity.present,false);
  assert.ok(x.lanes.every(l=>l.gates["COPY AUTHORIZED"]==="NOT_PROVEN"));
@@ -95,7 +98,7 @@ test("signed tenant historical transfer/restore do not authorize future copy, ha
   tenants:[{id:"WE2",identity:"ISOLATED",namespace:"M1-ARCHIVE",
    lastTransfer:{campaign:"M1X",ciphertextSha256:"c".repeat(64),observedAt:"2026-11-21T23:00:00Z"},
    lastRestore:{campaign:"M1R",sourceSha256:"d".repeat(64),restoredSha256:"d".repeat(64),observedAt:"2026-11-21T23:10:00Z"}}]};
- const x=projectStorageBaeTopology(storage() as any,intel as any,null,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intel as unknown as IntelArg,null,now);
  const lane=x.lanes[1];
  assert.equal(x.machines[3].trust,"INTEL_WE2_DERIVED_ED25519");
  assert.equal(lane.gates["TRANSFERRED"],"VERIFIED");
@@ -105,9 +108,9 @@ test("signed tenant historical transfer/restore do not authorize future copy, ha
  assert.equal(x.lanes[2].gates["TRANSFERRED"],"NOT_PROVEN");
 });
 test("stale observation cannot count as a current inventory",()=>{
- const d=storage();
+ const d=storage() as unknown as StorageArg;
  d.visual.planes[0].status="STALE";
- const m=projectStorageBaeTopology(d as any,intelUnknown as any,null,now).machines[0];
+ const m=projectStorageBaeTopology(d,intelUnknown as unknown as IntelArg,null,now).machines[0];
  assert.equal(m.grossInventory.present,false);
  assert.equal(m.grossInventory.categoryCount,null);
  assert.equal(m.freshness,"STALE");
@@ -128,7 +131,7 @@ test("verified historical HEL1-recovery object never grants a fresh direct trans
   objects:[{namespace:"HEL1-RECOVERY",contentSha256VerifiedNow:true,
     restore:"HISTORICAL_RESTORE_PROOF_PRESENT"}],
   tenants:[]};
- const x=projectStorageBaeTopology(storage() as any,intel as any,null,now);
+ const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intel as unknown as IntelArg,null,now);
  const lane=x.lanes[2];
  assert.equal(lane.gates["TRANSFERRED"],"VERIFIED");
  assert.equal(lane.gates["HASH VERIFIED"],"VERIFIED");
