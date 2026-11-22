@@ -22,6 +22,7 @@ from typing import Any
 SCHEMA = "aoe2war.we4.intel-cold-barn.catalog.v1"
 PLAN = "aoe2war.we4.factory-hot-demotion.plan-only.v1"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,240}$")
 MAX_OBJECTS = 256
 ACTIVE = {
@@ -158,7 +159,7 @@ def build_catalog(native: dict, historical: dict, runtimes: dict | None = None) 
                     pr.get("ciphertext_readback_sha_verified") is True]
         proof = sorted(verified, key=lambda x: x.get("observed_utc", ""))[-1] if verified else None
         source = proof.get("source_commit") or proof.get("source_sha256") if proof else None
-        if not isinstance(source, str) or not HEX64.fullmatch(source):
+        if not isinstance(source, str) or not HEX40.fullmatch(source):
             source = None
         build = proof.get("build_id") if proof else None
         if not isinstance(build, str) or len(build) > 100:
