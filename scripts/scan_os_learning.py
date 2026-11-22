@@ -328,6 +328,14 @@ def learning_summary(state_dir):
                 and type(item["cpu_ns"]) is int
                 and type(item["content_bytes_read"]) is int, "METRIC_TYPES")
         z.append(item)
+    # Runs from distinct roots or producer lists cannot share percentiles.
+    all_rows = [r for rs in profiles.values() for r in rs]
+    if all_rows:
+        first = all_rows[0]
+        require(all(r.get("scope_identity") == first.get("scope_identity") and
+                    r.get("goal") == first.get("goal") and
+                    r.get("source_producers") == first.get("source_producers")
+                    for r in all_rows), "BENCHMARK_SCOPE_DRIFT")
     summary = {}
     for profile, rows in sorted(profiles.items()):
         summary[profile] = {
@@ -336,6 +344,11 @@ def learning_summary(state_dir):
             "wall_ms_p95": percentile([r["wall_ns"] / 1e6 for r in rows], .95),
             "cpu_ms_p50": percentile([r["cpu_ns"] / 1e6 for r in rows], .5),
             "content_bytes_p50": percentile([r["content_bytes_read"] for r in rows], .5),
+            "bounded_deep_runs": sum(
+                r["profile"] == "DEEP" and
+                type(r.get("deep_reason")) is str and
+                len(r["deep_reason"]) >= 12 and
+                r.get("scope_is_whole_drive") is False for r in rows),
             "hashed_files_total": sum(r["files_hashed"] for r in rows),
             "reused_hashes_total": sum(r["cached_hashes_reused"] for r in rows),
             "physical_io_bytes_known": False,
