@@ -160,6 +160,38 @@ def validate_grade_history(history,standards):
     return history
 
 
+
+def verify_standards_transition(previous,new):
+    """Reject rewriting the meaning of 100 in-place; preserve old version."""
+    validate_standard(previous)
+    validate_standard(new)
+    if fingerprint(previous)==fingerprint(new):
+        return {"standards_changed":False,"old_sha256":fingerprint(previous),
+                "new_sha256":fingerprint(new)}
+    oldv=previous["version"]
+    newv=new["version"]
+    need(oldv!=newv, "CHANGED_100_WITHOUT_NEW_RUBRIC_VERSION")
+    need(newv>oldv, "STANDARD_VERSION_MUST_INCREASE")
+    need(new["effective_at_utc"]>previous["effective_at_utc"],
+         "NEW_STANDARD_MUST_HAVE_FUTURE_EFFECTIVE_DATE")
+    return {"standards_changed":True,"old_version":oldv,"new_version":newv,
+            "old_sha256":fingerprint(previous),"new_sha256":fingerprint(new),
+            "old_grades_must_remain_unmodified":True}
+
+
+def verify_grade_history_append(previous,current):
+    """Git-source producer must preserve all prior snapshots byte-identically."""
+    need(type(previous) is dict and type(current) is dict and
+         type(previous.get("snapshots")) is list and
+         type(current.get("snapshots")) is list, "HISTORY_APPEND_SHAPE")
+    before=previous["snapshots"]
+    after=current["snapshots"]
+    need(len(after)>=len(before) and
+         after[:len(before)]==before, "HISTORY_REWRITE_OR_REMOVAL")
+    return {"old_snapshots":len(before),"new_snapshots":len(after),
+            "prior_history_unchanged":True}
+
+
 def grade_dimension(feature,standard,claims=None,verifier=None,as_of=None):
     """claims alone never count. A separately source-owned verifier is mandatory.
 
