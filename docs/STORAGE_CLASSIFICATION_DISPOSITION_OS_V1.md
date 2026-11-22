@@ -44,6 +44,19 @@ The standing authority is **source classification**, not a new permission to del
 
 **No new L1 classes admitted by this draft**: `~/.cache` parent (contains protected Codex and financial evidence), `~/.npm` parent, `.next` under active or unmerged source, `node_modules`, Factory ZIPs, original releases, watcher staging, unknown HEL1 root caches, DB, backup, browser profiles, private recovery, old data swap, unique originals. A newly discovered producer must be promoted through source review showing exact output path and filesystem, rebuild recipe and input source, current consumer-negative evidence, independent default floor and tested original controller safety; not simply appended as a new JSON name.
 
+### Four newly observed M1 cache classes: source-review decisions, not permitted deletions
+
+WE4's exact M1 APFS metadata measurement was reproduced read-only (UID501, device 16777234; directories and immediate ancestors not symlinks at observation). These are **gross allocated bytes**, not unique reclaim or verified active-FD exclusions. Separate enumeration of running process names observed Node and uv activity; name counts do **not** prove open file handles, consumer absence or exclusive ownership. Their four rows are *not* included in the ten active L1 allowlist entries or any existing cleanup controller.
+
+| Exact owner-M1 cache directory | Observed gross | Candidate classification | Original source/consumer risk and next proof |
+|---|---:|---|---|
+| `~/Library/Caches/node-gyp` | 55,799,808 B | L2 REVIEW; prospective L1 | Likely Node native header downloads; prove exact node-gyp version, deterministic re-download and no current build consumers or FD before source admission |
+| `~/.cache/node` | 33,996,800 B | L2 REVIEW; prospective L1 | Mixed Node tool cache; Node processes present; identify exact producer, subtree and live references, not the parent `~/.cache` |
+| `~/.cache/uv` | 21,889,024 B | L2 REVIEW; prospective L1 | Likely uv Python build/download cache; prove input-lock and reproducibility, exclusions for active Python and nested symlinks |
+| `~/Library/Caches/SiriTTS` | 232,882,176 B | PROTECTED, not currently L1 | Apple-owned speech/locale resources; accessibility, offline voices and OS maintenance lifecycle are not independently established; require original OS-owner and recovery proof |
+
+**Decision:** none of these four is eligible for execution now. Adding a row to a policy file does not modify `aoe2_storage.py` or its signed installed controller. A future original-owner controller amendment could admit one *specific producer* as an additional bounded class only after a clean regeneration proof, exact source/mount and consumer-negative read, effective protection history, new tested source bound, class-scoped owner authority and per-item durable receipt. There is no standing wildcard permission for `~/.cache`, `~/Library/Caches`, `node_modules` or SiriTTS. The four rows sum to 344,567,808 B gross; this is not an assertion of unique reclaim, sufficiency against M1 capacity deficit or source eligibility.
+
 ## 3. L2 and owner consent
 
 L2 category suggestions can be recorded only against genuine authenticated current receipts and the pre-existing owner teaching HMAC/witness; they do **not** identify or approve an individual file. An exact-object L2 lesson requires signed current host source, mount UUID/dev/inode, path alias, source digest/fingerprint, complete collection coverage or explicit partiality, current producing binary/source/config, deterministic rebuild and independently checked output, exact dependency/FD and rollback-negative evidence, and strong historical protection-floor reconciliation. Missing source or writer enrollment yields `EXACT_SOURCE_NOT_ADMITTED`.
@@ -57,6 +70,14 @@ The current protected runtime set is web `9cf670724c82`, hot1 `50b943a44a2e`, ho
 HEL1 original `4c14cbc7c518`: UUID `64f6fb02-4fed-4836-a33b-86e8993afdfa`, inode4493824, source `4c14cbc7c518f9b28e1d84b5f88a022a82f7d2e7`, BUILD `w-tDoD2iUw6P2P4oTw3Ti`. The owner-selected one-object nomination is **not** an admitted copy class. It requires `HEL1_HISTORICAL_FACTORY_RUNTIME/COPY_ONLY_NO_RETIRE/4c14cbc7c518`, its own existing restricted receiver class + nonce-bound one-use COPY grant, current manifest/source verification, encrypted Intel ACK, full ciphertext reread, and fresh isolated restoration. COPY never authorizes original L4 retirement.
 
 M1 Factory original ZIP `60011e8fda8ba9aefabae3f32723f6f5fb0a306d963a936851477a52e219d3db.zip` remains **historically L4 DENIED** despite matching historical cold ciphertext/plaintext and CRC. At least ten positive original Factory source references were reported; source-owner original/rollback/T10/3030/3033 negative proof is **not complete**. Even subsequent human redecision cannot enable an L4 software delete under the existing policy. No ZIP wildcard cleanup. DATA old swap inode3276802 retains the historic **L5** floor, despite being inactive in a bounded observation.
+
+### Bounded future generated-object retention (not retroactive L4)
+
+The useful long-term simplification is **one source-approved producer/retention class, with independent object-by-object safety proof inside each transaction**, rather than one owner classification conversation per generated file.
+
+A proposed `FUTURE_SOURCE_ADMITTED_GENERATED_RUNTIME_AFTER_T10` contract must be enrolled **before** a new generated runtime is created and have reviewed original producer/controller SHA, filesystem/mount identity, original protection floor and exact current-plus-two-hot/three-cold policy. For every future generation, immutable T8/T9/T10/source/BUILD_ID and inode manifest must be rechecked; existing live web, appearance, social, 3030, 3033, financial, evidence and all original source inputs must be excluded. Intel transfer still needs a one-use purpose-bound COPY permit, durable encrypted receiver ACK, complete ciphertext digest reread and **independent isolated restore** before any separate retirement decision. A physically retired generation requires an *original legitimate class-scoped owner authorization* and exact single-object controller postimage measured on its originating filesystem, with failure/replay confined to that object.
+
+**No future proof can demote existing L4/L5 originals.** If an original Factory source class already assigns L4, this proposed standing lifecycle must not override it; the original human L4 protection authority would first have to establish a distinct lawful future generated-output class. Existing expanded generations, the 60011 ZIP denial and DATA old swap are outside this proposal; no software delete path for existing L4 or L5. Retention clocks, age, quota, archived YES and three cold copies alone do not authorize removal.
 
 ## 5. Common provenance vocabulary and claim states
 
