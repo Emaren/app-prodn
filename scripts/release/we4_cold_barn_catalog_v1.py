@@ -367,6 +367,86 @@ def plan_hot_runtime(runtimes: dict, *, active_roles: dict[str, str],
             "actions":actions,"new_copies":0,"new_deletions":0,"new_reclaimed_bytes":0,
             "factory_source_owner_integration_required":True,"execution":"PLAN_ONLY_NO_EXECUTION"}
 
+def nominate_one_cold_copy_on_promotion(
+    runtimes: dict, *, live_service_generations: dict[str, str],
+    source_attested_hot_rollback_generations: list[str] | None,
+    protected_original_generations: list[str] | None = None,
+) -> dict:
+    """Select one review item, never a copy or an expiry.
+
+    The producing Factory must supply genuine 2-hot pins. mtime only orders
+    *already-unpinned* sources for one review; age is never retirement proof.
+    This function does not validate a native owner COPY or deletion signature.
+    """
+    status = {
+        "schema": "aoe2war.we4.one-cold-copy-nomination.plan-only.v1",
+        "status": "HOLD",
+        "candidate": None,
+        "source_owner_admission": "REQUIRED",
+        "exact_copy_permission": "NOT_VALIDATED",
+        "recovery_and_rollback_exclusion": "NOT_PROVEN",
+        "retirement_authority": "NONE",
+        "apply": False, "new_copies": 0, "new_deletions": 0,
+    }
+    rows = runtimes.get("rows")
+    if (runtimes.get("schema") != "we4.hel1.actual-runtime-inventory.v1" or
+            not isinstance(rows, list) or len(rows) > 128 or
+            runtimes.get("count") != len(rows) or
+            runtimes.get("measured_count") != len(rows)):
+        return {**status, "status": "HOLD_SOURCE_COVERAGE"}
+    pins = source_attested_hot_rollback_generations
+    if (not isinstance(pins, list) or len(pins) != 2 or len(set(pins)) != 2 or
+            not all(isinstance(g, str) and re.fullmatch(r"[0-9a-f]{12}", g) for g in pins)):
+        return {**status, "status": "HOLD_EXACT_TWO_HOT_PINS_NOT_ADMITTED"}
+    if (not isinstance(live_service_generations, dict) or
+            set(live_service_generations) != set(ACTIVE) or
+            not all(isinstance(g, str) and re.fullmatch(r"[0-9a-f]{12}", g)
+                    for g in live_service_generations.values())):
+        return {**status, "status": "HOLD_SERVICE_ROOTS_NOT_AUTHENTICATED"}
+    originals = protected_original_generations or []
+    if (not isinstance(originals, list) or
+            not all(isinstance(g, str) and re.fullmatch(r"[0-9a-f]{12}", g)
+                    for g in originals)):
+        return {**status, "status": "HOLD_ORIGINAL_PROTECTION_UNVERIFIED"}
+    all_ids = {x.get("generation") for x in rows}
+    if (len(all_ids) != len(rows) or
+            not set(pins).issubset(all_ids) or
+            not set(live_service_generations.values()).issubset(all_ids)):
+        return {**status, "status": "HOLD_REQUIRED_RUNTIME_MISSING"}
+    forbidden = set(pins) | set(live_service_generations.values()) | set(originals)
+    candidates = []
+    for entry in rows:
+        gen, source, build = (entry.get("generation"), entry.get("source_sha"),
+                              entry.get("build_id"))
+        if gen in forbidden:
+            continue
+        if (not isinstance(gen, str) or not re.fullmatch(r"[0-9a-f]{12}", gen) or
+                not isinstance(source, str) or
+                not re.fullmatch(r"[0-9a-f]{40}", source) or
+                not source.startswith(gen) or not isinstance(build, str) or
+                not build or type(entry.get("allocated_bytes")) is not int or
+                entry.get("allocation_status") != "MEASURED_SELECTED_TREE" or
+                type(entry.get("mtime_ns")) is not int):
+            continue
+        candidates.append(entry)
+    if not candidates:
+        return {**status, "status": "HOLD_NO_UNPINNED_SOURCE_VERIFIED_CANDIDATE"}
+    chosen = min(candidates, key=lambda x: (x["mtime_ns"], x["generation"]))
+    return {**status, "status": "ONE_NOMINATION_FOR_SOURCE_OWNER_QUALIFICATION_ONLY",
+            "candidate": {
+                "generation": chosen["generation"],
+                "source_sha": chosen["source_sha"],
+                "build_id": chosen["build_id"],
+                "gross_allocated_bytes": chosen["allocated_bytes"],
+            },
+            "must_recheck_before_copy": [
+                "exact original Factory generation role and protection ledger",
+                "current service and independent rollback consumer negative evidence",
+                "admitted source/destination class and exact item COPY permit",
+                "existing receiver durable ACK, full readback, and isolated restore",
+            ]}
+
+
 def stage_retention_gate(receipt: dict) -> dict:
     if not isinstance(receipt, dict) or receipt.get("schema") != "aoe2war.we2.factory-historical-transport-retention-receipt.v1":
         raise ValueError("untrusted factory receipt")
