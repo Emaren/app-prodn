@@ -8,8 +8,8 @@ import {promises as fs} from "node:fs";
 import path from "node:path";
 import {assertIndependentTip,enrolledOwnerBinding,witnessIndependentTip} from "./storageIndependentLedgerTip.ts";
 import {
-  STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,teachingDisposition,strongestRecordedProtection,isTeachingLevel,isTeachingPlane,
-  isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,
+  STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,CLASSIFICATION_REVIEW_VERSION,teachingDisposition,strongestRecordedProtection,isTeachingLevel,isTeachingPlane,isBusinessDomain,isStorageLifecycle,
+  isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,type BusinessDomain,type StorageLifecycle,
   type LearningEffect,
 } from "./storageHogTeachingPolicy.ts";
 
@@ -28,6 +28,9 @@ export type TeachingEvent={
   // Earlier V1 entries have no authenticated account binding.
   ownerBinding?:string;
   reviewVersion?:string;
+  // V2 labels are separate owner intent, never inferred from folder names.
+  domain?:BusinessDomain;
+  lifecycle?:StorageLifecycle;
   requestedLevel:TeachingLevel;effectiveLevel:ProtectionLevel;
   note:string;previousId:string|null;previousDigest:string|null;
   effect:LearningEffect;digestSha256:string;hmacSha256:string;
@@ -107,7 +110,11 @@ function verified(event:unknown,secret:Buffer):event is TeachingEvent{
     !isProtectionLevel(x.sourceFloor)||typeof x.overlaps!=="boolean"||
     (x.ownerBinding!==undefined&&(typeof x.ownerBinding!=="string"||!HEX.test(x.ownerBinding)))||
     ((x.ownerBinding===undefined)!==(x.reviewVersion===undefined))||
-    (x.reviewVersion!==undefined&&x.reviewVersion!==CATEGORY_REVIEW_VERSION)||
+    (x.reviewVersion!==undefined&&x.reviewVersion!==CATEGORY_REVIEW_VERSION&&
+      x.reviewVersion!==CLASSIFICATION_REVIEW_VERSION)||
+    (x.reviewVersion===CLASSIFICATION_REVIEW_VERSION
+      ? (!isBusinessDomain(x.domain)||!isStorageLifecycle(x.lifecycle))
+      : (x.domain!==undefined||x.lifecycle!==undefined))||
     !isTeachingLevel(x.requestedLevel)||!isProtectionLevel(x.effectiveLevel)||
     typeof x.note!=="string"||x.note.length>160||
     !(x.previousId===null||(typeof x.previousId==="string"&&/^[a-f0-9-]{36}$/.test(x.previousId)))||
@@ -166,18 +173,24 @@ export async function appendTeachingEvent(input:{
   plane:TeachingPlane;category:string;sourceObservedAt:string;sourceFingerprint:string;
   grossBytes:number;sourceFloor:ProtectionLevel;overlaps:boolean;
   requestedLevel:TeachingLevel;note:string;previousId:string|null;ownerBinding:string;
+  domain?:BusinessDomain; lifecycle?:StorageLifecycle;
 }):Promise<TeachingEvent>{
   if(typeof input.ownerBinding!=="string"||!HEX.test(input.ownerBinding)||
      !CAT.test(input.category)||!HEX.test(input.sourceFingerprint)||!isTeachingPlane(input.plane)||
      !isTeachingLevel(input.requestedLevel)||!isProtectionLevel(input.sourceFloor)||
      !Number.isSafeInteger(input.grossBytes)||input.grossBytes<0||
      typeof input.overlaps!=="boolean"||!Number.isFinite(Date.parse(input.sourceObservedAt))||
-     typeof input.note!=="string"||input.note.length>160)
+     typeof input.note!=="string"||input.note.length>160||
+     ((input.domain===undefined)!==(input.lifecycle===undefined))||
+     (input.domain!==undefined&&(!isBusinessDomain(input.domain)||
+       !isStorageLifecycle(input.lifecycle))))
     throw Error("TEACHING_FIELDS_INVALID");
   if(process.env.NODE_ENV==="production"){
     if(process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET!==
       "/run/aoe2war-storage-independent-tip/witness.sock")
       throw Error("TEACHING_INDEPENDENT_WITNESS_REQUIRED");
+    if(input.domain===undefined||input.lifecycle===undefined)
+      throw Error("TEACHING_DIMENSIONS_REQUIRED");
     if(input.ownerBinding!==enrolledOwnerBinding())
       throw Error("TEACHING_OWNER_BINDING_HOLD");
   }
@@ -204,7 +217,9 @@ export async function appendTeachingEvent(input:{
     const before=old.at(-1)??null;
     const stamp=new Date(Math.max(Date.now(),before?Date.parse(before.at)+1:0)).toISOString();
     const bare:BareEvent={schema:STORAGE_TEACHING_SCHEMA,id:randomUUID(),at:stamp,
-      plane:input.plane,category:input.category,ownerBinding:input.ownerBinding,reviewVersion:CATEGORY_REVIEW_VERSION,
+      plane:input.plane,category:input.category,ownerBinding:input.ownerBinding,
+      reviewVersion:input.domain===undefined?CATEGORY_REVIEW_VERSION:CLASSIFICATION_REVIEW_VERSION,
+      ...(input.domain===undefined?{}:{domain:input.domain,lifecycle:input.lifecycle}),
       sourceObservedAt:input.sourceObservedAt,sourceFingerprint:input.sourceFingerprint,
       grossBytes:input.grossBytes,sourceFloor:input.sourceFloor,overlaps:input.overlaps,
       requestedLevel:input.requestedLevel,effectiveLevel:admission.effectiveLevel,

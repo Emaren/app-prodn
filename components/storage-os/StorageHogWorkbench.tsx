@@ -4,9 +4,11 @@ import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
 import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
+import StorageReceiptTimeline from "./StorageReceiptTimeline";
 import StorageBaeViews,{BaeModeSwitch} from "./StorageBaeViews";
 import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,validMode,type BaeMode} from "./storageBaeEvidence";
 import StorageTransportLaneStatus from "./StorageTransportLaneStatus";
+import type {BaeTopology} from "@/lib/storageBaeReadContract";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
 import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
 import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
@@ -19,7 +21,8 @@ import type {VisualHog} from "@/lib/storageVisualPrivate";
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
 import {signedHogInventory,teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 import {
-  teachingDisposition,strongestRecordedProtection,type TeachingLevel,type TeachingPlane,
+  teachingDisposition,strongestRecordedProtection,BUSINESS_DOMAINS,STORAGE_LIFECYCLES,
+  type TeachingLevel,type TeachingPlane,type BusinessDomain,type StorageLifecycle,
 } from "@/lib/storageHogTeachingPolicy";
 
 const IDS:TeachingPlane[]=["mac","hel1-root","hel1-volume-105319120"];
@@ -164,6 +167,7 @@ function IntelDrive({snapshot,active,onSelect}:{snapshot:IntelColdView|null;acti
 }
 export default function StorageHogWorkbench(){
   const [data,setData]=useState<StorageCommandCenter|null>(null);
+  const [baeTopology,setBaeTopology]=useState<BaeTopology|null>(null);
   const [intel,setIntel]=useState<IntelColdView|null>(null);
   const [intelError,setIntelError]=useState<string|null>(null);
   const [intelLoading,setIntelLoading]=useState(false);
@@ -196,6 +200,8 @@ export default function StorageHogWorkbench(){
   const [active,setActive]=useState<ExplorerPlane>("mac");
   const [selected,setSelected]=useState<string|null>(null);
   const [chosen,setChosen]=useState<TeachingLevel>(2);
+  const [domain,setDomain]=useState<BusinessDomain|"">("");
+  const [lifecycle,setLifecycle]=useState<StorageLifecycle|"">("");
   const [note,setNote]=useState("");
   const [confirmForever,setConfirmForever]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -206,9 +212,11 @@ export default function StorageHogWorkbench(){
     const abort=new AbortController();pending.current=abort;
     const timeout=window.setTimeout(()=>abort.abort(),7000);
     try{
-      const [a,b]=await Promise.all([
+      const [a,b,c]=await Promise.all([
         fetch("/api/admin/storage-os",{cache:"no-store",credentials:"same-origin",signal:abort.signal}),
         fetch("/api/admin/storage-os/teaching",{cache:"no-store",credentials:"same-origin",signal:abort.signal}),
+        fetch("/api/admin/storage-os/bae",{cache:"no-store",credentials:"same-origin",signal:abort.signal})
+          .catch(()=>null),
       ]);
       if(!a.ok)throw Error("STORAGE OS SOURCE UNAVAILABLE");
       const storage=await a.json() as StorageCommandCenter;
@@ -216,6 +224,16 @@ export default function StorageHogWorkbench(){
         throw Error("UNRECOGNIZED STORAGE OS SOURCE");
       if(abort.signal.aborted)return;
       setData(storage);setError(null);
+      // Supplementary current admin-only read. The bounded root receiver ACK
+      // is historical Bridge ingress proof, not source certification,
+      // copy authorization, actual transfer or measured physical reclaim.
+      if(c?.ok){
+        try{
+          const v=await c.json() as BaeTopology;
+          setBaeTopology(v.schema==="aoe2war.storage-bae.topology.v1"&&
+            v.authority==="ADMIN_READ_ONLY_NO_TRANSFER_OR_RETIREMENT" ? v:null);
+        }catch{setBaeTopology(null);}
+      }else setBaeTopology(null);
       if(b.ok){
         const ledger=await b.json() as {schema:string;events:TeachingEvent[];ownerBinding?:string|null;mayRecord?:boolean};
         if(ledger.schema!=="aoe2war.storage-teaching-history.v1"||!Array.isArray(ledger.events))
@@ -227,7 +245,7 @@ export default function StorageHogWorkbench(){
       }else{setAccess(null);setEvents([]);setLedgerStatus("NOT ENROLLED");}
     }catch(e){
       if(!abort.signal.aborted){
-        setData(null);setAccess(null);setEvents([]);setLedgerStatus("UNKNOWN");
+        setData(null);setBaeTopology(null);setAccess(null);setEvents([]);setLedgerStatus("UNKNOWN");
         setError(e instanceof Error?e.message:"SOURCE READ FAILED");
       }
     }finally{window.clearTimeout(timeout);if(pending.current===abort)pending.current=null;}
@@ -272,7 +290,7 @@ export default function StorageHogWorkbench(){
   const priorFloor=item?strongestRecordedProtection(events,activeTeaching,item.key):1;
   const effectiveFloor=item?Math.max(item.level,priorFloor):5;
   const disposition=item?teachingDisposition(effectiveFloor,chosen,priorL5):null;
-  const canSave=teachingDeadline!==null&&!!item&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
+  const canSave=teachingDeadline!==null&&!!item&&!!domain&&!!lifecycle&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
     chosen>=effectiveFloor&&disposition?.status==="ACCEPT"&&!priorL5&&
     (chosen!==2||note.trim().length>0)&&(chosen!==5||confirmForever);
   const choosePlane=(id:ExplorerPlane)=>{setActive(id);setSelected(null);setNotice(null);};
@@ -281,6 +299,7 @@ export default function StorageHogWorkbench(){
     const candidate=hogs.find(h=>h.key===key);
     const historical=strongestRecordedProtection(events,activeTeaching,key);
     setSelected(key);setChosen(Math.max(2,candidate?.level??2,historical) as TeachingLevel);setNote("");
+    setDomain("");setLifecycle("");
     setConfirmForever(false);setNotice(null);
   };
   const save=async()=>{
@@ -292,7 +311,7 @@ export default function StorageHogWorkbench(){
         method:"POST",cache:"no-store",credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          plane:activeTeaching,category:item.key,level:chosen,observedAt:sourcePlane.observedAt,
+          plane:activeTeaching,category:item.key,level:chosen,domain,lifecycle,observedAt:sourcePlane.observedAt,
           grossBytes:item.grossBytes,sourceFloor:item.level,overlaps:item.overlaps,
           previousId:last?.id??null,note,confirmPermanent:chosen===5&&confirmForever,
         }),
@@ -312,24 +331,25 @@ export default function StorageHogWorkbench(){
     }catch(e){setNotice(e instanceof Error?e.message:"SAVE FAILED");}
     finally{setSaving(false);}
   };
-  // B is the exact existing Basic default, including for server hydration.
-  // The mode preference is browser-only; it grants no new auth or sources.
+  // Existing Basic UI remains the first, server-rendered default. Local
+  // persistence is read only after hydration to avoid a cookie/account API.
   const [mode,setMode]=useState<BaeMode>(BAE_DEFAULT_MODE);
   useEffect(()=>{
     try{
-      const selected=window.localStorage.getItem(BAE_STORAGE_KEY);
-      if(validMode(selected))setMode(selected);
-    }catch{/* Basic stays the fail-safe fallback when storage is disabled. */}
+      const saved=window.localStorage.getItem(BAE_STORAGE_KEY);
+      if(validMode(saved))setMode(saved);
+    }catch{ /* private browsing / disabled storage: Basic remains default */ }
   },[]);
   const changeMode=(next:BaeMode)=>{
     setMode(next);
-    try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{/* no account/POST fallback */}
+    try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{ /* UI still works */ }
   };
   const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length+
     (intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"?1:0);
   if(mode!=="B")return <StorageBaeViews mode={mode} onModeChange={changeMode}
     data={data} intel={intel} ledgerStatus={ledgerStatus} error={error}
     intelError={intelError} now={now} ownerBinding={access?.ownerBinding??null}
+    topology={baeTopology}
     onRefresh={()=>{void refresh();void refreshIntel();}}
     onInspect={id=>{choosePlane(id);changeMode("B");}}/>;
   return <main className="min-h-screen bg-[#070e18] text-slate-100">
@@ -355,6 +375,12 @@ export default function StorageHogWorkbench(){
           inventory={inventories[i]}/>)}
         <IntelDrive snapshot={intel} active={active==="intel"} onSelect={()=>choosePlane("intel")}/>
       </section>
+      {baeTopology?.receipts.lastDurableAck?
+        <p className="rounded-xl border border-cyan-300/15 bg-cyan-300/[.035] p-3 text-xs text-slate-200">
+          Last authenticated Bridge ingress ACK: {baeTopology.receipts.lastDurableAck.receivedAt}
+          {" · "}{baeTopology.receipts.lastDurableAck.evidence}
+          {" · NOT a file-copy authorization or live storage-census scan"}
+        </p>:null}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
         <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/4 planes with admitted current readings":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
         <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):activeInventory.status} · Owner learning ledger: {ledgerStatus}</span>
@@ -451,6 +477,25 @@ export default function StorageHogWorkbench(){
             <div className="mt-2 text-xs leading-5 text-slate-400">{l.description}</div>
           </button>)}
         </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2" aria-label="Owner-selected independent classification dimensions">
+          <label className="text-xs font-semibold text-slate-300">Business domain
+            <select aria-label="Business domain" value={domain} disabled={!item||priorL5}
+              onChange={e=>setDomain(e.target.value as BusinessDomain|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose business domain</option>
+              {BUSINESS_DOMAINS.map(d=><option key={d} value={d}>{d.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-300">Lifecycle
+            <select aria-label="Lifecycle" value={lifecycle} disabled={!item||priorL5}
+              onChange={e=>setLifecycle(e.target.value as StorageLifecycle|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose lifecycle</option>
+              {STORAGE_LIFECYCLES.map(l=><option key={l} value={l}>{l.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-amber-100/80">These are owner-selected descriptions, not inherited source facts. Correction appends a new event. Source protections L1–L5 remain authoritative.</p>
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (Level 2 requires an owner explanation; no passwords or secrets)</label>
@@ -485,6 +530,7 @@ export default function StorageHogWorkbench(){
             {notice??(priorL5?"This category has permanent owner L5 protection.":
               chosen<effectiveFloor?"A stronger signed source or historical owner floor blocks this classification.":
               chosen===2&&!note.trim()?"Enter a written explanation before saving Level 2.":
+              (!domain||!lifecycle)?"Choose both business domain and lifecycle to record your decision.":
               ledgerStatus!=="VERIFIED"?"Learning ledger not admitted: choices remain unsaved previews.":
               !access?.ownerBinding?"Recording requires enrollment of the owner's app account.":
               !access.mayRecord?"Only the enrolled owner account can record a classification.":
@@ -495,12 +541,15 @@ export default function StorageHogWorkbench(){
         </div>
       </section>
         </>}
+      <StorageReceiptTimeline events={events} ledgerStatus={ledgerStatus}
+        ownerBinding={access?.ownerBinding??null}/>
       <StorageTransportLaneStatus
         plane={active}
         sourceEvidence={data?.planes.some(p=>p.id===active&&p.status==="RECEIPT"&&
           (p.source==="SIGNED_THREE_PLANE_RECEIPT"||p.source==="WE2_NATIVE_V2_SIGNED_PLANE"))
-          ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
-        observedAt={active==="intel"?null:data?.planes.find(p=>p.id===active)?.asOf??null}
+          ?"SIGNED_CAPACITY_ONLY":
+          activeInventory.status==="STALE"?"STALE":"UNAVAILABLE"}
+        observedAt={active==="intel"?null:sourcePlane?.observedAt??null}
         intelEvidence={intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"
           ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
         ownerLedgerVerified={ledgerStatus==="VERIFIED"&&!!access?.ownerBinding}

@@ -8,6 +8,7 @@ import {TRANSPORT_LANES,TRANSPORT_STEPS} from "./StorageTransportLaneStatus";
 import {baeNodes,baeRecentObservations,type BaeMode,type BaeNode} from "./storageBaeEvidence";
 import {AdvancedTopology,ExtremeTopology,ExtremeEvidenceTimeline} from "./StorageBaeTopologies";
 import {signedHogInventory} from "@/lib/storageSignedFreshness";
+import type {BaeTopology} from "@/lib/storageBaeReadContract";
 
 export function BaeModeSwitch({mode,onChange}:{mode:BaeMode;onChange:(mode:BaeMode)=>void}){
   return <div role="group" aria-label="Storage Explorer BAE view mode"
@@ -27,9 +28,10 @@ function Chip({value}:{value:string}){
       value==="STALE"?"border-orange-300/30 bg-orange-300/10 text-orange-200":
       "border-amber-300/25 bg-amber-300/[.06] text-amber-100")}>{value}</span>;
 }
-function EvidenceStrip({nodes,data,intel,ledgerStatus,error,intelError,extreme}:{
+function EvidenceStrip({nodes,data,intel,ledgerStatus,error,intelError,extreme,topology}:{
   nodes:BaeNode[];data:StorageCommandCenter|null;intel:IntelColdView|null;
   ledgerStatus:string;error:string|null;intelError:string|null;extreme:boolean;
+  topology:BaeTopology|null;
 }){
   const recent=baeRecentObservations(nodes);
   const blocked=nodes.filter(n=>n.status!=="PASS");
@@ -48,8 +50,15 @@ function EvidenceStrip({nodes,data,intel,ledgerStatus,error,intelError,extreme}:
     </div>
     <div className="rounded-2xl border border-white/10 bg-[#0c1829] p-4">
       <div className="flex items-center gap-2 text-xs font-bold text-cyan-100"><ShieldCheck className="h-4 w-4"/> Last transport ACK</div>
-      <p className="mt-3 text-sm font-bold text-amber-100">UNKNOWN · NOT VERIFIED</p>
-      <p className="mt-2 text-[11px] leading-5 text-slate-400">The browser contract does not certify durable receiver ACK or file transfer. Heartbeat is not ACK.</p>
+      {topology?.receipts.lastDurableAck?
+        <><p className="mt-3 text-xs font-bold leading-5 text-cyan-100">BRIDGE INGRESS ACK VERIFIED · HISTORICAL</p>
+          <p className="mt-2 text-xs text-slate-200">{topology.receipts.lastDurableAck.receivedAt}</p>
+          <p className="mt-1 break-all font-mono text-[10px] text-slate-200">
+            {topology.receipts.lastDurableAck.storedSha256}</p>
+          <p className="mt-2 text-[11px] leading-5 text-slate-300">
+            Original receiver HMAC state and durable ledger matched. No file-copy ACK, live transfer or retirement permission.</p></>:
+        <><p className="mt-3 text-sm font-bold text-amber-100">UNKNOWN · NOT VERIFIED</p>
+          <p className="mt-2 text-[11px] leading-5 text-slate-300">No admitted durable Bridge ACK in the current read. File transfer is never inferred.</p></>}
       <p className="mt-2 text-[10px] text-slate-300">Historical Intel independent restore proofs: {restores??"UNKNOWN"} · not current lane authorization</p>
     </div>
     <div className="rounded-2xl border border-white/10 bg-[#0c1829] p-4">
@@ -68,10 +77,11 @@ function EvidenceStrip({nodes,data,intel,ledgerStatus,error,intelError,extreme}:
     </div>
   </section>;
 }
-export default function StorageBaeViews({mode,onModeChange,data,intel,ledgerStatus,error,intelError,onRefresh,onInspect,now,ownerBinding}:{
+export default function StorageBaeViews({mode,onModeChange,data,intel,ledgerStatus,error,intelError,onRefresh,onInspect,now,ownerBinding,topology}:{
   mode:"A"|"E";onModeChange:(mode:BaeMode)=>void;
   data:StorageCommandCenter|null;intel:IntelColdView|null;ledgerStatus:string;error:string|null;intelError:string|null;
   onRefresh:()=>void;onInspect:(id:BaeNode["id"])=>void;now:number;ownerBinding:string|null;
+  topology:BaeTopology|null;
 }){
   const extreme=mode==="E";
   const nodes=baeNodes(data,intel,now);
@@ -102,7 +112,8 @@ export default function StorageBaeViews({mode,onModeChange,data,intel,ledgerStat
       {error&&<div role="alert" className="rounded-xl border border-rose-300/25 bg-rose-300/[.04] p-4 text-sm text-rose-200">{error} · Source data withheld instead of simulated.</div>}
       {extreme?<ExtremeTopology nodes={nodes}/>:<AdvancedTopology nodes={nodes} onInspect={onInspect}/>}
       {extreme?<ExtremeEvidenceTimeline nodes={nodes} intel={intel}/>:null}
-      <EvidenceStrip nodes={nodes} data={data} intel={intel} ledgerStatus={ledgerStatus} error={error} intelError={intelError} extreme={extreme}/>
+      <EvidenceStrip nodes={nodes} data={data} intel={intel} ledgerStatus={ledgerStatus}
+        error={error} intelError={intelError} extreme={extreme} topology={topology}/>
       {extreme?<section aria-label="Five source-owned transport relationships" className="rounded-[26px] border border-white/10 bg-[#0a1625] p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3"><div>
           <p className="text-[10px] font-black tracking-[.24em] text-cyan-300">TRANSPORT OS / FIVE LANES</p>

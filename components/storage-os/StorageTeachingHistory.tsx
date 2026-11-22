@@ -44,6 +44,7 @@ export default function StorageTeachingHistory({events,plane,item,observedAt,own
       <ol className="mt-3 max-h-72 space-y-3 overflow-y-auto">
         {history.reverse().map(event => <li key={event.id} className="rounded-lg border border-white/10 p-3">
           <p className="font-semibold">Requested L{event.requestedLevel} · Effective L{event.effectiveLevel}</p>
+          <p className="mt-1 text-xs text-cyan-200">Domain: {event.domain?.replaceAll("_"," ")??"LEGACY / NOT RECORDED"} · Lifecycle: {event.lifecycle?.replaceAll("_"," ")??"LEGACY / NOT RECORDED"}</p>
           <p className="mt-1 text-xs text-slate-300">{event.ownerBinding && event.ownerBinding === ownerBinding
             ? "Enrolled owner" : "Historical account attribution unconfirmed"} · {event.grossBytes.toLocaleString()} gross bytes observed{" "}
             <time dateTime={event.sourceObservedAt} title={event.sourceObservedAt}>{new Date(event.sourceObservedAt).toLocaleString()}</time></p>

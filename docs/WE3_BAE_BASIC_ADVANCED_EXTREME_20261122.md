@@ -82,8 +82,12 @@ reduced-motion preferences.
 ## Release and acceptance boundaries
 
 The original Bridge #1439 T10 release remains sealed and unchanged. This
-source-only WE3 interface is **not** evidence that separate owner teaching
-#1440 / protected guard #1443 or actual HEL1 native hog census are admitted.
+source-only WE3 integration includes the reviewed owner-teaching application
+source (#1440), exact POST/dry-run route source from #1443, and WE2's private
+read-only four-surface BAE API application source (#1445). It is **not** evidence
+that the separately protected R25/nginx exact owner teaching witness has been
+host-enrolled or that the native HEL1 gross-hog census is signed/admitted.
+The application must remain fail-closed without those independent receipts.
 The WE2/WE4 native source gap and WE1 PRODUCT governance remain distinct.
 Require genuine Chrome 1440/768/375 accessibility, authenticated Emaren
 Incognito/Scribe denial, independent teaching witness, one qualified Linux

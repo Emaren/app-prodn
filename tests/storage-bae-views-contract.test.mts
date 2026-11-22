@@ -220,3 +220,14 @@ test("small dark-background text uses legible contrast and avoids clipped UNKNOW
   assert.match(basic,/break-words text-xl font-black/);
   assert.match(basic,/Not certified/);
 });
+
+test("optional authenticated ACK cannot break the original Basic Explorer on read failure",()=>{
+  assert.match(basic,/fetch\("\/api\/admin\/storage-os\/bae"/);
+  assert.match(basic,/\.catch\(\(\)=>null\)/);
+  assert.match(basic,/if\(c\?\.ok\)/);
+  assert.match(basic,/catch\{setBaeTopology\(null\);\}/);
+  assert.match(basic,/setData\(storage\);setError\(null\)/);
+  assert.match(basic,/Last authenticated Bridge ingress ACK/);
+  assert.match(views,/BRIDGE INGRESS ACK VERIFIED · HISTORICAL/);
+  assert.match(views,/No file-copy ACK, live transfer or retirement permission/);
+});
