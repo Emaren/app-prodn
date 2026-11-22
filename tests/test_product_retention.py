@@ -48,7 +48,11 @@ class ProductRetentionTests(unittest.TestCase):
                        "runtime": "/var/lib/aoe2war-web-prod-" + "a" * 12},
             "previous": {"source": "b" * 40, "build": "previousbuild",
                          "runtime": "/var/lib/aoe2war-web-prod-" + "b" * 12},
+            "hot2": {"source": "e" * 40, "build": "hot2build",
+                     "runtime": "/var/lib/aoe2war-web-prod-" + "e" * 12},
             "controller_sha256": m.CONTROLLER_SHA, "manifest_sha256": "2" * 64,
+            "purpose": m.RETIRE_PURPOSE, "retirement_authorized": True,
+            "independent_restoration_verified": True,
             "journal_sha256": "3" * 64, "open_files_verified": True,
             "candidates": [self.row]}
         self.identity = {"stage_device": 1, "volume_device": 2, "volume_inode": 3}
@@ -87,6 +91,74 @@ class ProductRetentionTests(unittest.TestCase):
         path.chmod(0o600)
         return path
 
+    def test_copy_only_data_receipt_and_idempotence_preserves_root(self):
+        q = self.q()
+        self.p["purpose"] = m.COPY_ONLY_PURPOSE
+        self.p["copy_authorized"] = True
+        self.p["retirement_authorized"] = False
+        snap = m.regular(self.file, m.OWNER)
+        report = m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertFalse(report["retirement_authorized"])
+        self.assertFalse(report["independent_restoration_verified"])
+        self.assertEqual(m.regular(self.file, m.OWNER), snap)
+        saved = json.loads(Path(report["receipt"]).read_bytes())
+        self.assertEqual(saved["schema"], m.COPY_ONLY_SCHEMA)
+        self.assertFalse(saved["source_retired"])
+        self.assertEqual(m.hashfile(saved["item"]["retained"]), self.archive_sha)
+        second = m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertEqual(second["receipt_sha256"], report["receipt_sha256"])
+        self.assertTrue(self.file.exists())
+
+    def test_copy_only_rejects_missing_or_retire_class(self):
+        q = self.q()
+        for invalid in (
+            {},
+            {"purpose": m.COPY_ONLY_PURPOSE, "copy_authorized": False},
+            {"purpose": m.COPY_ONLY_PURPOSE, "copy_authorized": True,
+             "retirement_authorized": True},
+        ):
+            original = dict(self.p)
+            self.p.update(invalid)
+            with self.assertRaisesRegex(ValueError, "COPY_ONLY_OWNER_CLASS"):
+                m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+            self.p.clear();self.p.update(original)
+        self.assertTrue(self.file.exists())
+
+    def test_copy_only_cannot_be_used_as_retire_authority(self):
+        q = self.q()
+        self.p.update({"purpose": m.COPY_ONLY_PURPOSE,
+                       "copy_authorized": True,
+                       "retirement_authorized": False,
+                       "independent_restoration_verified": False})
+        report = m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        with self.assertRaisesRegex(ValueError, "SEPARATE_EXACT_RETIRE"):
+            m.apply(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertTrue(self.file.exists())
+        self.assertTrue(Path(report["receipt"]).exists())
+
+    def test_copy_only_rejects_incorrect_tar_before_copy(self):
+        q = self.q()
+        self.p.update({"purpose": m.COPY_ONLY_PURPOSE,
+                       "copy_authorized": True,
+                       "retirement_authorized": False})
+        self.file.write_bytes(b"B" * 1000001)
+        with self.assertRaisesRegex(ValueError, "ARCHIVE_SHA"):
+            m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+        self.assertTrue(self.file.exists())
+
+    def test_copy_only_rejects_hot2_source(self):
+        with self.assertRaisesRegex(ValueError, "PINNED_SOURCE"):
+            m.candidate(dict(self.row, source=self.p["hot2"]["source"]), self.p)
+
+    def test_copy_only_requires_exact_one_object(self):
+        q = self.q()
+        self.p.update({"purpose": m.COPY_ONLY_PURPOSE,
+                       "copy_authorized": True,
+                       "retirement_authorized": False})
+        q["items"].append(q["items"][0])
+        with self.assertRaisesRegex(ValueError, "COPY_ONLY_EXACT_ONE_ITEM"):
+            m.copy_only(q, m.digest(m.raw(q)), self.p, "f" * 64)
+
     def test_retain_restore_and_idempotent_resume(self):
         q = self.q()
         result = self.apply(q)
@@ -102,7 +174,7 @@ class ProductRetentionTests(unittest.TestCase):
         self.assertTrue(Path(saved["items"][0]["retained"]).exists())
 
     def test_pinned_sources_hold(self):
-        for key in ("active", "previous"):
+        for key in ("active", "previous", "hot2"):
             with self.assertRaisesRegex(ValueError, "PINNED_SOURCE"):
                 m.candidate(dict(self.row, source=self.p[key]["source"]), self.p)
 
