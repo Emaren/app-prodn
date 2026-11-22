@@ -182,6 +182,7 @@ export default function PrivateStorageOsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <Link href="/admin/storage-os/explorer" className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-4 py-2.5 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/20">Explore storage hogs <ArrowUpRight className="h-4 w-4"/></Link>
+          <Link href="/admin/storage-os/atlas" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-violet-300/35 bg-violet-300/[.08] px-4 py-2.5 text-xs font-bold text-violet-100 transition hover:bg-violet-300/15 focus-visible:outline-2 focus-visible:outline-violet-200">Explore the Storage Atlas <ArrowUpRight className="h-4 w-4"/></Link>
           <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/[.07] px-3 py-2 text-[10px] font-bold tracking-widest text-amber-200">
             <LockKeyhole className="h-3.5 w-3.5"/> READ ONLY
           </span>
