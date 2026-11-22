@@ -49,7 +49,7 @@ export function IntelColdStoragePanel({snapshot,loading,error,onRefresh}:{
         {valid?"FRESH / SIGNATURE VERIFIED":(snapshot?.health??"HOLD")+" / NOT ADMITTED"}</span>
       <span className="flex items-center gap-1 text-slate-400"><Clock3 className="h-4 w-4"/>
         Observed {valid?snapshot.observedAt:"UNKNOWN"}</span>
-      <span className="font-mono text-slate-500">{error??snapshot?.reason??"NO SIGNED INTEL RECEIPT"}</span>
+      <span className="font-mono text-slate-400">{error??snapshot?.reason??"NO SIGNED INTEL RECEIPT"}</span>
     </div>
     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {[
@@ -125,7 +125,7 @@ export function IntelColdStoragePanel({snapshot,loading,error,onRefresh}:{
                   <span>Protection: UNKNOWN</span>
                   <span>Shared blocks: UNCERTAIN</span>
                 </div>
-                <p className="mt-2 break-all text-[10px] text-slate-500">
+                <p className="mt-2 break-all text-[10px] text-slate-400">
                   Independent receipt: {o.restoreReceiptSha256??"UNKNOWN"}
                   {" · "}Now-hashed ciphertext: {o.contentSha256VerifiedNow?"YES":"NOT VERIFIED"}
                 </p>

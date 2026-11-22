@@ -8,11 +8,11 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 166 exact page templates and 292 handler templates match Git HEAD",()=>{
+test("all 166 exact page templates and 293 handler templates match Git HEAD",()=>{
   const actual=census(withRestrictedReadOnlyGitHead(() => gitHeadPaths()),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
     pageTemplates:166,adminTemplates:45,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:13,routeHandlerTemplates:292,apiHandlerTemplates:289,nonApiHandlerTemplates:3
+    excludedStaticTemplates:13,routeHandlerTemplates:293,apiHandlerTemplates:290,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
@@ -43,6 +43,7 @@ test("path scope is not an authorization claim or public detail disclosure",()=>
     "app/api/admin/storage-os/atlas/route.ts"&&h.scope==="api").length,1);
   assert.ok(inventory.handlers.some(h=>h.entrypoint==="app/api/admin/storage-os/teaching/route.ts"&&h.scope==="api"));
   assert.ok(inventory.handlers.some(h=>h.entrypoint==="app/api/admin/storage-os/dry-run/route.ts"&&h.scope==="api"));
+  assert.equal(inventory.handlers.filter(h=>h.entrypoint==="app/api/admin/storage-os/bae/route.ts"&&h.scope==="api").length,1);
   assert.equal(inventory.pages.find(p=>p.href==="/admin/living-kingdom/[uid]")?.assurance,"unverified");
   assert.equal(inventory.handlers.filter(h=>h.entrypoint.startsWith("app/api/admin/living-kingdom/")).length,2);
   assert.equal(inventory.pages.find(p=>p.href==="/wallet")?.scope,"excluded-static");

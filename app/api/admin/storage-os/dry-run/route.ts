@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import {requireAdmin} from "@/lib/adminSession";
+import {teachingOwnerAccess} from "@/lib/storageHogTeachingLedger";
 import {readPrivateStorageVisual,INDIVIDUAL_TRANSPORT_ADOPTED} from "@/lib/storageVisualPrivate";
 import {buildManifestDraft,StorageManifestHold} from "@/lib/storageExactDryRun";
 
@@ -13,6 +14,11 @@ const hold=(status:number,reason:string)=>
 export async function POST(request:NextRequest){
   const admin=await requireAdmin(request);
   if("error" in admin)return admin.error;
+  // A site administrator is not automatically the enrolled storage owner.
+  // This is a manifest preview only, not a cleanup permit.
+  const owner=teachingOwnerAccess(admin.user.uid);
+  if(!owner.ownerBinding)return hold(503,"TEACHING_OWNER_NOT_ENROLLED");
+  if(!owner.mayRecord)return hold(403,"TEACHING_OWNER_REQUIRED");
   const origin=request.headers.get("origin");
   if(!origin||origin!==new URL(request.url).origin||
      request.headers.get("sec-fetch-site")==="cross-site")

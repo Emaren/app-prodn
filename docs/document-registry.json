@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
+      "sha256": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d14b398f531695d03532909704ea0a7e1b8334e104c1967ccec5e09d230b983b",
+      "sha256": "fc6f5f6f7389de91969f873c8108157075ab4a4b2036a2863bc9c1c22a10ebe7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1375,9 +1375,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_OBSERVATORY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "7f34cc46a2339ea18ce32562527fef3eb590501148115ec335900807cf1ae94e",
+      "sha256": "4002ace1b36a2ffbb18985df402c8382a7cac41a5b959f3b6db89479e0d07171",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2382,6 +2382,30 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "review-only-policy-proposal-no-new-execution-authority",
+      "id": "aoe2war.app-prodn.storage-classification-disposition-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "0f27f9d3268d3747f8facce7b87b62166003747f01aece196553b8a23863da13",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "aoe2war"
+      ],
+      "title": "Storage Classification and Disposition OS v1",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -2508,9 +2532,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ROOM_FORUM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "15f8dba381542cb9e2d9f0d59ab0613fb6b2de294d47daf9925a2ba136944ab1",
+      "sha256": "e0fdc110a01c2eb05ee833d952cb6323dc12b5d5f5ffaab05cb4803a73526612",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2610,6 +2634,28 @@
         "aoe2-watcher"
       ],
       "title": "Watcher Telemetry",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-we3-bae-basic-advanced-extreme-20261122",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_BAE_BASIC_ADVANCED_EXTREME_20261122.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "200b8e8d4cf4175d6a07abd851defd6d903ba5f9c2200e0c8a70d765f7357f89",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Storage OS BAE \u2014 Basic / Advanced / Extreme",
       "type": "reference"
     },
     {
@@ -3558,9 +3604,9 @@
       "owner": "aoe2war-web",
       "path": "prisma/README.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
+      "sha256": "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3572,8 +3618,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/bridge-dual-path-20261121",
-    "commit": "c1226465465e9999ddc69cb225dbbc8d80b8897c"
+    "branch": "session-c/we3-bae-advanced-extreme-20261122",
+    "commit": "f329a0b236df19a76397eca61727dffa9e3b5664"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

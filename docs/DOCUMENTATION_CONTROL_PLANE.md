@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/bridge-dual-path-20261121` at `c1226465465e9999ddc69cb225dbbc8d80b8897c`
+Implementation baseline: `session-c/we3-bae-advanced-extreme-20261122` at `f329a0b236df19a76397eca61727dffa9e3b5664`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **157**
+- Authoritative repository documents: **158**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 13
-- `reference`: 82
+- `reference`: 83
 - `runbook`: 50
 - `working`: 6
 
 ### Lifecycle
 
-- `active`: 91
+- `active`: 92
 - `draft`: 49
 - `generated`: 1
 - `historical`: 13
@@ -155,6 +155,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
+| [Storage Classification and Disposition OS v1](STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md) | `reference` | `draft` | `review-only-policy-proposal-no-new-execution-authority` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
@@ -165,6 +166,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
+| [Storage OS BAE — Basic / Advanced / Extreme](WE3_BAE_BASIC_ADVANCED_EXTREME_20261122.md) | `reference` | `active` | `product-contract` |
 | [WE3 Four-Plane Storage Explorer and Owner Review Release Contract](WE3_FOUR_PLANE_STORAGE_REVIEW_20261120.md) | `reference` | `draft` | `nonfinancial-product-source-only-not-production-admission` |
 | [WE3 Library Public Read Projection Contract](WE3_LIBRARY_PUBLIC_PROJECTIONS_20261119.md) | `working` | `draft` | `source-only-library-review` |
 | [WE3 Q09 Kingdom Menu Exact Script Admission Review](WE3_Q09_KINGDOM_MENU_SOURCE_ADMISSION_20261119.md) | `working` | `draft` | `source-only-independent-review-request` |
