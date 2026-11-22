@@ -1,6 +1,6 @@
 ---
 id: "aoe2war.app-prodn.docs-we3-bae-basic-advanced-extreme-20261122"
-title: "Storage OS BAE — Basic Advanced Extreme Source Contract"
+title: "Storage OS BAE — Basic / Advanced / Extreme"
 type: "reference"
 status: "active"
 owner: "aoe2war-web"
@@ -37,6 +37,25 @@ report signed category count 0 while withholding total hog-allocation and
 reclaimable bytes as UNKNOWN. Zero signed categories is not proof an ext4
 filesystem is empty. Only a new independently source-admitted bounded native
 census from WE2/WE4 may supply actual category sizes, provenance and coverage.
+
+### November 22 — current-source UNKNOWN and L2 truth addition
+
+Basic includes a four-surface evidence rail showing the authority and age of
+each independent capacity reading, the separate gross category coverage,
+reason for unknown/unattributed space and the next source-owner evidence
+action. It does not fill the disk with guessed percentages or promote the
+operator estate snapshot to a signed file-census. Only genuinely source
+qualified and currently fresh capacity counts toward the "admitted reading"
+count. Intel's health=ONLINE metadata is insufficient for a current status
+without a fresh independent signed observation.
+
+L2 now displays a separate current category-teaching readiness/held count.
+Only current native-V2 source-qualified L2 non-overlapping categories with
+no stronger historical owner protection, verified owner binding and admitted
+append-only teaching ledger can be "category lesson ready". L4/L5 floors are
+immutable; exact-file retirement-ready remains **ZERO** without independent
+identity, rollback/recovery, permit and native execution proofs. No new
+browser scan, automatic teaching bypass, copy or deletion controls are added.
 
 ## A · Advanced — host relationship intelligence
 

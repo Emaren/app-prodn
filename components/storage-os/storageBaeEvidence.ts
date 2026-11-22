@@ -91,9 +91,12 @@ export function baeNodes(
     };
   });
   const verifiedIntel=intel?.source==="SIGNED_PRIVATE_RECEIPT";
-  const online=verifiedIntel&&intel.health==="ONLINE";
+  const intelTime=Date.parse(intel?.observedAt??"");
+  const intelFresh=Number.isFinite(intelTime)&&intelTime<=now+60_000&&
+    now-intelTime<=15*60_000;
+  const online=verifiedIntel&&intel.health==="ONLINE"&&intelFresh;
   const intelStatus:BaeTruth=online?"PASS":
-    verifiedIntel&&intel.health==="STALE"?"STALE":
+    verifiedIntel&&(!intelFresh||intel.health==="STALE")?"STALE":
     verifiedIntel?"HOLD":"UNKNOWN";
   const at=verifiedIntel?intel?.observedAt??null:null;
   out.push({

@@ -8,12 +8,28 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Parser Observatory
+
+## November 22, 2026 — WE3 source-scoped review (not new census)
+
+The public /game-stats route, private /admin/parser-lab and private
+/admin/replay-review remain distinct. Rechecked the existing source references
+for public replay projection, persisted disconnect veto, verdict trail and
+historical evidence denominator separation. July 28 numeric corpus counts and
+later checkpoints below are still DATED, not refreshed runtime evidence.
+No fresh database, filesystem or archive census was executed in this review;
+missing source coverage remains UNKNOWN, never an assertion of zero
+unparsed files, authorized cleanup or verified winner.
+
+This Parser review grants Storage Atlas no private replay files, database
+mutation authority or source filesystem traversal. The independent WE4 HEL1
+runtime-generations source is not an authorized replay archive census.
+
 
 ## Dated corpus census — 2026-07-28
 

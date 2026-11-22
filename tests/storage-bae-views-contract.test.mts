@@ -37,6 +37,21 @@ test("Basic is the persisted-mode fallback and impossible values never select a 
   assert.match(basic,/if\(mode!=="B"\)return <StorageBaeViews/);
   assert.match(basic,/<BaeModeSwitch mode=\{mode\} onChange=\{changeMode\}/);
 });
+test("Basic explains all four UNKNOWN states and only admits source-qualified capacity and L2",()=>{
+  for(const label of ["SOURCE-COVERAGE OPERATIONS","Why is the filesystem still UNKNOWN?",
+    "HEL1 signed v1 publishes no directory hog measurements",
+    "Level 2","Category teaching ready","Category held",
+    "Exact-file retirement ready","WE2_NATIVE_V2_ED25519","L5 NEVER DELETE"]){
+    assert.ok(basic.toLowerCase().includes(label.toLowerCase()),label);
+  }
+  assert.match(basic,/p.source==="SIGNED_THREE_PLANE_RECEIPT"\|\|p.source==="WE2_NATIVE_V2_SIGNED_PLANE"/);
+  assert.match(basic,/sourcePlane\?\.nativeV2Source===true/);
+  assert.match(basic,/strongestRecordedProtection\(events,activeTeaching,h.key\)<=2/);
+  assert.match(basic,/Exact-file retirement ready/);
+  assert.match(basic,/Number\.isFinite\(intelTime\)/);
+  assert.match(basic,/Date\.now\(\)-intelTime<=15\*60_000/);
+  assert.doesNotMatch(basic,/axios|POST.*\/api\/admin\/storage-os\/scan|execSync|child_process/);
+});
 test("original Basic capacity, hierarchy and classification controls remain",()=>{
   for(const t of ["Four independently verified storage planes","Interactive capacity anatomy",
     "Biggest storage hogs","Record classification",
@@ -96,7 +111,8 @@ test("qualified current source can PASS source trust only, never transport permi
   assert.equal(baeRecentObservations([mac]).length,1);
 });
 test("independently signed Intel source displays fourth node, but archival copy never implied",()=>{
-  const intel={source:"SIGNED_PRIVATE_RECEIPT",health:"ONLINE",observedAt:at,
+  const intel={source:"SIGNED_PRIVATE_RECEIPT",health:"ONLINE",
+    observedAt:"2026-11-22T01:55:00Z",
     capacity:{availableBytes:900000000},objects:[{restore:"HISTORICAL_RESTORE_PROOF_PRESENT"}]};
   const fourth=baeNodes(null,intel as unknown as IntelColdView,now)[3];
   assert.equal(fourth.id,"intel");
@@ -104,6 +120,13 @@ test("independently signed Intel source displays fourth node, but archival copy 
   assert.equal(fourth.availableBytes,900000000);
   assert.equal(fourth.reclaimableBytes,null);
   assert.match(fourth.durableAck,/UNKNOWN/);
+  const old={...intel,observedAt:at};
+  const stale=baeNodes(null,old as unknown as IntelColdView,now)[3];
+  assert.equal(stale.status,"STALE","A 20-minute-old signed Intel reading cannot assert current PASS");
+  assert.equal(stale.availableBytes,null);
+  const future={...intel,observedAt:"2026-11-22T02:05:00Z"};
+  assert.equal(baeNodes(null,future as unknown as IntelColdView,now)[3].status,"STALE",
+    "Future timestamp cannot become healthy capacity");
   const hold=baeNodes(null,{...intel,health:"HOLD"} as unknown as IntelColdView,now)[3];
   assert.equal(hold.status,"HOLD");
   assert.equal(hold.availableBytes,null);

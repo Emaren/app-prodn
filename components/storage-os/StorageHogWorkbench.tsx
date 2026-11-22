@@ -6,7 +6,7 @@ import StorageTeachingHistory from "./StorageTeachingHistory";
 import StorageReviewQueue from "./StorageReviewQueue";
 import StorageReceiptTimeline from "./StorageReceiptTimeline";
 import StorageBaeViews,{BaeModeSwitch} from "./StorageBaeViews";
-import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,validMode,type BaeMode} from "./storageBaeEvidence";
+import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,baeNodes,validMode,type BaeMode} from "./storageBaeEvidence";
 import StorageTransportLaneStatus from "./StorageTransportLaneStatus";
 import type {BaeTopology} from "@/lib/storageBaeReadContract";
 import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
@@ -142,7 +142,10 @@ function Drive({reading,id,active,onSelect,inventory}:{
   </button>;
 }
 function IntelDrive({snapshot,active,onSelect}:{snapshot:IntelColdView|null;active:boolean;onSelect:()=>void}){
-  const current=snapshot?.source==="SIGNED_PRIVATE_RECEIPT"&&snapshot.health==="ONLINE";
+  const intelTime=Date.parse(snapshot?.observedAt??"");
+  const current=snapshot?.source==="SIGNED_PRIVATE_RECEIPT"&&snapshot.health==="ONLINE"&&
+    Number.isFinite(intelTime)&&intelTime<=Date.now()+60_000&&
+    Date.now()-intelTime<=15*60_000;
   const free=current?snapshot.capacity.availableBytes:null;
   return <button type="button" onClick={onSelect} aria-pressed={active}
     className={"relative overflow-hidden rounded-3xl border p-5 text-left transition "+
@@ -344,8 +347,25 @@ export default function StorageHogWorkbench(){
     setMode(next);
     try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{ /* UI still works */ }
   };
-  const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length+
-    (intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"?1:0);
+  const nodes=baeNodes(data,intel,now);
+  // This is a source-qualified CAPACITY count, not overall storage
+  // completeness. An operator estate snapshot may contain bytes but is not
+  // admitted as signed capacity; an Intel ONLINE bit needs a fresh receipt.
+  const safeCount=IDS.filter(id=>{
+    const p=data?.planes.find(x=>x.id===id);
+    return p?.status==="RECEIPT"&&
+      (p.source==="SIGNED_THREE_PLANE_RECEIPT"||p.source==="WE2_NATIVE_V2_SIGNED_PLANE");
+  }).length+(intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"&&
+    typeof intel.observedAt==="string"&&Number.isFinite(Date.parse(intel.observedAt))&&
+    Date.parse(intel.observedAt)<=now+60_000&&
+    now-Date.parse(intel.observedAt)<=15*60_000?1:0);
+  const l2Admitted=live&&l2Deadline!==null&&
+    data?.visual.contract==="WE2_NATIVE_V2_ED25519"&&
+    sourcePlane?.nativeV2Source===true&&
+    ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!!access.ownerBinding;
+  const l2CategoryReady=l2Admitted?hogs.filter(h=>h.level===2&&!h.overlaps&&
+    strongestRecordedProtection(events,activeTeaching,h.key)<=2).length:0;
+  const l2Held=live?hogs.length-l2CategoryReady:null;
   if(mode!=="B")return <StorageBaeViews mode={mode} onModeChange={changeMode}
     data={data} intel={intel} ledgerStatus={ledgerStatus} error={error}
     intelError={intelError} now={now} ownerBinding={access?.ownerBinding??null}
@@ -375,6 +395,52 @@ export default function StorageHogWorkbench(){
           inventory={inventories[i]}/>)}
         <IntelDrive snapshot={intel} active={active==="intel"} onSelect={()=>choosePlane("intel")}/>
       </section>
+      <section aria-label="Four-surface measured versus UNKNOWN evidence" className={PANEL+" p-4 sm:p-6"}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-[10px] font-black tracking-[.24em] text-cyan-300">SOURCE-COVERAGE OPERATIONS / 3 COMPUTERS · 4 SURFACES</p>
+            <h2 className="mt-2 text-xl font-bold text-white">Why is the filesystem still UNKNOWN?</h2>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-300">Grey means unmeasured, not empty. Available bytes, gross category samples, source signer, receiver ACK and unique reclaim are separate proofs.</p></div>
+          <span className="rounded-full border border-amber-200/30 px-3 py-2 text-[10px] font-bold text-amber-100">FULL BYTE COVERAGE NOT CERTIFIED</span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {nodes.map(n=><article key={n.id} className="min-w-0 rounded-2xl border border-white/10 bg-[#0a1727] p-4">
+            <h3 className="text-sm font-bold text-white">{n.name}</h3>
+            <p className="mt-2 text-[11px] text-cyan-200">Capacity: {n.capacityEvidence}</p>
+            <p className="mt-1 text-[11px] font-semibold text-amber-200">Directory coverage: {n.inventoryStatus}</p>
+            <p className="mt-2 text-[11px] leading-5 text-slate-200">Authority: {n.sourceTrust}</p>
+            <p className="mt-1 break-words text-[10px] text-slate-300">Observed: {n.observedAt??"NO ADMITTED TIMESTAMP"} · {n.ageLabel}</p>
+            <p className="mt-3 border-t border-white/10 pt-3 text-[11px] leading-5 text-white">
+              {n.inventoryStatus==="NOT SCANNED"?
+                "WHY: HEL1 signed v1 publishes no directory hog measurements. WE2 native v2 signer, mount scope and receiver ACK still required.":
+                n.inventoryStatus==="STALE"||n.status==="STALE"?
+                "WHY: Source observation expired. Re-reading this page is not a host scan.":
+                n.id==="intel"?
+                "WHY: Independent current Intel receipt/metadata is separate from a fresh full-content restore and vault-wide byte census.":
+                n.inventoryStatus==="PARTIAL / GROSS"?
+                "WHY: Reported gross categories are only a partial selection. Shared blocks, snapshots and unscanned space remain grey.":
+                "WHY: No current independently admitted directory allocation source for this surface."}
+            </p>
+            <p className="mt-2 text-[10px] leading-5 text-cyan-200">
+              {n.id==="intel"?"NEXT WE4: qualify current Intel receiver/provenance; historic restores stay dated.":
+                n.id==="mac"?"NEXT WE2: source-sign fresh M1 Pulse coverage and account for APFS shared blocks.":
+                "NEXT WE2: admit bounded native ROOT/DATA scan with exact UUID, signer and ACK."}
+            </p>
+          </article>)}
+        </div>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200/20 bg-amber-200/[.04] p-4" aria-label="Level 2 category teaching versus exact-file authority">
+          <div><p className="text-xs font-black text-amber-100">LEVEL 2 · OWNER TEACHING READINESS</p>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-200">Select a measured category below, inspect source minimum protection, enter business domain, lifecycle and your reason. Category feedback is NOT an exact-file source identity or deletion permit.</p></div>
+          <div className="flex flex-wrap gap-4 text-[11px] text-slate-200">
+            <span>Category teaching ready <strong className="block text-xl text-white">{live?l2CategoryReady:"UNKNOWN"}</strong></span>
+            <span>Category held <strong className="block text-xl text-white">{l2Held??"UNKNOWN"}</strong></span>
+            <span>Exact-file retirement ready <strong className="block text-xl text-rose-200">0</strong></span>
+          </div>
+          <p className="w-full text-[10px] leading-5 text-amber-100">Reason: {!live?"NO CURRENT SIGNED CATEGORY RECEIPT":
+            !sourcePlane?.nativeV2Source?"NATIVE SOURCE SIGNER/RECEIVER NOT ADMITTED":
+            ledgerStatus!=="VERIFIED"||!access?.mayRecord?"OWNER LEARNING WITNESS NOT ENROLLED":
+            "OWNER CATEGORY REVIEW ONLY; NO EXACT ITEM RETIREMENT"} · L4 HUMAN ONLY · L5 NEVER DELETE.</p>
+        </div>
+      </section>
       {baeTopology?.receipts.lastDurableAck?
         <p className="rounded-xl border border-cyan-300/15 bg-cyan-300/[.035] p-3 text-xs text-slate-200">
           Last authenticated Bridge ingress ACK: {baeTopology.receipts.lastDurableAck.receivedAt}
@@ -382,7 +448,7 @@ export default function StorageHogWorkbench(){
           {" · NOT a file-copy authorization or live storage-census scan"}
         </p>:null}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/4 planes with admitted current readings":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
+        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/4 planes with source-qualified current capacity":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
         <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):activeInventory.status} · Owner learning ledger: {ledgerStatus}</span>
       </div>
       {active==="intel"?
