@@ -211,7 +211,12 @@ def prepare(proof_path):
     finally:os.close(dfd)
     print("PASS_SOURCE_BOUND_PRODUCT_MANIFEST",str(dest),
           hashlib.sha256(raw).hexdigest(),"NO_FINANCIAL_AUTHORITY")
-    print("DEPLOY_COMMAND","python3 -I -B /root/aoe2war_product_release_controller_v2.py release --manifest "+str(dest))
+    # A manifest is NOT a release permit. Do not print a runnable root
+    # controller command; the reviewed M1 publisher enforces the T7/T8/T9/T10
+    # sequence and exact owner WEBSITE one-use authorization.
+    print("MANIFEST_RELEASE_HOLD",
+          "USE_REVIEWED_M1_FACTORY_PUBLISHER_NO_DIRECT_CONTROLLER_COMMAND",
+          str(dest))
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser()

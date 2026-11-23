@@ -99,6 +99,16 @@ class FactoryDataPublisherTests(unittest.TestCase):
                 R.root_pins()
         self.assertIn(R.DATA_HELPER,observed[0][0])
         self.assertTrue(observed[0][1])
+    def test_manifest_output_cannot_suggest_root_controller_bypass(self):
+        source=(ROOT/"docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py").read_text()
+        self.assertNotIn('print("DEPLOY_COMMAND"',source)
+        self.assertNotIn("aoe2war_product_release_controller_v2.py release",source)
+        self.assertIn("MANIFEST_RELEASE_HOLD",source)
+        self.assertIn("USE_REVIEWED_M1_FACTORY_PUBLISHER_NO_DIRECT_CONTROLLER_COMMAND",source)
+        self.assertEqual(R.CONTROLLER,"/root/aoe2war_product_release_controller_v3.py")
+        self.assertIn('root_pins',R.controller.__code__.co_names)
+        self.assertNotIn("v2.py",R.CONTROLLER)
+
     def test_frozen_atlas_identity_is_not_rewritten_by_transport(self):
         self.assertEqual(R.DATA_STAGE_ROOT,
            "/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1")
