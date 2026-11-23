@@ -79,8 +79,12 @@ class RecoveryTests(unittest.TestCase):
         work=self.parent/"run";work.mkdir(mode=0o700)
         log=work/"release-events-v1.jsonl"
         R.event(log,self.approval,"T3")
-        remote="/home/tony/.aoe2war-b-os-"+self.approval["sourceSha"][:12]+"-run-1234"
+        remote=(R.DATA_STAGE_ROOT+"/.aoe2war-b-os-"+
+                self.approval["sourceSha"][:12]+"-run-1234")
         selected={
+            "schema":"aoe2war.product.web-release-manifest.v3",
+            "transport_mode":"data-archive-v1",
+            "archive_dev":2064,"archive_inode":123456,
             "source":self.approval["sourceSha"],"build":self.approval["buildId"],
             "github_run_id":1234,"archive_path":remote+"/runtime.tar.gz",
             "archive_sha256":"5"*64,"independent_proof_sha256":"4"*64,

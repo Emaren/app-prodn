@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import os
+import runpy
 from pathlib import Path
 import re
 import stat
@@ -23,6 +24,8 @@ FIN_MASKS=("aoe2hdbets-bet-stake-reconcile.service",
  "aoe2hdbets-staking-rewards.timer","wolochain-mainnet-settlement.service",
  "wolochain-founder-rewards-settlement.service")
 STEAM_INSPECT="/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
+DATA_HELPER=Path("/root/aoe2war_factory_data_stage_v1.py")
+DATA_HELPER_SHA="d8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4"
 
 def need(ok,reason):
     if not ok:raise RuntimeError("HOLD_PRODUCT_MANIFEST_"+reason)
@@ -41,6 +44,13 @@ def root_file(path,mode=None):
     if mode is not None:need(stat.S_IMODE(st.st_mode)==mode,"ROOT_SOURCE_MODE")
     return path.read_bytes()
 
+def load_data_helper():
+    st=DATA_HELPER.lstat()
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and st.st_nlink==1
+         and stat.S_IMODE(st.st_mode)==0o555 and
+         sha(DATA_HELPER)==DATA_HELPER_SHA,"ROOT_DATA_HELPER_PIN")
+    return runpy.run_path(str(DATA_HELPER),run_name="__factory_data_source__")
+
 def run(*args):
     p=subprocess.run(args,text=True,capture_output=True,timeout=20)
     need(p.returncode==0,"INSPECTION_FAILED_"+Path(args[0]).name)
@@ -53,17 +63,23 @@ def prepare(proof_path):
     need(os.geteuid()==0,"ROOT_ACCOUNT_REQUIRED")
     proof_path=Path(proof_path)
     stage=proof_path.parent
-    need(proof_path.name=="b-linux-independent-review-v2.json" and
-         re.fullmatch(r"/home/tony/\.aoe2war-b-[A-Za-z0-9._-]+",
-                      str(stage)) is not None and not stage.is_symlink(),
-         "STAGE_SCOPE")
+    helper=load_data_helper()
+    is_data=stage.parent==helper["DATA_STAGE_ROOT"]
+    legacy=(re.fullmatch(r"/home/tony/\.aoe2war-b-[A-Za-z0-9._-]+",
+                        str(stage)) is not None)
+    need(proof_path.name=="b-linux-independent-review-v2.json"
+         and (is_data or legacy) and not stage.is_symlink(),"STAGE_SCOPE")
     sd=stage.lstat()
-    need(stat.S_ISDIR(sd.st_mode) and sd.st_uid==1000 and
+    is_frozen=is_data and sd.st_uid==0
+    need(stat.S_ISDIR(sd.st_mode) and
+         sd.st_uid==(0 if is_frozen else 1000) and
          stat.S_IMODE(sd.st_mode)==0o700,"STAGE_OWNER")
     ps=proof_path.lstat()
-    need(stat.S_ISREG(ps.st_mode) and ps.st_uid==1000 and
+    need(stat.S_ISREG(ps.st_mode) and
+         ps.st_uid==(0 if is_frozen else 1000) and
          ps.st_nlink==1 and not proof_path.is_symlink() and
-         not(stat.S_IMODE(ps.st_mode)&0o022),"PROOF_OWNER")
+         (stat.S_IMODE(ps.st_mode)==0o400 if is_frozen
+          else not(stat.S_IMODE(ps.st_mode)&0o022)),"PROOF_OWNER")
     proof_bytes=proof_path.read_bytes()
     proof=json.loads(proof_bytes)
     need(type(proof) is dict and
@@ -79,10 +95,16 @@ def prepare(proof_path):
     need(type(source) is str and re.fullmatch("[a-f0-9]{40}",source) and
          type(build) is str and re.fullmatch("[A-Za-z0-9_-]{8,64}",build),
          "SOURCE_BUILD_ID")
+    if is_data:
+        helper["layout"](stage,source,proof.get("run_id"),frozen=is_frozen)
+        need(sd.st_dev==helper["DATA_DEV"],"DATA_STAGE_DEVICE")
     archive=stage/"runtime.tar.gz"
     st=archive.lstat()
-    need(stat.S_ISREG(st.st_mode) and st.st_uid==1000 and st.st_nlink==1
-         and not archive.is_symlink() and not(stat.S_IMODE(st.st_mode)&0o022),
+    need(stat.S_ISREG(st.st_mode) and
+         st.st_uid==(0 if is_frozen else 1000) and st.st_nlink==1
+         and not archive.is_symlink() and
+         (stat.S_IMODE(st.st_mode)==0o400 if is_frozen
+          else not(stat.S_IMODE(st.st_mode)&0o022)),
          "ARCHIVE_OWNER")
     need(type(proof.get("runtime_archive_bytes")) is int and
          st.st_size==proof["runtime_archive_bytes"] and
@@ -133,7 +155,7 @@ def prepare(proof_path):
         need(p.stdout.strip()=="masked","FINANCIAL_MASK_CHANGED")
     with urllib.request.urlopen("http://127.0.0.1:3030/",timeout=5) as resp:
         need(resp.status==200,"3030_FALLBACK_UNHEALTHY")
-    data={
+    manifest={
       "schema":"aoe2war.product.web-release-manifest.v2",
       "source":source,"build":build,"version":version,
       "archive_path":str(archive),
@@ -147,13 +169,40 @@ def prepare(proof_path):
       "github_run_id":proof["run_id"],
       "financial_authorized":False,
     }
+    if is_data:
+        # Full proof, tar, old runtime, finance and service guards passed.
+        # Promote the identical inode on DATA, never copy it to ROOT.
+        if is_frozen:
+            # Previous native root invocation may have durably sealed the
+            # DATA directory before its exact manifest could be written.
+            # Resume only if ALL immutable owner/inode/SHA pins still pass.
+            inode=st.st_ino
+            with helper["opened_verified"](
+                    stage,source,proof["run_id"],
+                    archive_sha=proof["runtime_archive_sha256"],
+                    archive_bytes=proof["runtime_archive_bytes"],
+                    archive_inode=inode,
+                    proof_sha=hashlib.sha256(proof_bytes).hexdigest()):
+                pass
+        else:
+            inode=helper["freeze_checked_stage"](
+                stage,source,proof["run_id"],
+                archive_sha=proof["runtime_archive_sha256"],
+                archive_bytes=proof["runtime_archive_bytes"],
+                proof_sha=hashlib.sha256(proof_bytes).hexdigest())
+        manifest.update({
+          "schema":"aoe2war.product.web-release-manifest.v3",
+          "transport_mode":"data-archive-v1",
+          "archive_dev":helper["DATA_DEV"],
+          "archive_inode":inode,
+        })
     if not TARGET_DIR.exists():TARGET_DIR.mkdir(mode=0o700)
     sd=TARGET_DIR.lstat()
     need(sd.st_uid==0 and stat.S_IMODE(sd.st_mode)==0o700
          and stat.S_ISDIR(sd.st_mode) and not TARGET_DIR.is_symlink(),
          "MANIFEST_OWNER")
     dest=TARGET_DIR/(source[:12]+"-run-"+str(proof["run_id"])+".json")
-    raw=(json.dumps(data,sort_keys=True,indent=2)+"\n").encode()
+    raw=(json.dumps(manifest,sort_keys=True,indent=2)+"\n").encode()
     fd=os.open(dest,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
     try:
         os.fchmod(fd,0o600)

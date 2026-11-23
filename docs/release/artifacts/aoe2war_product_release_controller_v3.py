@@ -5,6 +5,8 @@ Authoritative control is the owner's existing root SSH + verified Linux artifact
 This code does not touch 3030, financial services, PG, nft, keys or Steam.
 """
 import argparse
+import contextlib
+import runpy
 import datetime as dt
 import fcntl
 import hashlib
@@ -25,6 +27,22 @@ APP_UNIT=Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
 SERVICE="aoe2hdbets-web-prod.service"
 STATE_ROOT=Path("/var/lib/aoe2war-product-release-v1")
 LOCK=Path("/run/lock/aoe2war-product-release-v1.lock")
+DATA_HELPER=Path("/root/aoe2war_factory_data_stage_v1.py")
+DATA_HELPER_SHA="d8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4"
+PREFERRED_ROOT_FLOOR=7_598_334_817
+# Native transient free swing: real, unattributed, never label it PostgreSQL.
+ROOT_TRANSIENT_OBSERVED_BUDGET=1_497_374_720
+_DATA_OPS=None
+def data_ops():
+    global _DATA_OPS
+    if _DATA_OPS is None:
+        st=DATA_HELPER.lstat()
+        if not(stat.S_ISREG(st.st_mode) and st.st_uid==0 and
+               st.st_nlink==1 and stat.S_IMODE(st.st_mode)==0o555 and
+               hashlib.sha256(DATA_HELPER.read_bytes()).hexdigest()==DATA_HELPER_SHA):
+            raise RuntimeError("HOLD_FACTORY_DATA_ROOT_HELPER_SHA")
+        _DATA_OPS=runpy.run_path(str(DATA_HELPER),run_name="__factory_data_source__")
+    return _DATA_OPS
 def load_exact_root_manifest():
     parser=argparse.ArgumentParser(add_help=False)
     parser.add_argument("--manifest",required=True)
@@ -47,8 +65,13 @@ def load_exact_root_manifest():
        "previous_source","previous_build","previous_root",
        "previous_unit_sha256","independent_proof_sha256",
        "github_run_id","financial_authorized"}
+    data_mode=(type(x) is dict and
+               x.get("schema")=="aoe2war.product.web-release-manifest.v3")
+    if data_mode:
+        required=required|{"transport_mode","archive_dev","archive_inode"}
     if not(type(x) is dict and set(x)==required and
-           x["schema"]=="aoe2war.product.web-release-manifest.v2" and
+           x["schema"]==("aoe2war.product.web-release-manifest.v3" if data_mode
+                          else "aoe2war.product.web-release-manifest.v2") and
            x["financial_authorized"] is False):
         raise RuntimeError("HOLD_MANIFEST_FIELDS")
     match=lambda pat,v: type(v) is str and re.fullmatch(pat,v) is not None
@@ -69,21 +92,41 @@ def load_exact_root_manifest():
     if x["previous_root"]!="/var/lib/aoe2war-web-prod-"+x["previous_source"][:12]:
         raise RuntimeError("HOLD_PREVIOUS_SOURCE_DIRECTORY")
     a=Path(x["archive_path"])
-    if (str(a).count("/")!=4 or not str(a).startswith("/home/tony/.aoe2war-b-")
-        or a.name!="runtime.tar.gz" or a.is_symlink()
-        or not a.parent.name.startswith(".aoe2war-b-")
-        or not re.fullmatch(r"[A-Za-z0-9._-]+",a.parent.name)):
-        raise RuntimeError("HOLD_ARCHIVE_PATH_SCOPE")
-    dirstat=a.parent.lstat()
-    if not (stat.S_ISDIR(dirstat.st_mode) and dirstat.st_uid==1000 and
-            stat.S_IMODE(dirstat.st_mode)==0o700 and not a.parent.is_symlink()):
-        raise RuntimeError("HOLD_STAGE_OWNER_DIRECTORY")
+    if data_mode:
+        ops=data_ops()
+        stage=ops["stage_path"](x["source"],x["github_run_id"])
+        if not(a==stage/"runtime.tar.gz" and
+               x["transport_mode"]=="data-archive-v1" and
+               type(x["archive_dev"]) is int and
+               x["archive_dev"]==ops["DATA_DEV"] and
+               type(x["archive_inode"]) is int and x["archive_inode"]>0):
+            raise RuntimeError("HOLD_FACTORY_DATA_ARCHIVE_MANIFEST_IDENTITY")
+        ops["layout"](stage,x["source"],x["github_run_id"],frozen=True)
+        astat=a.lstat()
+        if not(stat.S_ISREG(astat.st_mode) and astat.st_uid==0 and
+               astat.st_gid==0 and stat.S_IMODE(astat.st_mode)==0o400 and
+               astat.st_nlink==1 and astat.st_dev==x["archive_dev"] and
+               astat.st_ino==x["archive_inode"] and
+               astat.st_size==x["archive_bytes"]):
+            raise RuntimeError("HOLD_FACTORY_DATA_ARCHIVE_INODE")
+    else:
+        if (str(a).count("/")!=4 or not str(a).startswith("/home/tony/.aoe2war-b-")
+            or a.name!="runtime.tar.gz" or a.is_symlink()
+            or not a.parent.name.startswith(".aoe2war-b-")
+            or not re.fullmatch(r"[A-Za-z0-9._-]+",a.parent.name)):
+            raise RuntimeError("HOLD_ARCHIVE_PATH_SCOPE")
+        dirstat=a.parent.lstat()
+        if not (stat.S_ISDIR(dirstat.st_mode) and dirstat.st_uid==1000 and
+                stat.S_IMODE(dirstat.st_mode)==0o700 and not a.parent.is_symlink()):
+            raise RuntimeError("HOLD_STAGE_OWNER_DIRECTORY")
     proof=a.parent/"b-linux-independent-review-v2.json"
     if proof.exists():
         st=proof.lstat()
-        if not (stat.S_ISREG(st.st_mode) and st.st_uid==1000 and
+        if not (stat.S_ISREG(st.st_mode) and
+                st.st_uid==(0 if data_mode else 1000) and
                 st.st_nlink==1 and not proof.is_symlink() and
-                not(stat.S_IMODE(st.st_mode)&0o022)):
+                (stat.S_IMODE(st.st_mode)==0o400 if data_mode
+                 else not(stat.S_IMODE(st.st_mode)&0o022))):
             raise RuntimeError("HOLD_PROOF_OWNER")
         raw=proof.read_bytes()
         if hashlib.sha256(raw).hexdigest()!=x["independent_proof_sha256"]:
@@ -114,6 +157,7 @@ ARCHIVE=Path(CONFIG["archive_path"])
 ARCHIVE_SHA=CONFIG["archive_sha256"]
 ARCHIVE_BYTES=CONFIG["archive_bytes"]
 EXPECTED_RUNTIME_MEMBERS=CONFIG["runtime_member_count"]
+DATA_MODE=CONFIG["schema"]=="aoe2war.product.web-release-manifest.v3"
 UNIT_ORIGINAL_SHA=CONFIG["previous_unit_sha256"]
 TARGET=Path("/var/lib/aoe2war-web-prod-"+SOURCE[:12])
 TEMP=Path(str(TARGET)+".preparing-product-v1")
@@ -301,36 +345,71 @@ def candidate_public_preflight(runtime):
          "PUBLIC_ASSET_PROBE_FAILED")
     return True
 
+@contextlib.contextmanager
+def opened_archive():
+    if DATA_MODE:
+        ops=data_ops()
+        with ops["opened_verified"](
+                ARCHIVE.parent,SOURCE,CONFIG["github_run_id"],
+                archive_sha=ARCHIVE_SHA, archive_bytes=ARCHIVE_BYTES,
+                archive_inode=CONFIG["archive_inode"],
+                proof_sha=CONFIG["independent_proof_sha256"]) as (f,st):
+            yield f,st
+    else:
+        st=ARCHIVE.lstat()
+        hold(stat.S_ISREG(st.st_mode) and st.st_nlink==1 and st.st_uid==1000
+             and not ARCHIVE.is_symlink(),"UNTRUSTED_ARTIFACT_OWNER")
+        with ARCHIVE.open("rb") as f:
+            yield f,st
+
 def inspect_archive():
-    st=ARCHIVE.lstat()
-    hold(stat.S_ISREG(st.st_mode) and st.st_nlink==1 and st.st_uid==1000,
-         "UNTRUSTED_ARTIFACT_OWNER")
-    hold(st.st_size==ARCHIVE_BYTES and sha_file(ARCHIVE)==ARCHIVE_SHA,
-         "ARCHIVE_SHA_OR_SIZE")
-    with tarfile.open(ARCHIVE,"r:gz") as t:
-        seen=set()
-        for m in t:
-            name=m.name
-            pp=PurePosixPath(name)
-            hold(name not in seen and not pp.is_absolute() and ".." not in pp.parts
-                 and name not in ("",".","/"),"ARCHIVE_PATH")
-            seen.add(name)
-            hold(m.isfile() or m.issym(),"ARCHIVE_SPECIAL_MEMBER")
-            if m.issym():
-                link=m.linkname
-                hold(not link.startswith("/") and not re.search(r"^[a-z]+:",link),
-                     "ARCHIVE_ABSOLUTE_SYMLINK")
-                dest=os.path.normpath(os.path.join("/",os.path.dirname(name),link))
-                hold(dest.startswith("/") and not dest.startswith("/../"),"ARCHIVE_SYMLINK_ESCAPE")
-        hold(len(seen)==EXPECTED_RUNTIME_MEMBERS,"ARCHIVE_MEMBER_COUNT")
-        for marker,value in (
-            (".aoe2war-source-sha",SOURCE),
-            (".next/BUILD_ID",BUILD),
-            (".aoe2war-build-version",VERSION)):
-            f=t.extractfile(marker)
-            hold(f is not None and f.read(256).decode().strip()==value,
-                 "ARCHIVE_BUILD_MARKER_"+marker)
-    return st.st_size
+    with opened_archive() as (fileobj,st):
+        hold(st.st_size==ARCHIVE_BYTES,"ARCHIVE_SIZE")
+        if not DATA_MODE:
+            hold(sha_file(ARCHIVE)==ARCHIVE_SHA,"ARCHIVE_SHA_OR_SIZE")
+        # DATA source already hashed the O_NOFOLLOW fd. The same descriptor
+        # is used to parse the tar, and later reopened/pinned to extract.
+        regular_rounded=0
+        symlink_rounded=0
+        directories=set()
+        with tarfile.open(fileobj=fileobj,mode="r:gz") as t:
+            seen=set()
+            for m in t:
+                name=m.name
+                pp=PurePosixPath(name)
+                hold(name not in seen and not pp.is_absolute() and ".." not in pp.parts
+                     and name not in ("",".","/"),"ARCHIVE_PATH")
+                seen.add(name)
+                hold(m.isfile() or m.issym(),"ARCHIVE_SPECIAL_MEMBER")
+                if m.isfile():
+                    regular_rounded+=((m.size+4095)//4096)*4096
+                if m.issym():
+                    link=m.linkname
+                    hold(not link.startswith("/") and not re.search(r"^[a-z]+:",link),
+                         "ARCHIVE_ABSOLUTE_SYMLINK")
+                    dest=os.path.normpath(os.path.join("/",os.path.dirname(name),link))
+                    hold(dest.startswith("/") and not dest.startswith("/../"),
+                         "ARCHIVE_SYMLINK_ESCAPE")
+                    if len(link.encode("utf-8"))>60:
+                        symlink_rounded+=((len(link.encode("utf-8"))+4095)//4096)*4096
+                parent=pp.parent
+                while str(parent)!=".":
+                    directories.add(str(parent))
+                    parent=parent.parent
+            hold(len(seen)==EXPECTED_RUNTIME_MEMBERS,"ARCHIVE_MEMBER_COUNT")
+            for marker,value in (
+                (".aoe2war-source-sha",SOURCE),
+                (".next/BUILD_ID",BUILD),
+                (".aoe2war-build-version",VERSION)):
+                marker_file=t.extractfile(marker)
+                hold(marker_file is not None and
+                     marker_file.read(256).decode().strip()==value,
+                     "ARCHIVE_BUILD_MARKER_"+marker)
+        # 4KiB rounded file data + modeled directory and long-symlink pages.
+        # Add 10% +128MiB planning allowance. NOT a physical ext4 measurement.
+        modeled=regular_rounded+symlink_rounded+(len(directories)+3)*4096
+        planning=(modeled*11+9)//10 + 128*1024*1024
+        return st.st_size,planning
 
 def create_journal():
     if not STATE_ROOT.exists():
@@ -365,9 +444,19 @@ def stage():
     hold(checked.returncode==0,"STEAM_SOURCE_COMPATIBILITY_PRE_STAGE")
     hold(sha_bytes(old)==UNIT_ORIGINAL_SHA,
          "ORIGINAL_UNIT_DRIFT")
-    artifact_size=inspect_archive()
+    artifact_size,extract_reserve=inspect_archive()
     du=shutil.disk_usage("/var/lib")
     hold(du.free>=6*1024**3,"DISK_HEADROOM")
+    if DATA_MODE:
+        required=(PREFERRED_ROOT_FLOOR+extract_reserve+
+                  ROOT_TRANSIENT_OBSERVED_BUDGET)
+        print(json.dumps({"phase":"root-data-archive-capacity",
+            "root_free":du.free,"preferred_floor":PREFERRED_ROOT_FLOOR,
+            "conservative_extract_reserve":extract_reserve,
+            "bounded_transient_witness":ROOT_TRANSIENT_OBSERVED_BUDGET,
+            "required_before_stage":required,
+            "state":"pass" if du.free>=required else "hold"}),flush=True)
+        hold(du.free>=required,"DATA_STAGE_ROOT_PREFERRED_OVERLAP_RESERVE")
     old_factory_http=url_status(3032,"/factory")
     hold(type(old_factory_http) is int and old_factory_http in (200,404),
          "OLD_FACTORY_HTTP_UNEXPECTED")
@@ -387,8 +476,11 @@ def stage():
     json_save(PRECHECK,before)
     json_save(STATE,{"phase":"extracting","source":SOURCE,"build":BUILD})
     TEMP.mkdir(mode=0o755)
-    with tarfile.open(ARCHIVE,"r:gz") as t:
-        t.extractall(TEMP,filter="data")
+    # DATA tar extraction uses a reopened, verified immutable DATA inode.
+    # TEMP and TARGET are both ext4 ROOT; T8 rollback remains unchanged.
+    with opened_archive() as (archive_fd,_):
+        with tarfile.open(fileobj=archive_fd,mode="r:gz") as t:
+            t.extractall(TEMP,filter="data")
     for marker,value in (
        (".aoe2war-source-sha",SOURCE),
        (".next/BUILD_ID",BUILD),
