@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-23"
+reviewed_at: "2026-11-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -355,11 +355,10 @@ Tony's global command is a normal executable wrapper at
 ## Production web quick facts
 
 - repository: `/var/www/AoE2HDBets/app-prodn`
-- service: `aoe2hdbets-web.service`
-- bind: `127.0.0.1:3030`
+- public current service: `aoe2hdbets-web-prod.service` on `127.0.0.1:3032` (confirm source/build against live headers; 2026-11-23 receipt below)
+- protected legacy rollback service: `aoe2hdbets-web.service` on `127.0.0.1:3030`; never treat this as the ordinary public release target
 - public site: `https://aoe2war.com`
-- protected Wolo listeners: `8092` and `8093`, observe-only for ordinary web
-  release tooling
+- financial listener ports `8092–8095`: CLOSED at the 2026-11-23 readback; ordinary web tooling must not activate or assume these services healthy
 - durable deployment evidence:
   `/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/`
 - durable rollback evidence:
@@ -435,3 +434,11 @@ state until both an owning living contract and Engineering Memory have been
 updated. This prevents generated registries from creating the appearance of
 documentation completeness while durable human/AI knowledge remains trapped in
 a chat session.
+
+## 2026-11-23 substantive WE1 operator-source and live-boundary review
+
+**Reviewed scope:** full operator guide (including Traffic cockpit, Python contract, canonical finish/deploy, Documentation Baseline, PostgreSQL identity and rollback sections), current app-prodn PR #1486 implementation at `5b83f0881da3d2ba67805efe1e8739378cbb8adf`, [source-drift triage on #1487](https://github.com/Emaren/app-prodn/issues/1487#issuecomment-7108130439), and fresh read-only HEL1 native systemd/listener/HTTP receipts at **2026-11-23 17:14:56 UTC**. The documented October 22 Traffic release and earlier command/system examples are historical, not newly approved installation procedures. Source and GitHub PR status do not substitute for physical deployment receipts.
+
+**Current production differs from the older 3030 quick facts:** actual public app runs `aoe2hdbets-web-prod.service` on **3032**, source `890d9dcc22d081ff1c662f33c98a8da795f3d3e9`, BUILD_ID `0NEGtfP0ieSzETh1JHGhE`, main PID **1665960**, active/enabled, **zero restarts**, HTTP 200. Legacy **3030** remains separately protected; emergency **3033** and API **9447** are up. The `8092–8095` financial ports are **closed**, not merely generic “observe-only” listeners; never attempt activation or use the historical 8092 health endpoint as a release shortcut. Current Steam is `r25_steam_refresh_product_v27.py` with last Result=success/ExecMainStatus=0 and enabled timer, not old v5 variants. These dated readbacks are not a new root-owned V27 SHA verification.
+
+**Authority and storage reconciliation:** F9 and 4c14 original ROOT runtimes have been **physically retired** under distinct one-use owner-native L4 receipts, combined **3,175,755,776 B** actually reclaimed; both nonces spent and Intel ciphertext/DATA archives and restoration certificates retained. Do not repeat COPY/RETIRE. Factory DATA transport [PR #1486](https://github.com/Emaren/app-prodn/pull/1486) is still source-only, awaiting DocsV2 and independent source/host admission. Frozen Atlas #1480 BUILD_ID `t_fBXEv9ztKR24XPbbKFb` is NOT LIVE. A recurrent natural HEL1 ROOT transient **~1,497,374,720 B** and WE2's preferred capacity floor require a separate genuine Factory-stage/PG overlap GO; a reviewed operator document, generated baseline, earlier F9/4c14 release or M1 space recovery grants no WEBSITE/T7–T10 permit. [WE1 source monitoring receipt](https://github.com/Emaren/VPSSentry/issues/136#issuecomment-7107079506) is a read-only risk witness, not an owner financial signature. The original source-git and command examples above remain contracts conditional on current environment, never a substitute for verifying present worktree, authorized release controller and physical rollback. Financial C01/C02/C03/C05/C06/C07/C09 remain HOLD; C04/C08 governance closure does not activate custody or a writer.

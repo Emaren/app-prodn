@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-source-review-no-funded-release-or-direct-root-approval"
-reviewed_at: "2026-11-15"
+reviewed_at: "2026-11-23"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -40,3 +40,7 @@ Reviewed current app main at f436d6f3c1a04308e33b17db4a69c25a2d925fcf, docs/rele
 At 2026-11-15 15:44 UTC, read-only HEL1 systemd identified the installed Steam refresh ExecStart as the V27 path, last Result=success and ExecMainStatus=0, and active/enabled one-minute timer. PRODUCT NFT boot prerequisite was active/enabled and successful. Live 3032 source/build matched accepted 9c5fb786... / tODeDszM3vE1kOKcQUQjZ; 3030/3032/3033/9447 listened, 8092–8095 did not, and six financial units remained masked. The root-owned V27 code could not be independently hashed by this non-root check; accepted B root receipts remain separate evidence, not reissued here.
 
 Review verdict: the original expiry race is preserved as historical. Current V27 service is observed running successfully. Future expiry-boundary failures still must HOLD; any source, timer or nft-policy change requires fresh root acceptance. No financial admission or new website deployment follows from this review.
+
+## 2026-11-23 substantive V5T expiry failure and current V27 comparison
+
+Re-read the exact Nov7 **18:12:54Z and 18:18:54Z** fail-closed nft expiry observations and v5t four-read/three-sleep proposed retry, including the fact that the *precise failing nft JSON element was never captured*. The 2026-11-07 v5t SOURCE HOLD/v5s live statement is historical only. Unchanged PR #1486 current `docs/release/artifacts/r25_steam_refresh_product_v27.py` blob **`d9bee82f972e8eba6cd219eda1f9e263ac0713a5`** continues to use its distinct strict three-read/two-250ms-sleep retry only for the expiry exception, preserving 300-second TTL, maximum 16 addresses, UID990-only Steam sets, unchanged exact nft policy and nonfinancial site/finance fences. The native Nov23 17:14 UTC systemd readback shows actual V27 `Result=success`/`ExecMainStatus=0` and enabled timer; it does **not** prove the old failed nft expiry element's value, no future expiry race, or deployment of v5t. Source re-review did not edit nft, systemd, protected 57-unit C03 snapshot, signer or PostgreSQL financial ACL; 8092–8095 remain closed. Historical event dates are untouched.
