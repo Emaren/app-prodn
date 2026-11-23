@@ -123,7 +123,7 @@ export default function StorageArchivePreference({plane}:{plane:TeachingPlane}){
               ["Dependencies",item.dependencies],
               ["Object fingerprint",item.fingerprint],
             ].map(([label,value])=><div key={label} className="break-all">
-              <dt className="text-slate-500">{label}</dt><dd className="mt-1 text-slate-200">{value}</dd>
+              <dt className="text-slate-400">{label}</dt><dd className="mt-1 text-slate-200">{value}</dd>
             </div>)}
           </dl>
           <div className="mt-4 text-xs font-bold text-cyan-200">

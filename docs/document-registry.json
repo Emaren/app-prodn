@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f9a2cdb7b7556aa7f3fc50240b75307f8445da757a74f952c3b46ef264bfd0c",
+      "sha256": "509594abba22daa8589453f892c6e5de1a2162191bbfa07e9d419d4f17f8b119",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2642,6 +2642,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-we3-bae-basic-advanced-extreme-20261122",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_BAE_BASIC_ADVANCED_EXTREME_20261122.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "200b8e8d4cf4175d6a07abd851defd6d903ba5f9c2200e0c8a70d765f7357f89",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Storage OS BAE \u2014 Basic / Advanced / Extreme",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-product-source-only-not-production-admission",
       "id": "aoe2war.app-prodn.we3-four-plane-storage-review-20261120",
       "owner": "aoe2war-web",
@@ -2767,6 +2789,28 @@
       ],
       "title": "WE3 Social Writer SQL Privilege and Inverse Proposal",
       "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-we3-storage-atlas-five-page-contract-20261122",
+      "owner": "aoe2war-web",
+      "path": "docs/WE3_STORAGE_ATLAS_FIVE_PAGE_CONTRACT_20261122.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-22",
+      "sensitivity": "internal",
+      "sha256": "23f80dd97eb471f5cecae929412cd54f7e0df36451b646ed2d21e34e892e71b4",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "WE3 Private Five-Page Storage Atlas \u2014 Source and Visual Truth",
+      "type": "reference"
     },
     {
       "audience": [

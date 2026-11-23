@@ -84,7 +84,23 @@ async function main(){
      assert.equal(await explorer.getByText(/Signed free space is not signed used space/).count(),1);
      await cards.getByRole("button",{name:/M1.*Development Mac/}).click();
      await explorer.getByText(/No current signed hog inventory for this drive/).waitFor({state:"visible",timeout:15000});
-     assert.equal(await explorer.getByText("Category inventory unknown",{exact:true}).count(),3);
+     // BAE replaces the old three-label placeholder with four exact source-truth cards.
+     // Inspect rendered evidence, never assume unavailable bytes are zero or signed.
+     const coverage=explorer.locator('section[aria-label="Four-surface measured versus UNKNOWN evidence"]');
+     await coverage.getByRole("heading",{name:/Why is the filesystem still UNKNOWN/}).waitFor({state:"visible",timeout:15000});
+     assert.equal(await coverage.getByText("FULL BYTE COVERAGE NOT CERTIFIED",{exact:true}).count(),1);
+     const surfaces=coverage.locator("article");
+     assert.equal(await surfaces.count(),4,"three source planes and independently gated Intel must remain visible");
+     for(const label of ["M1 development Mac","HEL1 root filesystem","HEL1 mounted data volume","Intel cold-storage Mac"]){
+       const card=surfaces.filter({hasText:label});
+       assert.equal(await card.count(),1,"missing honest coverage card: "+label);
+       const detail=await card.innerText();
+       for(const marker of ["Capacity:","Directory coverage:","Authority:","Observed:","WHY:","NEXT WE"]){
+         assert.ok(detail.includes(marker),"missing "+marker+" provenance on "+label);
+       }
+     }
+     assert.match(await surfaces.filter({hasText:"M1 development Mac"}).innerText(),
+       /Directory coverage: (UNKNOWN|STALE)/,"unsigned M1 category coverage must not be promoted");
      await explorer.getByRole("button",{name:/HEL1 · Data volume/}).click();
      await explorer.getByText("HEL1 / Data volume 105319120",{exact:true}).first().waitFor({state:"visible"});
      assert.equal(await explorer.getByText(/UUID.verified/i).count(),0);

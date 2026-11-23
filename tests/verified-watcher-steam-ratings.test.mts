@@ -41,8 +41,11 @@ test("manual and batch uploads cannot create or override the Watcher-only rating
   assert.match(source, /ingestion_provenance.*'live_monitor'/);
   assert.match(source, /server_sha256/);
   assert.match(source, /g\.played_on IS NOT NULL/);
-  assert.match(source, /identity_count = 1/);
-  assert.match(source, /ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC/);
+  assert.match(source, /HAVING COUNT\(\*\) = 1/);
+  assert.doesNotMatch(source, /WITH verified_games AS MATERIALIZED/);
+  assert.equal((source.match(/SELECT DISTINCT ON/g) ?? []).length, 1,
+    "one shared per-lane latest-observation sort, not two global sorts");
+  assert.match(source, /ORDER BY steam_id, kind, played_on DESC, timestamp DESC NULLS LAST, id DESC/);
   assert.doesNotMatch(source, /parse_source IN \('watcher_live','watcher_final','file_upload'\)/);
   assert.match(source, /'manual_backfill', 'manual_override'/);
   assert.match(source, /'engine_room_structural_projection'/);
@@ -87,7 +90,7 @@ test("Watcher-only SQL projection preserves independently observed RM/DM values"
   invalidateVerifiedWatcherSteamRatingsCache();
 });
 
-test("unavailable Watcher-rating SQL fails closed without taking down a public leaderboard", async () => {
+test("unavailable Watcher-rating SQL returns null, not a fabricated empty result", async () => {
   const { loadVerifiedWatcherSteamRatings, invalidateVerifiedWatcherSteamRatingsCache } =
     await import("../lib/verifiedWatcherSteamRatings.ts");
   invalidateVerifiedWatcherSteamRatingsCache();
@@ -97,9 +100,87 @@ test("unavailable Watcher-rating SQL fails closed without taking down a public l
     const result = await loadVerifiedWatcherSteamRatings({
       $queryRaw: async () => { throw new Error("optional rating rail unavailable"); },
     } as never);
-    assert.deepEqual(result, []);
+    assert.equal(result, null);
   } finally {
     console.warn = originalWarn;
     invalidateVerifiedWatcherSteamRatingsCache();
+  }
+});
+
+test("cold unavailability is distinct from a truly empty successful Watcher snapshot", async () => {
+  const { loadVerifiedWatcherSteamRatings: read, invalidateVerifiedWatcherSteamRatingsCache: reset } =
+    await import("../lib/verifiedWatcherSteamRatings.ts");
+  const originalNow = Date.now;
+  const originalWarn = console.warn;
+  let clock = 1_000_000;
+  let queries = 0;
+  Date.now = () => clock;
+  console.warn = () => {};
+  try {
+    reset();
+    let failure = true;
+    const db = { $queryRaw: async () => {
+      queries++;
+      if (failure) throw new Error("simulated PostgreSQL TEMP unavailability");
+      return [];
+    }};
+    const pending = await Promise.all(Array.from({length: 8}, () => read(db as never)));
+    assert.deepEqual(pending, Array(8).fill(null), "one cold query failed, not eight real empty snapshots");
+    assert.equal(queries, 1);
+    clock += 29_999;
+    assert.equal(await read(db as never), null);
+    assert.equal(queries, 1, "the failure retry fence must suppress repeated heavy SQL");
+    clock++;
+    failure = false;
+    assert.deepEqual(await read(db as never), [], "successful empty is different from unavailable");
+    assert.equal(queries, 2);
+  } finally {
+    reset();
+    Date.now = originalNow;
+    console.warn = originalWarn;
+  }
+});
+
+test("last-known-good Steam values survive an expired refresh and its retry fence", async () => {
+  const { loadVerifiedWatcherSteamRatings: read, invalidateVerifiedWatcherSteamRatingsCache: reset } =
+    await import("../lib/verifiedWatcherSteamRatings.ts");
+  const originalNow = Date.now;
+  const originalWarn = console.warn;
+  let clock = 2_000_000;
+  let queries = 0;
+  let unavailable = false;
+  Date.now = () => clock;
+  console.warn = () => {};
+  const row = {
+    steamId: "76561198000000001", steamRmRating: 1900,
+    steamRmObservedAt: new Date("2026-10-07T00:00:00.000Z"),
+    steamDmRating: 1600,
+    steamDmObservedAt: new Date("2026-10-06T00:00:00.000Z"),
+  };
+  const db = { $queryRaw: async () => {
+    queries++;
+    if (unavailable) throw new Error("simulated refresh failure");
+    return [row];
+  }};
+  try {
+    reset();
+    const original = await read(db as never);
+    assert.equal(original?.[0].steamRmRating, 1900);
+    clock += 120_000;
+    unavailable = true;
+    assert.deepEqual(await read(db as never), original);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(queries, 2);
+    for (let i = 0; i < 8; i++) assert.deepEqual(await read(db as never), original);
+    assert.equal(queries, 2, "stale reads must not trigger repeated failures");
+    clock += 30_000;
+    unavailable = false;
+    assert.deepEqual(await read(db as never), original);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(queries, 3, "eligible retry refreshes once");
+  } finally {
+    reset();
+    Date.now = originalNow;
+    console.warn = originalWarn;
   }
 });
