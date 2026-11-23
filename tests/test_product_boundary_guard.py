@@ -58,8 +58,16 @@ class BoundaryTests(unittest.TestCase):
         # updates the live source under a distinct, reviewed branch/base/pin.
         self.assertEqual(policy.EXACT_WE2_FACTORY_SHA256["scripts/aoe2_product_release.py"],
                          "84d9a0e277595b1492d88f19e7c9829dc2896929738328ec37419c792f1f23f5")
+        # Historical policy hashes NEVER move. Current branch's new exact
+        # review hashes are independent. Run old hostile fixtures using only
+        # temporary in-memory source pins for the newly changed live files.
+        self.assertEqual(policy.EXACT_WE2_FACTORY_SHA256[
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py"],
+            "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064")
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
-            if relative != "scripts/aoe2_product_release.py":
+            if relative not in {"scripts/aoe2_product_release.py",
+                "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
+                "tests/test_product_controller_recovery.py"}:
                 self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
                                  expected)
         # The old guard's negative-contract fixtures must use a temporary
@@ -67,7 +75,12 @@ class BoundaryTests(unittest.TestCase):
         temporary_runner_sha = hashlib.sha256(
             (source/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
         legacy_test_patch = mock.patch.dict(policy.EXACT_WE2_FACTORY_SHA256, {
-            "scripts/aoe2_product_release.py": temporary_runner_sha
+            "scripts/aoe2_product_release.py": temporary_runner_sha,
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py":
+              hashlib.sha256((source/
+                "docs/release/artifacts/aoe2war_product_release_controller_v3.py").read_bytes()).hexdigest(),
+            "tests/test_product_controller_recovery.py":
+              hashlib.sha256((source/"tests/test_product_controller_recovery.py").read_bytes()).hexdigest()
         })
         legacy_test_patch.start()
         self.addCleanup(legacy_test_patch.stop)
@@ -167,7 +180,16 @@ class BoundaryTests(unittest.TestCase):
             "docs/document-registry.json"}
         self.assertEqual(set(policy.EXACT_WE2_FACTORY_RETENTION_CHANGED),expected_changes)
         for relative,digest in pins.items():
-            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),digest)
+            if relative != "scripts/aoe2_product_release.py":
+                self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),digest)
+        # Test the historical retired review using only an isolated exact
+        # SHA substitution; original policy dict is restored by addCleanup.
+        retention_patch=mock.patch.dict(policy.EXACT_WE2_FACTORY_RETENTION_PINS,{
+            "scripts/aoe2_product_release.py":hashlib.sha256(
+                (source/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
+        })
+        retention_patch.start()
+        self.addCleanup(retention_patch.stop)
         changed=sorted(expected_changes)
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
@@ -213,6 +235,63 @@ class BoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RETENTION_SOURCE_SYMLINK"):
                 policy.exact_we2_factory_retention_blob(
                     root,"scripts/aoe2_factory_retention_post_t10.py")
+
+    def test_we2_factory_data_exact_new_branch_no_legacy_authority(self):
+        import hashlib
+        root=GUARD.parent.parent
+        p=policy
+        branch=p.EXACT_WE2_FACTORY_DATA_BRANCH
+        base=p.EXACT_WE2_FACTORY_DATA_BASE
+        names=sorted(p.EXACT_WE2_FACTORY_DATA_CHANGED)
+        self.assertEqual(branch,"we2/factory-data-transport-20261123")
+        self.assertEqual(base,"f833d7e633cee4b36f1427fa45d76081fa0796ef")
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_PINS),9)
+        self.assertEqual(set(names),set(p.EXACT_WE2_FACTORY_DATA_PINS)|{
+            "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py"})
+        self.assertEqual(p.EXACT_WE2_FACTORY_SHA256[
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py"],
+            "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064")
+        self.assertEqual(p.EXACT_WE2_FACTORY_RETENTION_PINS[
+            "scripts/aoe2_product_release.py"],
+            "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015")
+        p.check_exact_we2_factory_data_source(root,"Emaren/app-prodn",branch,base,names)
+        with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+            for raw in p.EXACT_WE2_FACTORY_DATA_PINS:
+                self.assertEqual(p.authorize_changed_source(root,base,raw),raw)
+            with self.assertRaises(policy.BoundaryHold):
+                p.authorize_changed_source(root,"0"*40,
+                    "scripts/aoe2_product_release.py")
+        for repo,base2,changes in (
+                ("Emaren/app-prodn","0"*40,names),
+                ("Emaren/other-repo",base,names),
+                ("Emaren/app-prodn",base,names[:-1]),
+                ("Emaren/app-prodn",base,names+["scripts/unknown-source.py"]),
+                ("Emaren/app-prodn",base,names+[names[0]])):
+            with self.assertRaises(policy.BoundaryHold):
+                p.check_exact_we2_factory_data_source(root,repo,branch,base2,changes)
+        with tempfile.TemporaryDirectory() as td:
+            place=Path(td)
+            for filename in p.EXACT_WE2_FACTORY_DATA_PINS:
+                dest=place/filename
+                dest.parent.mkdir(exist_ok=True,parents=True)
+                dest.write_bytes((root/filename).read_bytes())
+            p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
+            candidate=place/"docs/release/artifacts/aoe2war_factory_data_stage_v1.py"
+            original=candidate.read_bytes()
+            candidate.write_bytes(original+b"\n# unreviewed mutation")
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SOURCE_SHA"):
+                p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
+            candidate.write_bytes(original)
+            link=place/"unreviewed-hardlink"
+            os.link(candidate,link)
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SOURCE_CUSTODY"):
+                p.exact_we2_factory_data_blob(place,
+                    "docs/release/artifacts/aoe2war_factory_data_stage_v1.py")
+            link.unlink()
+            candidate.unlink()
+            candidate.symlink_to(root/"docs/release/artifacts/aoe2war_factory_data_stage_v1.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SYMLINK"):
+                p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
 
     def test_we2_storage_exact_root_source_admission_and_negative_cases(self):
         import hashlib

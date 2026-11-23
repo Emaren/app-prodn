@@ -181,6 +181,28 @@ EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
 } | EXACT_WE2_FACTORY_DOCS_REVIEW
+
+# 2026-11-23: one independent DATA-transport Factory source-only review.
+# This admission changes NO historical WE2 v3/retention pins; it authorizes
+# review of exact source blobs only, not host installation or WEBSITE T7.
+EXACT_WE2_FACTORY_DATA_BRANCH="we2/factory-data-transport-20261123"
+EXACT_WE2_FACTORY_DATA_BASE="f833d7e633cee4b36f1427fa45d76081fa0796ef"
+EXACT_WE2_FACTORY_DATA_PINS={
+    'docs/release/artifacts/aoe2war_factory_data_stage_v1.py': 'd8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4',
+    'docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py': 'e8cbada6838c11ded82eeeafa3b70fed16a2f59a5be688be0a58a50c832e936d',
+    'docs/release/artifacts/aoe2war_product_release_controller_v3.py': 'f8d4596f7b987c214bad402297ee4895370ebcd4734ce0cdfad4ebba1ae336ca',
+    'scripts/aoe2_product_release.py': 'ede1a70ff3b7da3ef7abad02c54fb79b633968813b69c236828377e50e3bcac8',
+    'tests/test_factory_data_publisher_v1.py': '98aa8aa2e5965ca963acc7602e354881e844956820af0a69803618268e84b2c4',
+    'tests/test_factory_data_stage_v1.py': 'c15554115b90537415b9994917d738719817e1b75503ddfd4763baf97512305b',
+    'tests/test_product_release.py': '9c319843a47d27abdc616ccef80ec2692eb2b5d5a43d3ca034030cea83401306',
+    'tests/test_product_release_recovery.py': 'f926c8b2ed37151525ac7f17742ded5b6d68f8c8b241cb837b19e33f2810ae3e',
+    'tests/test_product_controller_recovery.py': '4ea4c27a7930e4d39b31f0c4c3da3df368c71812cdfbe170fc2f1845592e5594',
+ }
+EXACT_WE2_FACTORY_DATA_CHANGED=frozenset(EXACT_WE2_FACTORY_DATA_PINS)|{
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+}
+
 # WE2 root-security source review: one branch/base with immutable candidate
 # guard/proxy bytes. This is *not* a scripts/ or WE2 wildcard.
 # WE1 independently reviewed *new* original Factory post-T10 retention source.
@@ -466,6 +488,12 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
                 hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_B_BROWSER_SHA256):
             raise BoundaryHold("B_BROWSER_EXACT_SHA_MISMATCH")
         return raw
+    # Dedicated exact DATA-stage source exception: never reuse legacy
+    # original Factory or retention review pins for this new protected blob.
+    if (base == EXACT_WE2_FACTORY_DATA_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_DATA_BRANCH and
+            raw in EXACT_WE2_FACTORY_DATA_PINS):
+        return exact_we2_factory_data_blob(checkout,raw)
     # New exact post-T10 source review, distinct from the frozen v3 runner.
     if (base == EXACT_WE2_FACTORY_RETENTION_BASE and
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_RETENTION_BRANCH
@@ -680,6 +708,46 @@ def changed_source(checkout: Path, base: str) -> list[str]:
     return changes
 
 
+def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
+    """Validate an exact reviewed DATA-stage blob via O_NOFOLLOW fd."""
+    expected=EXACT_WE2_FACTORY_DATA_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_FACTORY_DATA_UNPINNED_SOURCE")
+    p=checkout
+    for part in relative_path(raw).parts:
+        p=p/part
+        if p.is_symlink():
+            raise BoundaryHold("WE2_FACTORY_DATA_SYMLINK")
+    st=p.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink!=1 or
+        st.st_uid!=os.geteuid() or stat.S_IMODE(st.st_mode)&0o022 or
+        not 1<=st.st_size<=150000):
+        raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_CUSTODY")
+    fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        live=os.fstat(fd)
+        if (live.st_dev,live.st_ino,live.st_size,live.st_mtime_ns)!=(
+                st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns):
+            raise BoundaryHold("WE2_FACTORY_DATA_INODE_CHANGED")
+        content=os.read(fd,150001)
+    finally:
+        os.close(fd)
+    if len(content)!=st.st_size or hashlib.sha256(content).hexdigest()!=expected:
+        raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_SHA")
+    return raw
+
+def check_exact_we2_factory_data_source(checkout: Path, repo: str, branch: str,
+                                        base: str, changes: list[str]) -> None:
+    if branch!=EXACT_WE2_FACTORY_DATA_BRANCH:
+        return
+    if repo!="Emaren/app-prodn" or base!=EXACT_WE2_FACTORY_DATA_BASE:
+        raise BoundaryHold("WE2_FACTORY_DATA_REPO_OR_BASE")
+    if (len(changes)!=len(EXACT_WE2_FACTORY_DATA_CHANGED) or
+            frozenset(changes)!=EXACT_WE2_FACTORY_DATA_CHANGED):
+        raise BoundaryHold("WE2_FACTORY_DATA_CHANGED_SCOPE")
+    for file in EXACT_WE2_FACTORY_DATA_PINS:
+        exact_we2_factory_data_blob(checkout,file)
+
 def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
                                   base: str, changes: list[str]) -> None:
     if branch != EXACT_WE2_FACTORY_BRANCH:
@@ -893,6 +961,8 @@ def main() -> int:
         check_exact_we2_factory_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_factory_retention_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_data_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_storage_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
