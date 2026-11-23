@@ -5,6 +5,7 @@ Runs on HEL1 as the already authorized owner-root deployment account.
 NO service changes, SQL, nft writes, finance, HTTP callback or token access.
 """
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -51,6 +52,44 @@ def load_data_helper():
          sha(DATA_HELPER)==DATA_HELPER_SHA,"ROOT_DATA_HELPER_PIN")
     return runpy.run_path(str(DATA_HELPER),run_name="__factory_data_source__")
 
+def _stage_stat_tuple(st):
+    return (st.st_dev,st.st_ino,st.st_uid,st.st_gid,st.st_mode,
+            st.st_nlink,st.st_size,st.st_mtime_ns,st.st_ctime_ns)
+
+@contextlib.contextmanager
+def opened_stage_member(stage, prior_stage, name, prior_file):
+    """Pin the original directory and member before opening untrusted bytes.
+
+    The source sender owns the DATA handoff directory until root promotes
+    it, so path.lstat() followed by Path.open() is NOT a no-follow contract.
+    """
+    need(name in ("runtime.tar.gz","b-linux-independent-review-v2.json"),
+         "UNTRUSTED_MEMBER_SCOPE")
+    dfd=os.open(stage,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:
+        directory=os.fstat(dfd)
+        need(_stage_stat_tuple(directory)==_stage_stat_tuple(prior_stage),
+             "STAGE_DIRECTORY_SWAPPED")
+        fd=os.open(name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=dfd)
+        with os.fdopen(fd,"rb") as member:
+            original=os.fstat(member.fileno())
+            need(_stage_stat_tuple(original)==_stage_stat_tuple(prior_file),
+                 "STAGE_MEMBER_INODE_CHANGED")
+            try:
+                yield member
+            finally:
+                after=os.fstat(member.fileno())
+                need(_stage_stat_tuple(after)==_stage_stat_tuple(original),
+                     "STAGE_MEMBER_CHANGED_DURING_INSPECT")
+        need(_stage_stat_tuple(os.fstat(dfd))==
+             _stage_stat_tuple(prior_stage),
+             "STAGE_DIRECTORY_CHANGED_DURING_INSPECT")
+        need(_stage_stat_tuple(stage.lstat())==
+             _stage_stat_tuple(prior_stage),
+             "STAGE_PATH_REPLACED")
+    finally:
+        os.close(dfd)
+
 def run(*args):
     p=subprocess.run(args,text=True,capture_output=True,timeout=20)
     need(p.returncode==0,"INSPECTION_FAILED_"+Path(args[0]).name)
@@ -82,7 +121,11 @@ def prepare(proof_path):
          and not proof_path.is_symlink()
          and (ps.st_uid,ps.st_gid,stat.S_IMODE(ps.st_mode)) in proof_allowed,
          "PROOF_OWNER")
-    proof_bytes=proof_path.read_bytes()
+    need(ps.st_size<=16_384,"PROOF_SIZE_LIMIT")
+    with opened_stage_member(stage,sd,proof_path.name,ps) as proof_stream:
+        proof_bytes=proof_stream.read(16_385)
+    need(len(proof_bytes)==ps.st_size and len(proof_bytes)<=16_384,
+         "PROOF_SHORT_OR_OVERSIZE")
     proof=json.loads(proof_bytes)
     need(type(proof) is dict and
          proof.get("status")=="PASS_INDEPENDENT_LINUX_RUNTIME_BYTES_AND_EACH_TAR_MEMBER"
@@ -107,26 +150,35 @@ def prepare(proof_path):
          and (st.st_uid,st.st_gid,stat.S_IMODE(st.st_mode)) in proof_allowed,
          "ARCHIVE_OWNER")
     need(type(proof.get("runtime_archive_bytes")) is int and
-         st.st_size==proof["runtime_archive_bytes"] and
-         sha(archive)==proof["runtime_archive_sha256"],
-         "ARCHIVE_BYTES_OR_SHA")
+         0<st.st_size<=5*1024**3 and
+         st.st_size==proof["runtime_archive_bytes"],"ARCHIVE_BYTES")
+    need(type(proof.get("runtime_archive_sha256")) is str and
+         re.fullmatch(r"[0-9a-f]{64}",proof["runtime_archive_sha256"]),
+         "ARCHIVE_PROOF_SHA_FORMAT")
     need(type(proof.get("runtime_entries_verified")) is int and
          1000<proof["runtime_entries_verified"]<200000,
          "RUNTIME_ENTRY_COUNT")
-    with tarfile.open(archive,"r:gz") as tar:
-        count=0
-        version=None
-        for member in tar:
-            count+=1
-            if member.name in (".aoe2war-source-sha",".next/BUILD_ID",".aoe2war-build-version"):
-                need(member.isfile() and member.size<256,"RUNTIME_MARKER_TYPE")
-                data=tar.extractfile(member).read(256).decode("utf-8").strip()
-                if member.name==".aoe2war-source-sha":need(data==source,"SOURCE_MARKER_CHANGED")
-                elif member.name==".next/BUILD_ID":need(data==build,"BUILD_MARKER_CHANGED")
-                else:version=data
-        need(count==proof["runtime_entries_verified"]+2 and version is not None
-             and re.fullmatch("[A-Za-z0-9_.-]{12,80}",version),
-             "RUNTIME_COUNT_OR_BUILD_VERSION")
+    with opened_stage_member(stage,sd,"runtime.tar.gz",st) as archive_stream:
+        h=hashlib.sha256()
+        for chunk in iter(lambda:archive_stream.read(4*1024*1024),b""):
+            h.update(chunk)
+        need(h.hexdigest()==proof["runtime_archive_sha256"],
+             "ARCHIVE_BYTES_OR_SHA")
+        archive_stream.seek(0)
+        with tarfile.open(fileobj=archive_stream,mode="r:gz") as tar:
+            count=0
+            version=None
+            for member in tar:
+                count+=1
+                if member.name in (".aoe2war-source-sha",".next/BUILD_ID",".aoe2war-build-version"):
+                    need(member.isfile() and member.size<256,"RUNTIME_MARKER_TYPE")
+                    data=tar.extractfile(member).read(256).decode("utf-8").strip()
+                    if member.name==".aoe2war-source-sha":need(data==source,"SOURCE_MARKER_CHANGED")
+                    elif member.name==".next/BUILD_ID":need(data==build,"BUILD_MARKER_CHANGED")
+                    else:version=data
+            need(count==proof["runtime_entries_verified"]+2 and version is not None
+                 and re.fullmatch("[A-Za-z0-9_.-]{12,80}",version),
+                 "RUNTIME_COUNT_OR_BUILD_VERSION")
     need(unit_field("User")=="aoe2war-web-prod" and
          unit_field("ActiveState")=="active" and
          unit_field("NeedDaemonReload")=="no",
@@ -169,6 +221,11 @@ def prepare(proof_path):
       "github_run_id":proof["run_id"],
       "financial_authorized":False,
     }
+    # The owner may still replace an initially user-owned DATA stage while
+    # service preflights run. Never promote a different directory inode.
+    need(stage.lstat().st_ino==sd.st_ino and
+         stage.lstat().st_dev==sd.st_dev and
+         not stage.is_symlink(),"STAGE_ORIGINAL_INODE_CHANGED_BEFORE_PROMOTION")
     if is_data:
         # Full proof, tar, old runtime, finance and service guards passed.
         # Promote the identical inode on DATA, never copy it to ROOT.

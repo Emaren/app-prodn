@@ -16,6 +16,12 @@ spec=importlib.util.spec_from_file_location("factory_data_publisher",ROOT/"scrip
 R=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(R)
 
+prep_spec=importlib.util.spec_from_file_location(
+    "factory_root_preparer",
+    ROOT/"docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py")
+PREPARER=importlib.util.module_from_spec(prep_spec)
+prep_spec.loader.exec_module(PREPARER)
+
 class FactoryDataPublisherTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
@@ -108,6 +114,54 @@ class FactoryDataPublisherTests(unittest.TestCase):
         self.assertEqual(R.CONTROLLER,"/root/aoe2war_product_release_controller_v3.py")
         self.assertIn('root_pins',R.controller.__code__.co_names)
         self.assertNotIn("v2.py",R.CONTROLLER)
+
+    def test_untrusted_stage_nofollow_reads_exact_original_descriptor(self):
+        member=self.stage/"runtime.tar.gz"
+        expected=member.read_bytes()
+        with PREPARER.opened_stage_member(self.stage,self.stage.lstat(),
+                 "runtime.tar.gz",member.lstat()) as f:
+            self.assertEqual(f.read(),expected)
+    def test_untrusted_stage_nofollow_denies_symlink_even_after_restat(self):
+        member=self.stage/"runtime.tar.gz"
+        prior=member.lstat()
+        member.unlink()
+        member.symlink_to("b-linux-independent-review-v2.json")
+        with self.assertRaises(OSError):
+            with PREPARER.opened_stage_member(self.stage,self.stage.lstat(),
+                       "runtime.tar.gz",prior):
+                pass
+    def test_untrusted_stage_nofollow_denies_inode_swap_identical_bytes(self):
+        member=self.stage/"runtime.tar.gz"
+        data=member.read_bytes()
+        prior=member.lstat()
+        member.unlink()
+        member.write_bytes(data)
+        with self.assertRaisesRegex(RuntimeError,"STAGE_MEMBER_INODE_CHANGED"):
+            with PREPARER.opened_stage_member(self.stage,self.stage.lstat(),
+                       "runtime.tar.gz",prior):
+                pass
+    def test_untrusted_stage_nofollow_denies_original_directory_swap(self):
+        member=self.stage/"runtime.tar.gz"
+        dirprior=self.stage.lstat()
+        fileprior=member.lstat()
+        moved=self.stage.with_name(self.stage.name+"-hold")
+        self.stage.rename(moved)
+        self.stage.mkdir(mode=0o700)
+        try:
+            with self.assertRaisesRegex(RuntimeError,"STAGE_DIRECTORY_SWAPPED"):
+                with PREPARER.opened_stage_member(self.stage,dirprior,
+                           "runtime.tar.gz",fileprior):
+                    pass
+        finally:
+            self.stage.rmdir()
+            moved.rename(self.stage)
+    def test_untrusted_stage_reader_rejects_mutation_while_open(self):
+        member=self.stage/"runtime.tar.gz"
+        with self.assertRaisesRegex(RuntimeError,"STAGE_MEMBER_CHANGED_DURING_INSPECT"):
+            with PREPARER.opened_stage_member(self.stage,self.stage.lstat(),
+                     "runtime.tar.gz",member.lstat()) as f:
+                self.assertTrue(f.read(10))
+                member.write_bytes(b"source-mutated-during-read")
 
     def test_frozen_atlas_identity_is_not_rewritten_by_transport(self):
         self.assertEqual(R.DATA_STAGE_ROOT,
