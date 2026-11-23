@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-23"
+reviewed_at: "2026-11-23"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -69,10 +69,16 @@ POST /api/admin/wolochain/staking-treasury-payouts/:id/execute
 
 Execution is idempotent at the app ledger and settlement request-id layers. A
 distribution with a recorded Treasury tx hash is refused on retry. Failed rows
-remain retryable after operator review.
+remain eligible for separate financial-authority adjudication after operator review; they are NOT approved for retry while the financial gates remain HOLD.
 
 The execute route always performs grouped dry-run validation first. A failed or
 unavailable dry-run stops execution before any live payout request is sent.
 
 Migrations do not execute WOLO transfers. Existing finalized distributions with
 Treasury pools backfill as `UNPAID`.
+
+## 2026-11-23 substantive finance-HOLD and payout-source review
+
+The complete operator flow, signer source, health endpoint, deterministic request ID, idempotent settlement, ledger fields and dry-run gate were re-read against unchanged PR #1486 blobs `lib/stakingTreasuryPayouts.ts` **`1884aee985e77b0593f531290d53c36d5a5bc4a1`** and `lib/woloBetSettlement.ts` **`29792712b99ab87bd28cc6119655699334b87fee`**, plus the tracked admin treasury route. The source still performs `validateWoloSettlementRun` and requires verified signer and an approved dry-run before `executeWoloSettlementRun`; application idempotency and no recorded transaction hash do **not** certify reserve coverage, bank/chain finality or make an unsuccessful payout safe to retry unattended.
+
+**Current operational override: FINANCIAL HARD HOLD.** Fresh HEL1 listener proof at **2026-11-23 17:14:56 UTC** confirms ports **8092, 8093, 8094 and 8095 all CLOSED**. The earlier runbook's executable GET/POST and “after 8092 health is green” steps are **interface documentation only**, expressly **NOT executable operator instructions under today's release state**. C04/C08 governance closures do not override the open C01/C02/C03/C05/C06/C07/C09 financial gates or establish signer custody, payout reserves, signed reviewer/canary authority or a production settlement writer. Do not start 8092, unmask financial services, grant SELECT/WRITE, issue WOLO, create/retry payout requests or invoke the POST from this document renewal. Old economic rows and payout bookkeeping remain unverified until separately authorized financial admission; this DocsV2 review is not a human financial signature.
