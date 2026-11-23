@@ -244,6 +244,8 @@ class BoundaryTests(unittest.TestCase):
         base=p.EXACT_WE2_FACTORY_DATA_BASE
         names=sorted(p.EXACT_WE2_FACTORY_DATA_CHANGED)
         self.assertEqual(branch,"we2/factory-data-transport-20261123")
+        self.assertTrue(p.BRANCH.fullmatch(branch))
+        self.assertFalse(p.BRANCH.fullmatch("we2/other-unreviewed-root"))
         self.assertEqual(base,"f833d7e633cee4b36f1427fa45d76081fa0796ef")
         self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_PINS),9)
         self.assertEqual(set(names),set(p.EXACT_WE2_FACTORY_DATA_PINS)|{
