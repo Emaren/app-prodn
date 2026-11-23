@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-data-transport-20261123` at `718ee5e46c2fa989b787f66f5b363d819f6339ec`
+Implementation baseline: `session-c/we3-atlas-successor-20261123` at `382c1e08cdc867166df44e88000c559c245f55de`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

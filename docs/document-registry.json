@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "509594abba22daa8589453f892c6e5de1a2162191bbfa07e9d419d4f17f8b119",
+      "sha256": "021b3e022f782a7ac186366a366aec6a3cc52db7934e846c06fc476b736e347b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/factory-data-transport-20261123",
-    "commit": "718ee5e46c2fa989b787f66f5b363d819f6339ec"
+    "branch": "session-c/we3-atlas-successor-20261123",
+    "commit": "382c1e08cdc867166df44e88000c559c245f55de"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
