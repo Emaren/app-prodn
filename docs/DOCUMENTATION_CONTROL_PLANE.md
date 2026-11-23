@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-atlas-sql-integrated-20261122` at `ed37a1ec6979cf1a456c777010e94c980060ad5c`
+Implementation baseline: `codex/post-atlas-matchups-20261123` at `62b5f1b62987527ebbb2a90c95ac9e4246a937cb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
