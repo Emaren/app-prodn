@@ -170,10 +170,7 @@ WITH eligible_attempts AS (
             AND player->>'steam_dm_rating' ~ '^[0-9]{1,10}$'
             THEN CASE WHEN (player->>'steam_dm_rating')::numeric <= 2147483647
               THEN (player->>'steam_dm_rating')::integer END
-          END AS steam_dm_rating,
-          COUNT(*) OVER (
-            PARTITION BY a.attempt_id, player->>'steam_id'
-          ) AS identity_count
+          END AS steam_dm_rating
         FROM eligible_attempts a
         CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(a.observation->'players') = 'array'
@@ -183,7 +180,7 @@ WITH eligible_attempts AS (
       valid_observations AS (
         SELECT DISTINCT ON (steam_id, replay_hash) *
         FROM raw_observations
-        WHERE steam_id ~ '^[0-9]{17}$' AND identity_count = 1
+        WHERE steam_id ~ '^[0-9]{17}$'
         ORDER BY steam_id, replay_hash, attempt_id ASC
       ),
 
