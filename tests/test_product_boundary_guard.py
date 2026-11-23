@@ -248,7 +248,13 @@ class BoundaryTests(unittest.TestCase):
         self.assertFalse(p.BRANCH.fullmatch("we2/other-unreviewed-root"))
         self.assertEqual(base,"f833d7e633cee4b36f1427fa45d76081fa0796ef")
         self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_PINS),9)
-        self.assertEqual(set(names),set(p.EXACT_WE2_FACTORY_DATA_PINS)|{
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_DOC_PINS),10)
+        self.assertEqual(p.EXACT_WE2_FACTORY_DATA_DOC_GENERATED,{
+            "docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"})
+        self.assertEqual(set(names),
+            set(p.EXACT_WE2_FACTORY_DATA_PINS)|
+            set(p.EXACT_WE2_FACTORY_DATA_DOC_PINS)|
+            p.EXACT_WE2_FACTORY_DATA_DOC_GENERATED|{
             "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py"})
         self.assertEqual(p.EXACT_WE2_FACTORY_SHA256[
             "docs/release/artifacts/aoe2war_product_release_controller_v3.py"],
@@ -273,7 +279,8 @@ class BoundaryTests(unittest.TestCase):
                 p.check_exact_we2_factory_data_source(root,repo,branch,base2,changes)
         with tempfile.TemporaryDirectory() as td:
             place=Path(td)
-            for filename in p.EXACT_WE2_FACTORY_DATA_PINS:
+            for filename in (set(p.EXACT_WE2_FACTORY_DATA_PINS)
+                             |set(p.EXACT_WE2_FACTORY_DATA_DOC_PINS)):
                 dest=place/filename
                 dest.parent.mkdir(exist_ok=True,parents=True)
                 dest.write_bytes((root/filename).read_bytes())

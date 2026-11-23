@@ -198,7 +198,30 @@ EXACT_WE2_FACTORY_DATA_PINS={
     'tests/test_product_release_recovery.py': 'f926c8b2ed37151525ac7f17742ded5b6d68f8c8b241cb837b19e33f2810ae3e',
     'tests/test_product_controller_recovery.py': '4ea4c27a7930e4d39b31f0c4c3da3df368c71812cdfbe170fc2f1845592e5594',
  }
-EXACT_WE2_FACTORY_DATA_CHANGED=frozenset(EXACT_WE2_FACTORY_DATA_PINS)|{
+# WE1's ten genuinely rereviewed documents, integrated from the exact
+# stacked #1488 review head c7daa1a9. Only these exact bytes are admitted.
+# Generated DocsV2 registry/index are checked by ORIGINAL docs_v2_check.py
+# rather than hardcoding their hashes here (which would circularly invalidate
+# their non-document implementation baseline on every policy change).
+EXACT_WE2_FACTORY_DATA_DOC_PINS={
+    'docs/OPERATOR_START_HERE.md': '7465afac5c438dd6b352f3c3efa727ec8db558fedcebfb2fd7c5e4215ed4faf5',
+    'docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md': '667f2b74aa2053401c8e6614c2e5c8560754916d63b10ec5ec607cfc0e5fac60',
+    'docs/SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md': 'a702055899cfdc116ff481dbe5873673bb56efba051722f16a4064c487ffd966',
+    'docs/SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md': 'dc0c803be3fa81476025e4c6a89ca4145077e90b49a8e1d06d484ccc04804b35',
+    'docs/SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md': '011ced68aa01caffb6f70a2dd4711caf7561029b398c7f3b0cb1384402839be1',
+    'docs/SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md': '19cf19684bf156db8f123a3fd7a92c51f8b4535857668d88d6563686a9b69be7',
+    'docs/SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md': '226126ab408094a1f46bbb50982d2d4d07da20783e54428c371b80c58986938a',
+    'docs/STAKING_TREASURY_PAYOUTS.md': 'ee7ea6dc4d2ed7b4e4a30fcf40e5a6adad6664028d7fc4038f68816ddc0a9b23',
+    'docs/WARGRAPH_V1.md': '31d6f0acc7fadfd46dc784fb0bc786723bd7e820047603a107b999bd1be9cee6',
+    'docs/WATCHER_NATIVE_STREAM_HANDOFF.md': 'ca0a26ebe1c97d2f1a12694c3a3af599fb0ccb3c3b1f2568702d9aecf7bc3bae',
+ }
+EXACT_WE2_FACTORY_DATA_DOC_GENERATED=frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+EXACT_WE2_FACTORY_DATA_CHANGED=(frozenset(EXACT_WE2_FACTORY_DATA_PINS)
+    |frozenset(EXACT_WE2_FACTORY_DATA_DOC_PINS)
+    |EXACT_WE2_FACTORY_DATA_DOC_GENERATED)|{
     "scripts/product_boundary_guard.py",
     "tests/test_product_boundary_guard.py",
 }
@@ -710,7 +733,8 @@ def changed_source(checkout: Path, base: str) -> list[str]:
 
 def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
     """Validate an exact reviewed DATA-stage blob via O_NOFOLLOW fd."""
-    expected=EXACT_WE2_FACTORY_DATA_PINS.get(raw)
+    expected=EXACT_WE2_FACTORY_DATA_PINS.get(
+        raw,EXACT_WE2_FACTORY_DATA_DOC_PINS.get(raw))
     if expected is None:
         raise BoundaryHold("WE2_FACTORY_DATA_UNPINNED_SOURCE")
     p=checkout
@@ -746,6 +770,8 @@ def check_exact_we2_factory_data_source(checkout: Path, repo: str, branch: str,
             frozenset(changes)!=EXACT_WE2_FACTORY_DATA_CHANGED):
         raise BoundaryHold("WE2_FACTORY_DATA_CHANGED_SCOPE")
     for file in EXACT_WE2_FACTORY_DATA_PINS:
+        exact_we2_factory_data_blob(checkout,file)
+    for file in EXACT_WE2_FACTORY_DATA_DOC_PINS:
         exact_we2_factory_data_blob(checkout,file)
 
 def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
