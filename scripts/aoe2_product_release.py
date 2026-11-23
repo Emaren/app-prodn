@@ -29,12 +29,12 @@ import aoe2_product_release_transport as transport
 
 CONTROLLER = "/root/aoe2war_product_release_controller_v3.py"
 PREPARE = "/root/aoe2war_prepare_product_manifest_v2.py"
-CONTROLLER_SHA = "f8d4596f7b987c214bad402297ee4895370ebcd4734ce0cdfad4ebba1ae336ca"
-PREPARE_SHA = "e8cbada6838c11ded82eeeafa3b70fed16a2f59a5be688be0a58a50c832e936d"
+CONTROLLER_SHA = "fb31b5a8d9a95f67502f894bb88e27113d333c0f7da955c4e930cb7e0eaa748f"
+PREPARE_SHA = "33915409338d84a37f40d79d9cecc9ae27f71af594e7143f37085669da356b62"
 INSPECTOR = "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
 INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"
 DATA_HELPER = "/root/aoe2war_factory_data_stage_v1.py"
-DATA_HELPER_SHA = "d8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4"
+DATA_HELPER_SHA = "96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d"
 DATA_STAGE_ROOT = "/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1"
 ROOT_PREFERRED_FLOOR = 7_598_334_817
 ROOT_OBSERVED_TRANSIENT = 1_497_374_720

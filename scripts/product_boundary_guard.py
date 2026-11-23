@@ -188,12 +188,12 @@ EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
 EXACT_WE2_FACTORY_DATA_BRANCH="we2/factory-data-transport-20261123"
 EXACT_WE2_FACTORY_DATA_BASE="f833d7e633cee4b36f1427fa45d76081fa0796ef"
 EXACT_WE2_FACTORY_DATA_PINS={
-    'docs/release/artifacts/aoe2war_factory_data_stage_v1.py': 'd8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4',
-    'docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py': 'e8cbada6838c11ded82eeeafa3b70fed16a2f59a5be688be0a58a50c832e936d',
-    'docs/release/artifacts/aoe2war_product_release_controller_v3.py': 'f8d4596f7b987c214bad402297ee4895370ebcd4734ce0cdfad4ebba1ae336ca',
-    'scripts/aoe2_product_release.py': 'ede1a70ff3b7da3ef7abad02c54fb79b633968813b69c236828377e50e3bcac8',
+    'docs/release/artifacts/aoe2war_factory_data_stage_v1.py': '96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d',
+    'docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py': '33915409338d84a37f40d79d9cecc9ae27f71af594e7143f37085669da356b62',
+    'docs/release/artifacts/aoe2war_product_release_controller_v3.py': 'fb31b5a8d9a95f67502f894bb88e27113d333c0f7da955c4e930cb7e0eaa748f',
+    'scripts/aoe2_product_release.py': '93ac6fcd5c1d65419368cd224bbdfc86b79569294e4eca0bab4f4423e725dc49',
     'tests/test_factory_data_publisher_v1.py': '98aa8aa2e5965ca963acc7602e354881e844956820af0a69803618268e84b2c4',
-    'tests/test_factory_data_stage_v1.py': 'c15554115b90537415b9994917d738719817e1b75503ddfd4763baf97512305b',
+    'tests/test_factory_data_stage_v1.py': '14f54b6128946cb5322aaecdd66c0f599c9e1d189b5b4cba48570e62866529f9',
     'tests/test_product_release.py': '9c319843a47d27abdc616ccef80ec2692eb2b5d5a43d3ca034030cea83401306',
     'tests/test_product_release_recovery.py': 'f926c8b2ed37151525ac7f17742ded5b6d68f8c8b241cb837b19e33f2810ae3e',
     'tests/test_product_controller_recovery.py': '4ea4c27a7930e4d39b31f0c4c3da3df368c71812cdfbe170fc2f1845592e5594',

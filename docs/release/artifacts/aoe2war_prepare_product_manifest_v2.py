@@ -25,7 +25,7 @@ FIN_MASKS=("aoe2hdbets-bet-stake-reconcile.service",
  "wolochain-founder-rewards-settlement.service")
 STEAM_INSPECT="/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
 DATA_HELPER=Path("/root/aoe2war_factory_data_stage_v1.py")
-DATA_HELPER_SHA="d8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4"
+DATA_HELPER_SHA="96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d"
 
 def need(ok,reason):
     if not ok:raise RuntimeError("HOLD_PRODUCT_MANIFEST_"+reason)
@@ -75,11 +75,13 @@ def prepare(proof_path):
          sd.st_uid==(0 if is_frozen else 1000) and
          stat.S_IMODE(sd.st_mode)==0o700,"STAGE_OWNER")
     ps=proof_path.lstat()
-    need(stat.S_ISREG(ps.st_mode) and
-         ps.st_uid==(0 if is_frozen else 1000) and
-         ps.st_nlink==1 and not proof_path.is_symlink() and
-         (stat.S_IMODE(ps.st_mode)==0o400 if is_frozen
-          else not(stat.S_IMODE(ps.st_mode)&0o022)),"PROOF_OWNER")
+    proof_allowed=(
+        {(0,0,0o400),(0,0,0o600),(1000,1000,0o600)}
+        if is_frozen else {(1000,1000,0o600)})
+    need(stat.S_ISREG(ps.st_mode) and ps.st_nlink==1
+         and not proof_path.is_symlink()
+         and (ps.st_uid,ps.st_gid,stat.S_IMODE(ps.st_mode)) in proof_allowed,
+         "PROOF_OWNER")
     proof_bytes=proof_path.read_bytes()
     proof=json.loads(proof_bytes)
     need(type(proof) is dict and
@@ -100,11 +102,9 @@ def prepare(proof_path):
         need(sd.st_dev==helper["DATA_DEV"],"DATA_STAGE_DEVICE")
     archive=stage/"runtime.tar.gz"
     st=archive.lstat()
-    need(stat.S_ISREG(st.st_mode) and
-         st.st_uid==(0 if is_frozen else 1000) and st.st_nlink==1
-         and not archive.is_symlink() and
-         (stat.S_IMODE(st.st_mode)==0o400 if is_frozen
-          else not(stat.S_IMODE(st.st_mode)&0o022)),
+    need(stat.S_ISREG(st.st_mode) and st.st_nlink==1
+         and not archive.is_symlink()
+         and (st.st_uid,st.st_gid,stat.S_IMODE(st.st_mode)) in proof_allowed,
          "ARCHIVE_OWNER")
     need(type(proof.get("runtime_archive_bytes")) is int and
          st.st_size==proof["runtime_archive_bytes"] and
@@ -176,14 +176,11 @@ def prepare(proof_path):
             # Previous native root invocation may have durably sealed the
             # DATA directory before its exact manifest could be written.
             # Resume only if ALL immutable owner/inode/SHA pins still pass.
-            inode=st.st_ino
-            with helper["opened_verified"](
-                    stage,source,proof["run_id"],
-                    archive_sha=proof["runtime_archive_sha256"],
-                    archive_bytes=proof["runtime_archive_bytes"],
-                    archive_inode=inode,
-                    proof_sha=hashlib.sha256(proof_bytes).hexdigest()):
-                pass
+            inode=helper["resume_checked_stage"](
+                stage,source,proof["run_id"],
+                archive_sha=proof["runtime_archive_sha256"],
+                archive_bytes=proof["runtime_archive_bytes"],
+                proof_sha=hashlib.sha256(proof_bytes).hexdigest())
         else:
             inode=helper["freeze_checked_stage"](
                 stage,source,proof["run_id"],

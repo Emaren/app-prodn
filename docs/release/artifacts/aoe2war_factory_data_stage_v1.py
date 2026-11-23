@@ -139,69 +139,126 @@ def opened_verified(stage, source, run_id, *,
             os.close(fd)
         os.close(dfd)
 
+def _promotable_file_fd(dfd, name, *, expected_sha, expected_size,
+                        device, root_uid, root_gid, sender_uid, sender_gid):
+    """Accept only exact verified sender or interrupted-root file states."""
+    require(name in (ARCHIVE_NAME, PROOF_NAME), "FILE_NAME_SCOPE")
+    fd=os.open(name,NOFOLLOW,dir_fd=dfd)
+    try:
+        before=os.fstat(fd)
+        allowed={(sender_uid,sender_gid,0o600),
+                 (root_uid,root_gid,0o600),(root_uid,root_gid,0o400)}
+        require(stat.S_ISREG(before.st_mode) and before.st_nlink==1
+                and before.st_dev==device
+                and (before.st_uid,before.st_gid,
+                     stat.S_IMODE(before.st_mode)) in allowed
+                and (expected_size is None or before.st_size==expected_size),
+                "PROMOTION_FILE_IDENTITY_"+name)
+        require(_hash_fd(fd)==expected_sha,"PROMOTION_FILE_SHA_"+name)
+        after=os.fstat(fd)
+        require((before.st_dev,before.st_ino,before.st_size,
+                 before.st_mtime_ns,before.st_ctime_ns)==
+                (after.st_dev,after.st_ino,after.st_size,
+                 after.st_mtime_ns,after.st_ctime_ns),
+                "PROMOTION_FILE_CHANGED_"+name)
+        return fd,after
+    except BaseException:
+        os.close(fd)
+        raise
+
+def _promote_verified_stage(stage, source, run_id, *,
+                            archive_sha, archive_bytes, proof_sha, resume,
+                            mount=DATA_MOUNT, parent=DATA_PARENT, root=DATA_STAGE_ROOT,
+                            device=DATA_DEV, root_uid=ROOT_UID, sender_uid=SENDER_UID,
+                            sender_gid=SENDER_GID, root_gid=0, require_mount=True):
+    require(os.geteuid()==root_uid,"ROOT_PROMOTION_REQUIRED")
+    st=layout(stage,source,run_id,frozen=resume,mount=mount,parent=parent,
+              root=root,device=device,root_uid=root_uid,sender_uid=sender_uid,
+              sender_gid=sender_gid,root_gid=root_gid,require_mount=require_mount)
+    dfd=_opened_stage(stage,st)
+    opened=[]
+    try:
+        extras=set(os.listdir(dfd))-{ARCHIVE_NAME,PROOF_NAME}
+        if extras=={".rsync-partial"} and not resume:
+            partial=os.stat(".rsync-partial",dir_fd=dfd,follow_symlinks=False)
+            require(stat.S_ISDIR(partial.st_mode) and partial.st_uid==sender_uid
+                    and partial.st_dev==device,"UNEXPECTED_PARTIAL_DIRECTORY")
+            pfd=os.open(".rsync-partial",DIRECTORY,dir_fd=dfd)
+            try:
+                require(not os.listdir(pfd),"UNEXPECTED_PARTIAL_CONTENTS")
+            finally:os.close(pfd)
+            os.rmdir(".rsync-partial",dir_fd=dfd)
+            extras=set()
+        require(not extras,"UNEXPECTED_STAGE_ENTRIES")
+        for name,digest,nbytes in ((ARCHIVE_NAME,archive_sha,archive_bytes),
+                                   (PROOF_NAME,proof_sha,None)):
+            if resume:
+                fd,meta=_promotable_file_fd(
+                    dfd,name,expected_sha=digest,expected_size=nbytes,
+                    device=device,root_uid=root_uid,root_gid=root_gid,
+                    sender_uid=sender_uid,sender_gid=sender_gid)
+            else:
+                fd,meta=_file_fd(dfd,name,owner=sender_uid,mode=0o600,
+                                  device=device,expected_sha=digest,
+                                  expected_size=nbytes)
+                require(meta.st_gid==sender_gid,"SENDER_FILE_GROUP_"+name)
+            opened.append((fd,meta))
+        # Seal the directory FIRST, before mutating file ownership. On
+        # interruption before this point, sender-owned 0600 files may be
+        # transferred/resumed. After this point, tony cannot rename/remove
+        # root-owned stage members; the root-only resume path can finish any
+        # mixed file ownership (sender600,root600,root400).
+        if not resume:
+            os.fchown(dfd,root_uid,root_gid)
+            os.fchmod(dfd,0o700)
+            os.fsync(dfd)
+            parentfd=os.open(root,DIRECTORY)
+            try:os.fsync(parentfd)
+            finally:os.close(parentfd)
+        for fd,meta in opened:
+            os.fchown(fd,root_uid,root_gid)
+            os.fchmod(fd,0o400)
+            os.fsync(fd)
+        os.fsync(dfd)
+    finally:
+        for fd,_ in opened:os.close(fd)
+        os.close(dfd)
+    with opened_verified(stage,source,run_id,
+                         archive_sha=archive_sha,archive_bytes=archive_bytes,
+                         archive_inode=opened[0][1].st_ino,proof_sha=proof_sha,
+                         mount=mount,parent=parent,root=root,device=device,
+                         root_uid=root_uid,sender_uid=sender_uid,
+                         sender_gid=sender_gid,root_gid=root_gid,
+                         require_mount=require_mount):
+        pass
+    return opened[0][1].st_ino
+
 def freeze_checked_stage(stage, source, run_id, *,
                          archive_sha, archive_bytes, proof_sha,
-                         mount=DATA_MOUNT, parent=DATA_PARENT, root=DATA_STAGE_ROOT,
-                         device=DATA_DEV, root_uid=ROOT_UID, sender_uid=SENDER_UID,
-                         sender_gid=SENDER_GID, root_gid=0, require_mount=True):
-    """Atomic same-DATA ownership handoff; never copies to ROOT.
+                         mount=DATA_MOUNT,parent=DATA_PARENT,root=DATA_STAGE_ROOT,
+                         device=DATA_DEV,root_uid=ROOT_UID,sender_uid=SENDER_UID,
+                         sender_gid=SENDER_GID,root_gid=0,require_mount=True):
+    """First verified DATA-only handoff. Directory ownership seals first."""
+    return _promote_verified_stage(
+        stage,source,run_id,archive_sha=archive_sha,
+        archive_bytes=archive_bytes,proof_sha=proof_sha,resume=False,
+        mount=mount,parent=parent,root=root,device=device,root_uid=root_uid,
+        sender_uid=sender_uid,sender_gid=sender_gid,root_gid=root_gid,
+        require_mount=require_mount)
 
-    Interrupted handoff fails closed. Existing ROOT state and artifacts remain
-    recoverable; never auto-delete partially promoted protected source bytes.
+def resume_checked_stage(stage, source, run_id, *,
+                         archive_sha, archive_bytes, proof_sha,
+                         mount=DATA_MOUNT,parent=DATA_PARENT,root=DATA_STAGE_ROOT,
+                         device=DATA_DEV,root_uid=ROOT_UID,sender_uid=SENDER_UID,
+                         sender_gid=SENDER_GID,root_gid=0,require_mount=True):
+    """Resume only an ALREADY root-sealed directory with complete exact bytes.
+
+    Never lets a sender-owned stage bypass initial verification, and never
+    calls chown before checking each candidate file digest and inode.
     """
-    require(os.geteuid() == root_uid, "ROOT_PROMOTION_REQUIRED")
-    st = layout(stage, source, run_id, frozen=False, mount=mount, parent=parent,
-                root=root, device=device, root_uid=root_uid,
-                sender_uid=sender_uid, sender_gid=sender_gid,
-                root_gid=root_gid, require_mount=require_mount)
-    dfd = _opened_stage(stage, st)
-    opened = []
-    try:
-        extras = set(os.listdir(dfd)) - {ARCHIVE_NAME, PROOF_NAME}
-        if extras == {".rsync-partial"}:
-            partial = os.stat(".rsync-partial", dir_fd=dfd, follow_symlinks=False)
-            require(stat.S_ISDIR(partial.st_mode) and partial.st_uid == sender_uid
-                    and partial.st_dev == device, "UNEXPECTED_PARTIAL_DIRECTORY")
-            partial_fd = os.open(".rsync-partial", DIRECTORY, dir_fd=dfd)
-            try:
-                require(not os.listdir(partial_fd), "UNEXPECTED_PARTIAL_CONTENTS")
-            finally:
-                os.close(partial_fd)
-            os.rmdir(".rsync-partial", dir_fd=dfd)
-            extras = set()
-        require(not extras, "UNEXPECTED_STAGE_ENTRIES")
-        archive_fd, archive = _file_fd(
-            dfd, ARCHIVE_NAME, owner=sender_uid, mode=0o600,
-            device=device, expected_sha=archive_sha, expected_size=archive_bytes)
-        opened.append(archive_fd)
-        proof_fd, proof = _file_fd(
-            dfd, PROOF_NAME, owner=sender_uid, mode=0o600,
-            device=device, expected_sha=proof_sha)
-        opened.append(proof_fd)
-        # Data verified first. Chown and chmod immutable contents before
-        # transferring the directory itself. Sticky root-owned parent denies
-        # the original sender renaming a completed root-owned stage.
-        for fd in opened:
-            os.fchown(fd, root_uid, root_gid)
-            os.fchmod(fd, 0o400)
-            os.fsync(fd)
-        os.fchown(dfd, root_uid, root_gid)
-        os.fchmod(dfd, 0o700)
-        os.fsync(dfd)
-        parentfd = os.open(root, DIRECTORY)
-        try:
-            os.fsync(parentfd)
-        finally:
-            os.close(parentfd)
-    finally:
-        for fd in opened:
-            os.close(fd)
-        os.close(dfd)
-    with opened_verified(stage, source, run_id,
-                         archive_sha=archive_sha, archive_bytes=archive_bytes,
-                         archive_inode=archive.st_ino, proof_sha=proof_sha,
-                         mount=mount, parent=parent, root=root, device=device,
-                         root_uid=root_uid, sender_uid=sender_uid,
-                         sender_gid=sender_gid, root_gid=root_gid, require_mount=require_mount):
-        pass
-    return archive.st_ino
+    return _promote_verified_stage(
+        stage,source,run_id,archive_sha=archive_sha,
+        archive_bytes=archive_bytes,proof_sha=proof_sha,resume=True,
+        mount=mount,parent=parent,root=root,device=device,root_uid=root_uid,
+        sender_uid=sender_uid,sender_gid=sender_gid,root_gid=root_gid,
+        require_mount=require_mount)

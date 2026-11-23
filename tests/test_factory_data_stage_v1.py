@@ -10,6 +10,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SOURCE=Path(__file__).parents[1]/"docs/release/artifacts/aoe2war_factory_data_stage_v1.py"
 spec=importlib.util.spec_from_file_location("factory_data_helper",SOURCE)
@@ -145,6 +146,72 @@ class DataStageTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"DIRECTORY_IDENTITY|FILE_IDENTITY"):
             self.freeze()
         with self.opened(inode) as (f,_):
+            self.assertEqual(f.read(),self.archive)
+
+    def simulate_crash_in_promotion(self, *, failing_chown_call=None,
+                                     failing_chmod_call=None):
+        original_chown=H.os.fchown
+        original_chmod=H.os.fchmod
+        count_chown=[0]
+        count_chmod=[0]
+        def chown(fd,uid,gid):
+            count_chown[0]+=1
+            if count_chown[0]==failing_chown_call:
+                raise KeyboardInterrupt("synthetic midway directory/file handoff")
+            return original_chown(fd,uid,gid)
+        def chmod(fd,mode):
+            count_chmod[0]+=1
+            if count_chmod[0]==failing_chmod_call:
+                raise KeyboardInterrupt("synthetic midway directory/file mode")
+            return original_chmod(fd,mode)
+        with patch.object(H.os,"fchown",side_effect=chown), \
+             patch.object(H.os,"fchmod",side_effect=chmod):
+            with self.assertRaises(KeyboardInterrupt):
+                self.freeze()
+    def resume(self):
+        return H.resume_checked_stage(self.stage,self.source,self.run,
+          archive_sha=self.archsha,archive_bytes=len(self.archive),
+          proof_sha=self.proofsha,**self.kw)
+    def test_crash_after_directory_seal_recovers_exact_file_inodes(self):
+        original_inode=(self.stage/H.ARCHIVE_NAME).stat().st_ino
+        self.simulate_crash_in_promotion(failing_chown_call=2)
+        self.assertEqual((self.stage/H.ARCHIVE_NAME).stat().st_ino,original_inode)
+        recovered=self.resume()
+        self.assertEqual(recovered,original_inode)
+        with self.opened(recovered) as (f,_):
+            self.assertEqual(f.read(),self.archive)
+    def test_crash_after_first_file_seal_recovers_no_partial_override(self):
+        original_inode=(self.stage/H.ARCHIVE_NAME).stat().st_ino
+        self.simulate_crash_in_promotion(failing_chown_call=3)
+        self.assertEqual(stat.S_IMODE((self.stage/H.ARCHIVE_NAME).stat().st_mode),0o400)
+        self.assertEqual(stat.S_IMODE((self.stage/H.PROOF_NAME).stat().st_mode),0o600)
+        recovered=self.resume()
+        self.assertEqual(recovered,original_inode)
+        self.assertEqual(stat.S_IMODE((self.stage/H.PROOF_NAME).stat().st_mode),0o400)
+    def test_crash_during_directory_metadata_seal_can_resume(self):
+        self.simulate_crash_in_promotion(failing_chmod_call=1)
+        recovered=self.resume()
+        with self.opened(recovered) as (f,_):
+            self.assertEqual(f.read(),self.archive)
+    def test_crash_between_archive_chown_and_chmod_can_resume(self):
+        self.simulate_crash_in_promotion(failing_chmod_call=2)
+        recovered=self.resume()
+        self.assertEqual(stat.S_IMODE((self.stage/H.ARCHIVE_NAME).stat().st_mode),0o400)
+        with self.opened(recovered) as (f,_):
+            self.assertEqual(f.read(),self.archive)
+    def test_unverified_partial_proof_cannot_resume_or_overwrite(self):
+        self.simulate_crash_in_promotion(failing_chown_call=2)
+        bad=self.stage/H.PROOF_NAME
+        bad.write_bytes(self.proof+b"evil")
+        with self.assertRaisesRegex(RuntimeError,"PROMOTION_FILE_SHA"):
+            self.resume()
+        bad.write_bytes(self.proof)
+        self.assertEqual(self.resume(),(self.stage/H.ARCHIVE_NAME).stat().st_ino)
+    def test_root_resume_cannot_reissue_as_sender_untrusted_file(self):
+        self.freeze()
+        with self.assertRaisesRegex(RuntimeError,"FILE_IDENTITY"):
+            self.freeze()
+        with self.opened(self.resume()) as (f,_):
             self.assertEqual(f.read(),self.archive)
 
 if __name__=="__main__":

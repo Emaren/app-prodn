@@ -28,7 +28,7 @@ SERVICE="aoe2hdbets-web-prod.service"
 STATE_ROOT=Path("/var/lib/aoe2war-product-release-v1")
 LOCK=Path("/run/lock/aoe2war-product-release-v1.lock")
 DATA_HELPER=Path("/root/aoe2war_factory_data_stage_v1.py")
-DATA_HELPER_SHA="d8b9be2458e2431552348b3c67c9b07c364eab57d7fee823f3d016ee0e45e1c4"
+DATA_HELPER_SHA="96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d"
 PREFERRED_ROOT_FLOOR=7_598_334_817
 # Native transient free swing: real, unattributed, never label it PostgreSQL.
 ROOT_TRANSIENT_OBSERVED_BUDGET=1_497_374_720
