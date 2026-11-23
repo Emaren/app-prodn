@@ -1,5 +1,6 @@
 """Exercise reviewed V3 failure boundaries in isolated files, never host services."""
 import ast
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -15,7 +16,7 @@ import unittest
 from unittest.mock import Mock
 
 SOURCE = Path(__file__).resolve().parents[1] / 'docs/release/artifacts/aoe2war_product_release_controller_v3.py'
-NAMES = {'hold', 'sha_bytes', 'sha_file', 'fsync_dir', 'atomic', 'json_save', 'json_get',
+NAMES = {'hold', 'sha_bytes', 'sha_file', 'opened_archive', 'fsync_dir', 'atomic', 'json_save', 'json_get',
          'unit_guard', 'inspect_archive', 'stage', 'state_need', 'expected_old_factory_http', 'switch', 'candidate_public_preflight', 'ensure_empty_public_downloads', 'immutable_incident_receipt', 'reconcile_interrupted_live'}
 TREE = ast.parse(SOURCE.read_text())
 BLOCK = ast.fix_missing_locations(ast.Module(body=[n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name in NAMES], type_ignores=[]))
@@ -46,6 +47,7 @@ class RecoveryTests(unittest.TestCase):
         self.state = self.journal / 'state.json'
         self.ops = []
         self.g = dict(Path=Path, PurePosixPath=PurePosixPath, os=os, stat=stat, json=json,
+             DATA_MODE=False,contextlib=contextlib,
             dt=dt, hashlib=hashlib, tarfile=tarfile, shutil=shutil, time=Mock(sleep=Mock()),
             subprocess=Mock(run=Mock(return_value=Mock(returncode=0))), re=__import__('re'),
             SOURCE='b'*40, BUILD='NEW_BUILD_123', VERSION='20261113-test-version',
@@ -78,7 +80,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_insufficient_disk_holds_before_journal_or_service_mutation(self):
         from unittest.mock import patch
-        self.g['inspect_archive']=Mock()
+        self.g['inspect_archive']=Mock(return_value=(0,0))
         self.g['unit_guard']=Mock()
         proof=self.g['ARCHIVE'].parent/'b-linux-independent-review-v2.json'
         proof.write_bytes(b'isolated independent proof fixture')

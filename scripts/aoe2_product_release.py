@@ -29,10 +29,50 @@ import aoe2_product_release_transport as transport
 
 CONTROLLER = "/root/aoe2war_product_release_controller_v3.py"
 PREPARE = "/root/aoe2war_prepare_product_manifest_v2.py"
-CONTROLLER_SHA = "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064"
-PREPARE_SHA = "17f2ee180d69fae4f4b4c7e01f282e6e11db87a0c2d74a129d2eb7d63fbb6d20"
+CONTROLLER_SHA = "fb31b5a8d9a95f67502f894bb88e27113d333c0f7da955c4e930cb7e0eaa748f"
+PREPARE_SHA = "063e944565cf5ce8033844aef869dc90f3b64b75ceb975ca86ec9c9dbe6e1051"
 INSPECTOR = "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py"
 INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"
+DATA_HELPER = "/root/aoe2war_factory_data_stage_v1.py"
+DATA_HELPER_SHA = "96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d"
+DATA_STAGE_ROOT = "/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1"
+ROOT_PREFERRED_FLOOR = 7_598_334_817
+ROOT_OBSERVED_TRANSIENT = 1_497_374_720
+DATA_STAGING_DEV = 2064
+HOST_DATA_PRECHECK = """
+import os,stat
+from pathlib import Path
+m=Path("/mnt/HC_Volume_105319120")
+p=m/"aoe2war"
+root=p/"we2-factory-artifact-stage-v1"
+need=lambda cond: (_ for _ in ()).throw(SystemExit(3)) if not cond else None
+need(os.path.ismount(m))
+for x,uid,gid,mode in ((m,0,0,0o755),(p,0,0,0o755),(root,0,1000,0o1770)):
+ st=x.lstat()
+ need(stat.S_ISDIR(st.st_mode) and st.st_dev==2064 and
+      st.st_uid==uid and st.st_gid==gid and
+      stat.S_IMODE(st.st_mode)==mode and not x.is_symlink())
+print("PASS_BOUND_DATA_SOURCE_MOUNT_OWNER_STICKY_DIR")
+"""
+HOST_DATA_SYNC = """
+import os,sys,stat
+from pathlib import Path
+p=Path(sys.argv[1])
+fd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+try:
+ for name in ("runtime.tar.gz","b-linux-independent-review-v2.json"):
+  f=os.open(name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=fd)
+  try:
+   s=os.fstat(f)
+   if not(stat.S_ISREG(s.st_mode) and s.st_uid==1000 and
+          s.st_nlink==1 and s.st_dev==2064):
+    raise SystemExit(3)
+   os.fsync(f)
+  finally:os.close(f)
+ os.fsync(fd)
+finally:os.close(fd)
+print("PASS_DATA_STAGE_FILES_AND_DIRECTORY_FSYNCED")
+"""
 SSH = ["/usr/bin/ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=8"]
 # Public HTTPS blocks the Python-urllib default UA. This observer is read-only.
 PUBLIC_OBSERVER_UA = "Mozilla/5.0 (compatible; AoE2WAR-Release-Observer/1.0)"
@@ -687,10 +727,11 @@ def ssh(command_text, root=False, data=None, timeout=180):
 
 
 def root_pins():
-    actual = ssh("sha256sum " + CONTROLLER + " " + PREPARE + " " + INSPECTOR,
-                 root=True).splitlines()
+    actual = ssh("sha256sum " + CONTROLLER + " " + PREPARE + " " +
+                 INSPECTOR + " " + DATA_HELPER,root=True).splitlines()
     need([line.split()[0] for line in actual] ==
-         [CONTROLLER_SHA, PREPARE_SHA, INSPECTOR_SHA], "INSTALLED_ROOT_SOURCE_DRIFT")
+         [CONTROLLER_SHA, PREPARE_SHA, INSPECTOR_SHA, DATA_HELPER_SHA],
+         "INSTALLED_ROOT_SOURCE_DRIFT")
 
 
 def event(path, approval, name, state="pass", extra=None, at="NOW"):
@@ -736,35 +777,61 @@ def prepare_artifacts(approval, work, log, invocation=None):
 
 
 def deliver(approval, stage, proof, log, invocation=None):
-    remote = "/home/tony/.aoe2war-b-os-" + approval["sourceSha"][:12] + "-run-" + str(approval["runId"])
+    # The verified gzip source is transported to the separate DATA filesystem.
+    # No symlink, bind-mount or third runtime; ROOT contains only new extract.
+    remote=(DATA_STAGE_ROOT+"/.aoe2war-b-os-"+approval["sourceSha"][:12]+
+            "-run-"+str(approval["runId"]))
     extracted = 0
+    rounded = 0
+    symlink_rounded = 0
+    directory_names = set()
     with tarfile.open(stage / "runtime.tar.gz", "r:gz") as archive:
         for member in archive:
             extracted += member.size
             need(extracted <= 5 * 1024 ** 3, "EXTRACTION_BUDGET")
+            if member.isfile():
+                rounded += ((member.size+4095)//4096)*4096
+            elif member.issym() and len(member.linkname.encode())>60:
+                n=len(member.linkname.encode())
+                symlink_rounded += ((n+4095)//4096)*4096
+            pp=Path(member.name).parent
+            while str(pp)!=".":
+                directory_names.add(str(pp))
+                pp=pp.parent
     if invocation is not None:
         invocation.extracted_bytes = extracted
-    runtime_copied = False
+    # Stronger than old 6GiB preflight. Reserve measured natural transient
+    # separately; this is a PROVISIONAL model, not a Factory T8+PG GO proof.
+    modeled = rounded+symlink_rounded+(len(directory_names)+3)*4096
+    extract_reserve = (modeled*11+9)//10+128*1024*1024
     available = int(ssh("df -B1 --output=avail / | tail -1").strip())
+    data_available = int(ssh("df -B1 --output=avail " +
+                             "/mnt/HC_Volume_105319120 | tail -1").strip())
     incoming = proof["runtime_archive_bytes"]
-    required = max(6 * 1024 ** 3 + incoming, incoming + extracted + 1024 ** 3)
-    # An exact existing archive needs no second incoming allocation.
-    existing = ssh("if test -f " + remote + "/runtime.tar.gz; then sha256sum " +
-                   remote + "/runtime.tar.gz; fi").strip()
-    if existing:
-        need(existing.split()[0] == proof["runtime_archive_sha256"],
-             "REMOTE_EXISTING_RUNTIME_MISMATCH")
-        required = max(6 * 1024 ** 3, extracted + 1024 ** 3)
-    print(json.dumps({
-        "phase": "disk-preflight", "rootFreeBytes": available, "requiredBytes": required,
-        "incomingBytes": 0 if existing else incoming, "extractionBytes": extracted,
-        "state": "pass" if available >= required else "hold",
-    }), flush=True)
-    need(available >= required, "ROOT_HEADROOM_INCOMING_AND_EXTRACTION")
-    need(ssh(
-        "umask 077; mkdir -p -m 700 " + remote + "; test ! -L " + remote +
-        "; stat -c '%u:%g:%a' " + remote
-    ).strip() == "1000:1000:700", "REMOTE_STAGE_AUTHORITY")
+    required = max(6*1024**3,ROOT_PREFERRED_FLOOR+
+                   extract_reserve+ROOT_OBSERVED_TRANSIENT)
+    required_data = incoming*2+256*1024*1024
+    print(json.dumps({"phase":"disk-preflight-data-v1",
+       "rootFreeBytes":available,"dataFreeBytes":data_available,
+       "rootRequiredBeforeStage":required,
+       "dataRequiredBeforeTransfer":required_data,
+       "conservativeExtractReserveBytes":extract_reserve,
+       "observedUnattributedTransientReserveBytes":ROOT_OBSERVED_TRANSIENT,
+       "incomingRootArchiveBytes":0,"incomingDataArchiveBytes":incoming,
+       "state":"pass" if available>=required and
+                         data_available>=required_data else "hold"}),flush=True)
+    need(available>=required,"ROOT_DATA_EXTRACT_AND_TRANSIENT_CAPACITY")
+    need(data_available>=required_data,"DATA_ARCHIVE_TRANSFER_CAPACITY")
+    need(ssh("python3 -B -c "+shlex.quote(HOST_DATA_PRECHECK)).strip() ==
+         "PASS_BOUND_DATA_SOURCE_MOUNT_OWNER_STICKY_DIR",
+         "DATA_STAGE_TRUSTED_SOURCE_NOT_INSTALLED")
+    # Refuse root-owned/frozen stages: their exact one-use publication must
+    # resume through the original source/receipt recovery, never rsync overwrite.
+    need(ssh("umask 077; mkdir -m 700 "+remote+" 2>/dev/null || "
+             "test -d "+remote+"; test ! -L "+remote+"; "
+             "stat -c '%d:%u:%g:%a' "+remote).strip() ==
+         "2064:1000:1000:700","DATA_STAGE_UNTRUSTED_OR_ALREADY_FROZEN")
+    runtime_copied = False
     event(log, approval, "transport", "running")
     started = time.monotonic()
     for name, expected in (
@@ -804,6 +871,11 @@ def deliver(approval, stage, proof, log, invocation=None):
         ).splitlines()
         need(len(observed) == 2 and observed[0] == "1000:600:1"
              and observed[1].split()[0] == expected, "HEL1_MEMBER_VERIFICATION")
+    # The original root manifest preparer takes over only *after* the
+    # complete DATA file and independent proof have durable fsync evidence.
+    need(ssh("python3 -B -c "+shlex.quote(HOST_DATA_SYNC)+" "+
+             shlex.quote(remote)).strip() ==
+         "PASS_DATA_STAGE_FILES_AND_DIRECTORY_FSYNCED","DATA_FSYNC_NOT_DURABLE")
     elapsed = round((time.monotonic() - started) * 1000)
     event(log, approval, "T5", extra={
         "proofSha256": proof["runtime_archive_sha256"], "elapsedMs": elapsed,
@@ -981,6 +1053,11 @@ def release(approval, remote, proof, log, work, invocation=None):
     need(selected["source"] == source and selected["build"] == approval["buildId"]
          and selected["github_run_id"] == approval["runId"]
          and selected["archive_path"] == remote + "/runtime.tar.gz"
+         and selected["schema"]=="aoe2war.product.web-release-manifest.v3"
+         and selected["transport_mode"]=="data-archive-v1"
+         and selected["archive_dev"]==DATA_STAGING_DEV
+         and type(selected["archive_inode"]) is int
+         and selected["archive_inode"]>0
          and selected["archive_sha256"] == proof["runtime_archive_sha256"]
          and selected["independent_proof_sha256"] == approval["proofSha256"]
          and selected["financial_authorized"] is False, "ROOT_MANIFEST_IDENTITY")

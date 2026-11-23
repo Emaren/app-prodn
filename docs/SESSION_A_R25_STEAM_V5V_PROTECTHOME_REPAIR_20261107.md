@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-sandbox-evidence-recovery-no-funded-release"
-reviewed_at: "2026-11-15"
+reviewed_at: "2026-11-23"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -46,3 +46,7 @@ Do not mark this accepted from source CI or a root preflight. No funds moved, no
 **Physical and source boundary.** Read-only website unit inspection found `aoe2hdbets-web-prod.service` active/enabled, `MainPID=1742`, zero restarts, source working directory `/var/lib/aoe2war-web-prod-9c5fb786b066`; 3032 headers reported accepted source `9c5fb786b06636a813235bc13cb2cdffaf51ffc4` and BUILD_ID `tODeDszM3vE1kOKcQUQjZ`. The protected 3030/3033/9447 ports remained distinct and financial 8092–8095 absent. The earlier [accepted Factory/T10 and two reboot receipts in PR #1358](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435) are separate signed/root evidence; this bounded readback **did not independently hash** the current root-owned V27 executable, replay the root permit, or audit the old protected 0600 Nginx preimages.
 
 **Still not a FINANCIAL permit.** C08's subsequent governance closure is separate from November 7's historical gate state. C01/C02/C03/C05/C06/C07/C09 remain unclosed; C03 writer isolation, funded markets, WOLO transfer, backups/restores and canary authority are not established by either historic v5v or modern PRODUCT V27 Steam success. No systemd, nft, signer, database, or financial mutation was made by this review. Reviewer provenance: owner-directed independent WE1 source/host comparison via authenticated GitHub `Emaren` admin, not an additional human signature.
+
+## 2026-11-23 substantive V5V ProtectHome fail-closed re-review
+
+Reviewed full Nov7 exact failure at `ProtectHome=yes`, native permission denial, restored v5s preimage and *proposed-only* v5v root-owned substitute Nginx preimage path against unchanged tracked current PRODUCT V27 source blob **`d9bee82f972e8eba6cd219eda1f9e263ac0713a5`** at #1486 head. The v5v proposal's absolute root0400/0600 source-hash and no-capability-weakening requirements remain historical; v5v was never retroactively declared successfully installed. Current native Nov23 17:14:56 UTC `systemctl show` verifies `r25_steam_refresh_product_v27.py --phase refresh`, `Result=success`, `ExecMainStatus=0`, unchanged `ProtectHome` contract not independently re-audited, timer and NFT boot active/enabled. Current 3032 is `890d9dcc22d0`, not Nov15's `9c5fb786...` snapshot; financial ports 8092–8095 absent. These current service results do **not** replace original protected root-only source SHA/owner admission; this review neither runs a Steam firewall update nor issues root/financial authority, and old v5u/v5v attempts remain dated failures.

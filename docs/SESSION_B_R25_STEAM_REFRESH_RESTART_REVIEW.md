@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial-source-and-physical-review-not-financial-permit"
-reviewed_at: "2026-11-15"
+reviewed_at: "2026-11-23"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -84,3 +84,7 @@ Actual read-only HEL1 verification at 2026-11-15 15:43–15:45 UTC: public websi
 Installed V27 root-owned script has mode 0700; the non-root session could not independently hash it, and no noninteractive root privilege was available. The original B-signed physical acceptance, two genuine boot witnesses and T10 remain separate provenance for installed source, NFT boot recovery and root lock. This documentation review does not re-sign, reopen or independently certify root-only bytes. See [root acceptance](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435) and [Central reconciliation](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6887906213).
 
 Current verdict: v5r/v5s incident analysis remains valid as dated evidence. Accepted production uses Factory source 9c5fb786... with separate V27 Steam maintenance and financial HOLD. Any next PRODUCT website source requires new exact-source CI, B-owned signing/permit, native preflight and rollback/T10. This review grants none of those permissions.
+
+## 2026-11-23 substantive V5–V5S incident and V27 source reconciliation
+
+Read the complete original Nov7 root service failure, `/proc/<PID>/cwd` privilege regression, rollback to original v4b unit, v5r physical restore, hourly C03 observer fingerprint and v5s-only normalization exception, plus the Nov15 review. The original immutable v5/v5r/v5s unit SHA, timer evidence and 57-unit inventory records must remain dated Nov7 historical proofs, not repeatable authority, and adding CAP_SYS_PTRACE or weakening the systemd sandbox remains forbidden. The tracked current Steam controller at PR #1486 `docs/release/artifacts/r25_steam_refresh_product_v27.py` blob **`d9bee82f972e8eba6cd219eda1f9e263ac0713a5`** remains byte-identical to the cited Nov15 `f436d6f3c1...`; it preserves Steam-only UID990 scope and independently inspected modern source checks. Fresh native HEL1 at **Nov23 17:14:56 UTC** found V27 refresh `Result=success`, `ExecMainStatus=0`, active/enabled timer and NFT boot, production 3032 active at source `890d9dcc22d0`/BUILD `0NEGtfP0ieSzETh1JHGhE`, with 3030/3033/9447 protected, 8092–8095 closed. No current root-only executable byte SHA or C03 watcher snapshot was forged or re-signed; older hourly race behavior must still fail closed when its actual protected source fingerprint changes. No legacy Steam v5 branch is reinstalled, no owner host approval or financial activation follows from a DocsV2 date.
