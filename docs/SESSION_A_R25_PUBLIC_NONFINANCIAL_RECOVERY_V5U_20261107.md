@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial-emergency-website-recovery-source-only-no-funded-release"
-reviewed_at: "2026-11-15"
+reviewed_at: "2026-11-23"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -66,3 +66,7 @@ Formal funded C01-C09 all remain HOLD. No C03 global writer containment, no C06 
 **Steam is now V27, not v5u.** A fresh 18:55 UTC read-only `systemctl show aoe2war-steam-egress-refresh.service` observed `ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py --phase refresh`, `Result=success`, `ExecMainStatus=0`; the Steam refresh timer and PRODUCT nft boot unit were each `active/enabled`. The original November 7 v5s/v5u FAIL-CLOSED transition and distinct v5u design stay historical; there is no claim that v5u itself was later admitted. Root-owned V27 executable bytes and original Nginx preimages were **not** freshly hashed in this source review.
 
 **Governance-date correction.** The original final paragraph's `no C08 ratified authority` describes **November 7**. C08 governance subsequently closed, but that closure did **not** approve funding, permit transactions, unlock C01/C02/C03/C05/C06/C07/C09, establish global C03 writer containment or complete C06/C07 backup/restore. Financial service masks, private custody and the separate chain remain outside this nonfinancial public website review. No host, database, signer or production settings were changed.
+
+## 2026-11-23 substantive V5U historical-recovery and current-source review
+
+Re-read both the complete original 2026-11-07 protected Nginx rescue, six-selector topology, legacy 3030 `GET /api/bets` financial writer exception, v5s HOLD on site hash change and later Nov15 V27 supersession. The historical Nov7 Nginx SHA, root-private preimages, PIDs, old HTTP500 and v5u plans remain events of **that date**, not current Nginx source or permission to replay recovery. Current tracked V27 `docs/release/artifacts/r25_steam_refresh_product_v27.py` is unchanged blob **`d9bee82f972e8eba6cd219eda1f9e263ac0713a5`** from Nov15 source `f436d6f3c1...` to PR #1486. Native read-only HEL1 on **Nov23 17:14:56 UTC** confirms actual V27 `ExecStart` source path, one-shot Result=success/ExecMainStatus=0, active/enabled Steam timer and NFT boot, live app on protected 3032 source `890d9dcc22d0`/BUILD `0NEGtfP0ieSzETh1JHGhE`, 3030/3033/9447 active and 8092–8095 closed. We have **not** rehashed the root-only preimages, ratified v5u installation, widened service permissions or newly approved a 3030 write fallback. C08's later closure never negates the November 7 historical HOLD nor activates remaining financial gates. The original November 7/15 notes above are unchanged historical evidence.
