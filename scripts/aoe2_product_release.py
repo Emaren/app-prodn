@@ -1209,6 +1209,7 @@ OWNER_UID = 0
 BASE = Path("/var/lib/aoe2war-product-release-v1")
 MANIFEST_BASE = Path("/root/aoe2war-product-release-manifests")
 DATA_STAGE_BASE = Path("/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1")
+DATA_STAGE_DEV = 2064
 UNIT = Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
 LOCK = Path("/run/lock/aoe2war-product-release-v1.lock")
 NAMES = {
@@ -1424,7 +1425,7 @@ def bound_body(name, raw, state, journal):
         else:
             need(manifest.get("transport_mode") == "data-archive-v1"
                  and type(manifest.get("archive_dev")) is int
-                 and manifest["archive_dev"] == 2064
+                 and manifest["archive_dev"] == DATA_STAGE_DEV
                  and type(manifest.get("archive_inode")) is int
                  and manifest["archive_inode"] > 0,
                  "INVOCATION_ROOT_MANIFEST_DATA_IDENTITY")
