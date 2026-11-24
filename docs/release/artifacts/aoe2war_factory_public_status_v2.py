@@ -23,6 +23,9 @@ import urllib.request
 RELEASE_ROOT=Path("/var/lib/aoe2war-product-release-v1")
 MANIFEST_ROOT=Path("/root/aoe2war-product-release-manifests")
 DATA_VOLUME=Path("/mnt/HC_Volume_105319120")
+DATA_STAGE_BASE=DATA_VOLUME/"aoe2war/we2-factory-artifact-stage-v1"
+DATA_STAGE_DEV=2064
+DATA_STAGE_OWNER_UID=0
 UNIT=Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
 STEAM_MODULE=Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py")
 STEAM_SHA="2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"
@@ -288,6 +291,53 @@ def invocation_stamp(value):
 def invocation_number(value):
     return type(value) in (int,float) and 0<=value<=10**15
 
+def verified_data_v3_archive(manifest,source,run):
+    """Recheck the exact frozen DATA archive without trusting caller paths.
+
+    Source/run/device/inode, owner/mode, length and content SHA are all
+    required. This is read-only; a failed or raced inspection is UNKNOWN.
+    """
+    if (manifest.get("transport_mode")!="data-archive-v1" or
+        type(manifest.get("archive_dev")) is not int or
+        manifest["archive_dev"]!=DATA_STAGE_DEV or
+        type(manifest.get("archive_inode")) is not int or
+        manifest["archive_inode"]<=0):
+        return False
+    stage=DATA_STAGE_BASE/(".aoe2war-b-os-"+source[:12]+"-run-"+str(run))
+    archive=stage/"runtime.tar.gz"
+    if manifest.get("archive_path")!=str(archive):
+        return False
+    sd=stage.lstat()
+    if (stage.is_symlink() or not stat.S_ISDIR(sd.st_mode) or
+        sd.st_uid!=DATA_STAGE_OWNER_UID or sd.st_dev!=DATA_STAGE_DEV or
+        stat.S_IMODE(sd.st_mode)!=0o700):
+        return False
+    fd=os.open(archive,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        before=os.fstat(fd)
+        if (not stat.S_ISREG(before.st_mode) or
+            before.st_uid!=DATA_STAGE_OWNER_UID or before.st_nlink!=1 or
+            stat.S_IMODE(before.st_mode)!=0o400 or
+            before.st_dev!=DATA_STAGE_DEV or
+            before.st_ino!=manifest["archive_inode"] or
+            before.st_size!=manifest["archive_bytes"]):
+            return False
+        digest=hashlib.sha256()
+        while True:
+            data=os.read(fd,1024*1024)
+            if not data:break
+            digest.update(data)
+        after=os.fstat(fd)
+        return (
+            (before.st_dev,before.st_ino,before.st_size,
+             before.st_mtime_ns,before.st_ctime_ns)==
+            (after.st_dev,after.st_ino,after.st_size,
+             after.st_mtime_ns,after.st_ctime_ns) and
+            digest.hexdigest()==manifest["archive_sha256"])
+    finally:
+        os.close(fd)
+
+
 def public_deployment_invocation(directory,source,build,previous_source,previous_build,now):
     """Read the ninth receipt; never derive a deployment clock from T0.
 
@@ -360,7 +410,7 @@ def public_deployment_invocation(directory,source,build,previous_source,previous
         manifest_path=MANIFEST_ROOT/(source[:12]+"-run-"+str(run)+".json")
         if manifest_path.lstat().st_size>20000:return None
         manifest=json.loads(root_file(manifest_path,0o600))
-        if (manifest.get("schema")!="aoe2war.product.web-release-manifest.v2" or
+        if (manifest.get("schema") not in ("aoe2war.product.web-release-manifest.v2", "aoe2war.product.web-release-manifest.v3") or
             manifest.get("financial_authorized") is not False or
             manifest.get("archive_bytes")!=obj.get("runtimeArchiveBytes") or
             manifest.get("source")!=source or manifest.get("build")!=build or
@@ -368,6 +418,14 @@ def public_deployment_invocation(directory,source,build,previous_source,previous
             manifest.get("previous_source")!=previous_source or
             manifest.get("previous_build")!=previous_build or
             manifest.get("archive_sha256")!=obj.get("artifactSha256")):
+            return None
+        schema=manifest.get("schema")
+        if schema=="aoe2war.product.web-release-manifest.v3":
+            if not verified_data_v3_archive(manifest,source,run):
+                return None
+        elif any(name in manifest for name in (
+            "transport_mode","archive_dev","archive_inode","archive_path")):
+            # Never relabel a DATA release as historical ROOT V2.
             return None
         artifact=obj.get("artifactSha256")
         if not isinstance(artifact,str) or re.fullmatch(r"[a-f0-9]{64}",artifact) is None:return None

@@ -316,6 +316,13 @@ class BoundaryTests(unittest.TestCase):
         import hashlib
         root=GUARD.parent.parent
         p=policy
+        # The original V3 ROOT admission pin must remain byte-for-byte frozen.
+        # For its historic hostile fixtures, temporarily rebind only in memory.
+        frozen=p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS["scripts/aoe2_product_release.py"]
+        self.addCleanup(p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS.__setitem__,
+                        "scripts/aoe2_product_release.py", frozen)
+        p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS["scripts/aoe2_product_release.py"]=hashlib.sha256(
+            (root/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
         branch=p.EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH
         base=p.EXACT_WE2_FACTORY_V3_RECEIPT_BASE
         names=sorted(p.EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED)
@@ -370,6 +377,56 @@ class BoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_RECEIPT_SYMLINK"):
                 p.check_exact_we2_factory_v3_receipt_source(
                     dest,"Emaren/app-prodn",branch,base,names)
+
+    def test_we2_v3_public_exact_source_and_hostile_denials(self):
+        import hashlib
+        p=policy
+        root=GUARD.parent.parent
+        branch=p.EXACT_WE2_V3_PUBLIC_BRANCH
+        base=p.EXACT_WE2_V3_PUBLIC_BASE
+        changed=sorted(p.EXACT_WE2_V3_PUBLIC_CHANGED)
+        self.assertEqual(branch,"we2/factory-v3-public-publisher-source-20261124")
+        self.assertEqual(base,"d7797cf7e34b230031193c563e7505b3c2b55c64")
+        self.assertEqual(len(changed),8)
+        self.assertEqual(len(p.EXACT_WE2_V3_PUBLIC_PINS),4)
+        for name,sha in p.EXACT_WE2_V3_PUBLIC_PINS.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
+        p.check_exact_we2_v3_public_source(
+            root,"Emaren/app-prodn",branch,base,changed)
+        with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+            for name in p.EXACT_WE2_V3_PUBLIC_PINS:
+                self.assertEqual(p.authorize_changed_source(root,base,name),name)
+        for repo,head,files in (
+            ("Emaren/other",base,changed),
+            ("Emaren/app-prodn","0"*40,changed),
+            ("Emaren/app-prodn",base,changed[:-1]),
+            ("Emaren/app-prodn",base,changed+[changed[0]]),
+            ("Emaren/app-prodn",base,changed+["scripts/unreviewed.py"]),
+        ):
+            with self.assertRaises(policy.BoundaryHold):
+                p.check_exact_we2_v3_public_source(root,repo,branch,head,files)
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=Path(tmp)
+            for name in p.EXACT_WE2_V3_PUBLIC_PINS:
+                target=dest/name
+                target.parent.mkdir(exist_ok=True,parents=True)
+                target.write_bytes((root/name).read_bytes())
+            p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            victim=dest/"docs/release/artifacts/aoe2war_factory_public_status_v2.py"
+            source=victim.read_bytes()
+            victim.write_bytes(source+b"\\n# tampered")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_SHA"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            victim.write_bytes(source)
+            hardlink=dest/"hardlink"
+            os.link(victim,hardlink)
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_FILE_AUTHORITY"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            hardlink.unlink()
+            victim.unlink()
+            victim.symlink_to(root/"docs/release/artifacts/aoe2war_factory_public_status_v2.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_SYMLINK"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
 
     def test_we2_storage_exact_root_source_admission_and_negative_cases(self):
         import hashlib
