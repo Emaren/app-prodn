@@ -118,6 +118,7 @@ class WatcherV3SQLPG(unittest.TestCase):
                        "-o",f"-h '' -k {self.sock} -p {PORT} -c shared_buffers=32MB -c fsync=on -c max_connections=16",
                        "-w","start"], timeout=60)
         self.started = True
+        self.assertEqual(self.query("SELECT current_setting('server_version_num')::int / 10000;").stdout.strip(), "16")
 
     def tearDown(self):
         if getattr(self,"started",False):
@@ -127,7 +128,7 @@ class WatcherV3SQLPG(unittest.TestCase):
 
     def run_proc(self, cmd, input=None, timeout=180, check=True):
         proc=subprocess.run(cmd,input=input,text=True,capture_output=True,timeout=timeout,
-                            env={**os.environ,"PGPASSWORD":""})
+                            env={k:v for k,v in os.environ.items() if not k.startswith("PG")})
         if check and proc.returncode:
             raise AssertionError(f"COMMAND FAILED {cmd[0]} exit={proc.returncode} stdout={proc.stdout[-2000:]} stderr={proc.stderr[-3000:]}")
         return proc
@@ -158,6 +159,97 @@ class WatcherV3SQLPG(unittest.TestCase):
           "sort_nodes":nodes.count("Sort"),
           "node_count":len(nodes),
         }
+
+    def catalog_snapshot(self):
+        return self.query("""
+SET search_path = pg_catalog;
+SELECT jsonb_build_object(
+ 'view', (SELECT to_jsonb(c) - 'relfilenode' - 'relpages' - 'reltuples' - 'relacl'
+          || jsonb_build_object('acl_is_null',c.relacl IS NULL,'acl',
+              (SELECT jsonb_agg(to_jsonb(x) ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable)
+               FROM aclexplode(c.relacl) x))
+          FROM pg_class c WHERE oid='aoe2war_public_v3.current_watcher_account_states'::regclass),
+ 'definition', pg_get_viewdef('aoe2war_public_v3.current_watcher_account_states'::regclass, false),
+ 'schema', (SELECT to_jsonb(n) - 'nspacl' || jsonb_build_object('acl_is_null',n.nspacl IS NULL,'acl',
+           (SELECT jsonb_agg(to_jsonb(x) ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable)
+            FROM aclexplode(n.nspacl) x)) FROM pg_namespace n WHERE nspname='aoe2war_public_v3'),
+ 'dependencies', (SELECT jsonb_agg(to_jsonb(d) ORDER BY d.refclassid,d.refobjid,d.refobjsubid,d.deptype)
+                  FROM pg_depend d JOIN pg_rewrite r ON d.objid=r.oid
+                  WHERE d.classid='pg_rewrite'::regclass
+                  AND r.ev_class='aoe2war_public_v3.current_watcher_account_states'::regclass),
+ 'columns', (SELECT jsonb_agg(to_jsonb(a) - 'attacl' || jsonb_build_object('acl_is_null',a.attacl IS NULL,'acl',
+               (SELECT jsonb_agg(to_jsonb(x) ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable)
+                FROM aclexplode(a.attacl) x)) ORDER BY attnum) FROM pg_attribute a
+             WHERE attrelid='aoe2war_public_v3.current_watcher_account_states'::regclass AND attnum>0)
+);
+""").stdout.strip()
+
+    def test_same_view_replacement_restore_and_privilege_isolation(self):
+        self.query(seed_sql())
+        self.query(BASE.read_text())
+        self.query("""
+CREATE ROLE fixture_other NOLOGIN;
+CREATE SCHEMA fixture_financial;
+CREATE TABLE fixture_financial.ledger (id integer, amount numeric);
+REVOKE ALL ON SCHEMA fixture_financial FROM PUBLIC;
+REVOKE ALL ON fixture_financial.ledger FROM PUBLIC;
+GRANT USAGE ON SCHEMA aoe2war_public_v3 TO fixture_other;
+GRANT SELECT ON aoe2war_public_v3.current_watcher_account_states TO fixture_other;
+""")
+        raw_before=self.catalog_snapshot()
+        raw_state=json.loads(raw_before)
+        raw_definition=raw_state["definition"]
+        options=raw_state["view"]["reloptions"] or []
+        self.assertEqual(options,["security_barrier=true"])
+        # Establish PostgreSQL's own parse/deparse fixed point on the original
+        # expression; do not normalize SQL text or discard dependency identities.
+        restore="SET search_path=pg_catalog; CREATE OR REPLACE VIEW "+VIEW+" WITH (security_barrier=true) AS "+raw_definition
+        self.query(restore)
+        before=self.catalog_snapshot()
+        state=json.loads(before)
+        for key in raw_state:
+            if key != "definition":
+                self.assertEqual(raw_state[key],state[key],key)
+        self.query(restore)
+        self.assertEqual(before,self.catalog_snapshot())
+        definition=raw_definition
+        acl_sql="""SELECT jsonb_build_array(
+          (SELECT jsonb_agg(to_jsonb(c) ORDER BY oid) FROM pg_class c
+           WHERE relnamespace='fixture_financial'::regnamespace),
+          (SELECT to_jsonb(n) FROM pg_namespace n WHERE nspname='fixture_financial'),
+          (SELECT jsonb_agg(to_jsonb(m) ORDER BY roleid,member) FROM pg_auth_members m),
+          has_schema_privilege('aoe2war_web_prod','fixture_financial','USAGE'),
+          has_table_privilege('aoe2war_web_prod','fixture_financial.ledger','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'));"""
+        finance=self.query(acl_sql).stdout
+        original=self.public(f"SELECT {COLS} FROM {VIEW}").stdout
+        candidate=CANDIDATE.read_text()
+        self.query(candidate)
+        after=json.loads(self.catalog_snapshot())
+        for key in ("view","schema","columns"):
+            self.assertEqual(state[key],after[key],key)
+        self.assertEqual(finance,self.query(acl_sql).stdout)
+        self.assertEqual(original,self.public(f"SELECT {COLS} FROM {VIEW}").stdout)
+        self.assertEqual(self.query(f"""SELECT EXISTS (
+          SELECT 1 FROM pg_depend d JOIN pg_rewrite r ON r.oid=d.objid
+          WHERE d.classid='pg_rewrite'::regclass AND d.refclassid='pg_class'::regclass
+          AND r.ev_class='{VIEW}'::regclass AND d.refobjid='public.replay_parse_attempts'::regclass);""").stdout.strip(),"t")
+        # Restore actual captured definition, not a guessed historical install script.
+        options=state["view"]["reloptions"] or []
+        self.assertIn("security_barrier=true",options)
+        self.assertTrue(all(x in ("security_barrier=true","security_barrier=false","security_invoker=true","security_invoker=false","check_option=local","check_option=cascaded") for x in options))
+        option_clause=" WITH ("+",".join(options)+")" if options else ""
+        self.query("SET search_path=pg_catalog; CREATE OR REPLACE VIEW "+VIEW+option_clause+" AS "+definition)
+        self.assertEqual(before,self.catalog_snapshot())
+        self.assertEqual(finance,self.query(acl_sql).stdout)
+        for grant in ("SELECT(evidence)","UPDATE(evidence)"):
+            self.query(f"GRANT {grant} ON public.replay_parse_attempts TO aoe2war_web_prod;")
+            denied=self.query(candidate,check=False)
+            self.assertNotEqual(denied.returncode,0)
+            self.assertIn("PUBLIC_WATCHER_RAW_EVIDENCE_AUTHORITY_DRIFT",denied.stderr)
+            self.assertEqual(before,self.catalog_snapshot())
+            self.query(f"REVOKE {grant} ON public.replay_parse_attempts FROM aoe2war_web_prod;")
+        self.assertEqual(finance,self.query(acl_sql).stdout)
+        print("PASS_SAME_VIEW_REPLACEMENT_CAPTURED_INVERSE_AND_ACL_ISOLATION",flush=True)
 
     def test_full_public_view_parity_and_temp_io(self):
         original=BASE.read_bytes()
