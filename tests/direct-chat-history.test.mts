@@ -304,7 +304,7 @@ test("restricted inbox live events do not attempt legacy delivery writes or emit
     const source = readFileSync(new URL("../components/contact/" + path, import.meta.url), "utf8");
     assert.doesNotMatch(source, /if \(payload\.type === "connected"\) return/);
   }
-  assert.match(route, /multipart\/form-data[\s\S]*?Your message was not sent\.[\s\S]*?status: 415/);
+  assert.match(route, /multipart\/form-data[\s\S]*?readBoundedDirectImage\(request\)[\s\S]*?callSocialImageWriter\(token,image\)/);
 });
 
 

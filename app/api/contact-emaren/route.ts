@@ -26,9 +26,10 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
-  callSocialWriter, readBoundedSocialJson, signedSocialCookie,
+  callSocialWriter, callSocialImageWriter, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
+import { readBoundedDirectImage } from "@/lib/directImageIngress";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
 import { normalizeReactionEmoji } from "@/lib/reactionEmoji";
@@ -219,7 +220,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Isolated R25 web role has no general-purpose SQL DML/sequence authority.
   // The separate, independently reviewed UID/PG-role social writer verifies
-  // the existing signed Steam session again and permits only text-only sends.
+  // the existing signed Steam session again; images use a distinct bounded operation.
   if (usesNonfinancialProductionAuth()) {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
@@ -227,15 +228,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Same-origin request required." }, { status: 403 });
     const token = signedSocialCookie(request);
     if (!token) return NextResponse.json({ detail: "Signed session required." }, { status: 401 });
+    let result: {status:number;body:Record<string,unknown>};
     if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "multipart/form-data") {
-      return NextResponse.json({ detail: "Image and voice attachments are not yet enabled by the production message writer. Your message was not sent." }, { status: 415 });
+      let image;
+      try { image=await readBoundedDirectImage(request); }
+      catch(error) {
+        const oversized=error instanceof Error && error.message==="IMAGE_TOO_LARGE";
+        return NextResponse.json({detail:oversized?"Image is too large.":"Only bounded PNG, JPEG or WebP images are supported."},{status:oversized?413:400});
+      }
+      if (isChallengeInboxNoticeBody(String(image.body))) return NextResponse.json({detail:"Reserved message formatting."},{status:400});
+      result=await callSocialImageWriter(token,image);
+    } else {
+      let action: unknown;
+      try { action = await readBoundedSocialJson(request); }
+      catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
+      if (!action || typeof action !== "object" || Array.isArray(action))
+        return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
+      result=await callSocialWriter("direct", token, action as Record<string,unknown>);
     }
-    let action: unknown;
-    try { action = await readBoundedSocialJson(request); }
-    catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
-    if (!action || typeof action !== "object" || Array.isArray(action))
-      return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
-    const result = await callSocialWriter("direct", token, action as Record<string,unknown>);
     if (result.status !== 201) return NextResponse.json(result.body, { status: result.status });
     const targetUid = result.body.targetUid;
     const messageId = result.body.messageId;

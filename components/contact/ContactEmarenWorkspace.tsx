@@ -690,6 +690,7 @@ export default function ContactEmarenWorkspace({
     }
   }
 
+  const mediaRetryRef = useRef<{file:File;body:string;target:string|null;reply:number|null;key:string}|null>(null);
   async function handleSend() {
     if (!body.trim() && !attachment) return;
 
@@ -732,6 +733,14 @@ export default function ContactEmarenWorkspace({
       }
       if (replyingTo) formData.set("replyToMessageId", String(replyingTo.messageId));
       if (attachment) {
+        const target=selectedTargetUid ?? null;
+        const reply=replyingTo?.messageId ?? null;
+        const previous=mediaRetryRef.current;
+        if(!previous || previous.file!==attachment.file || previous.body!==body ||
+            previous.target!==target || previous.reply!==reply) {
+          mediaRetryRef.current={file:attachment.file,body,target,reply,key:crypto.randomUUID().replace(/-/g,"")};
+        }
+        formData.set("requestKey",mediaRetryRef.current!.key);
         formData.set("attachment", attachment.file);
         if (attachment.durationSeconds) {
           formData.set("attachmentDurationSeconds", String(attachment.durationSeconds));
@@ -760,6 +769,9 @@ export default function ContactEmarenWorkspace({
         throw new Error(readDetail(payload) || "Message failed.");
       }
       if ("persisted" in payload && payload.persisted === true) {
+        mediaRetryRef.current=null;
+        setPanelData(current=>current?{...current,messages:current.messages.filter(message=>message.kind!=="text"||message.optimisticKey!==optimisticKey)}:current);
+        void refreshPanel(undefined,{silent:true});
         setBody("");
         setReplyingTo(null);
         clearAttachment();
@@ -767,6 +779,7 @@ export default function ContactEmarenWorkspace({
         return;
       }
 
+      mediaRetryRef.current=null;
       void sendTypingState(false);
       setBody("");
       setReplyingTo(null);

@@ -7,6 +7,7 @@ import os from "node:os";
 import pg from "pg";
 import { verifySocialSignedSession } from "../lib/socialWriterSession.mjs";
 import { executeSocialTextWrite } from "../lib/socialWriterCore.mjs";
+import { executeSocialImageWrite, MAX_IMAGE_RPC_BYTES } from "../lib/socialImageWriterCore.mjs";
 
 const SOCKET = "/run/aoe2war-social-writer/social.sock";
 const ROLE = "aoe2war_social_writer";
@@ -39,14 +40,14 @@ function requireEnvironment() {
   if (fs.existsSync(SOCKET)) throw new Error("SOCIAL_SOCKET_ALREADY_EXISTS");
   return {raw, secret};
 }
-async function readBoundedJson(req) {
+async function readBoundedJson(req, limit=MAX_BYTES) {
   const length = req.headers["content-length"];
   if (typeof length !== "string" || !/^\d+$/.test(length) ||
-      Number(length) < 2 || Number(length) > MAX_BYTES) throw new Error("INVALID_LENGTH");
+      Number(length) < 2 || Number(length) > limit) throw new Error("INVALID_LENGTH");
   const chunks=[];let bytes=0;
   for await (const chunk of req) {
     bytes+=chunk.length;
-    if (bytes>MAX_BYTES) throw new Error("OVERSIZE_SOCIAL_REQUEST");
+    if (bytes>limit) throw new Error("OVERSIZE_SOCIAL_REQUEST");
     chunks.push(chunk);
   }
   if (bytes!==Number(length)) throw new Error("LENGTH_MISMATCH");
@@ -57,17 +58,46 @@ const pool = new pg.Pool({connectionString:raw,max:2,idleTimeoutMillis:1000,
   connectionTimeoutMillis:1400,query_timeout:1750,statement_timeout:1750,
   application_name:"aoe2war_social_text_writer"});
 pool.on("error",()=>{});
+let imageActive=false;
+async function verifyImage(bytes,mime) {
+  const {default:sharp}=await import("sharp");
+  const image=sharp(bytes,{limitInputPixels:16_000_000,failOn:"warning",animated:false});
+  const metadata=await image.metadata();
+  const expected={"image/png":"png","image/jpeg":"jpeg","image/webp":"webp"}[mime];
+  if(metadata.format!==expected || !metadata.width || !metadata.height ||
+      (metadata.pages??1)!==1 || metadata.width*metadata.height>16_000_000) return false;
+  await image.raw().toBuffer(); // Decode the entire bounded raster, not merely magic bytes.
+  return true;
+}
 const server = http.createServer(async(req,res)=>{
   res.setHeader("Cache-Control","no-store, max-age=0");
   res.setHeader("Content-Type","application/json; charset=utf-8");
   res.setHeader("X-Content-Type-Options","nosniff");
   const finish=(status,body)=>{if(!res.writableEnded){res.writeHead(status);res.end(JSON.stringify(body));}};
   const scope=req.url==="/v1/clan/text"?"clan":req.url==="/v1/direct/text"?"direct":req.url==="/v1/lobby/text"?"lobby":null;
-  if(req.method!=="POST"||!scope){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
+  const isImage=req.url==="/v1/direct/image";
+  if(req.method!=="POST"||(!scope&&!isImage)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
   if(req.headers["content-type"]!=="application/json"){finish(415,{detail:"JSON_ONLY"});return;}
   const token=req.headers["x-social-signed-session"];
   if(typeof token!=="string"||token.length<32||token.length>SESSION_MAX_BYTES){
     finish(401,{detail:"SIGNED_SESSION_REQUIRED"});return;
+  }
+  if(isImage){
+    if(!process.env.SOCIAL_DIRECT_IMAGE_ROOT){finish(503,{detail:"SOCIAL_IMAGE_NOT_ADMITTED"});return;}
+    if(imageActive){res.setHeader("Connection","close");finish(429,{detail:"SOCIAL_IMAGE_BUSY_RETRY_SAME_KEY"});return;}
+    // Admit the signed session before accepting the larger body.
+    try{await verifySocialSignedSession(token,secret);}catch{finish(401,{detail:"INVALID_SIGNED_SESSION"});return;}
+    imageActive=true;
+    try{
+      let input;
+      try{input=await readBoundedJson(req,MAX_IMAGE_RPC_BYTES);}catch{finish(400,{detail:"INVALID_SOCIAL_IMAGE_JSON"});return;}
+      const result=await executeSocialImageWrite({pool,sessionToken:token,input,
+        root:process.env.SOCIAL_DIRECT_IMAGE_ROOT,verifyImage,
+        verifySession:(t)=>verifySocialSignedSession(t,secret),
+        onError:(code)=>process.stderr.write("SOCIAL_IMAGE_FAIL_CLOSED code="+code+"\n")});
+      finish(result.status,result.body);
+    }finally{imageActive=false;}
+    return;
   }
   let input;
   try{input=await readBoundedJson(req);}catch{finish(400,{detail:"INVALID_SOCIAL_JSON"});return;}
