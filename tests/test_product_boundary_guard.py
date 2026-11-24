@@ -908,6 +908,9 @@ class BoundaryTests(unittest.TestCase):
                 out = root / name
                 out.parent.mkdir(parents=True, exist_ok=True)
                 out.write_bytes((source / name).read_bytes())
+            regression = root / policy.EXACT_B_WATCHER_REGRESSION
+            original = (source / policy.EXACT_B_WATCHER_REGRESSION).read_bytes()
+            regression.write_bytes(original)
             rows = ["M\t" + name for name in sorted(policy.EXACT_B_WATCHER_CHANGED)]
             def check(data, mode="100644 abc 0\tfile"):
                 def fake_git(_, *args):
@@ -915,6 +918,10 @@ class BoundaryTests(unittest.TestCase):
                 with mock.patch.object(policy, "git", side_effect=fake_git):
                     return policy.exact_b_watcher_changes(root, policy.EXACT_B_WATCHER_BASE)
             self.assertEqual(set(check(rows)), policy.EXACT_B_WATCHER_CHANGED)
+            regression.write_bytes(original + b"\n")
+            with self.assertRaisesRegex(policy.BoundaryHold, "REGRESSION_SHA"):
+                check(rows)
+            regression.write_bytes(original)
             for bad in (rows[:-1], rows + ["A\tconfig/third.sql"],
                         rows + ["D\tlib/other.ts"], rows + [rows[0]],
                         ["D" + rows[0][1:]] + rows[1:],

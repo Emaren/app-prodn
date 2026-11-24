@@ -795,7 +795,11 @@ EXACT_B_WATCHER_SQL = {
     "tests/fixtures/current-watcher-v3-original.sql":
         (12687, "d97dc6cc41cd33a86f5a8e0529593ae99b905535cf626f4775b5be4264d1236d"),
 }
+# Exact WE3 legacy regression correction; this is not another SQL admission.
+EXACT_B_WATCHER_REGRESSION = "tests/test_r25_public_watcher_source_parity.py"
+EXACT_B_WATCHER_REGRESSION_SHA256 = "d47078b09e710ee7b36354c71d1cef46c4febcac63fc8a67dd0b758e58629c84"
 EXACT_B_WATCHER_CHANGED = frozenset(EXACT_B_WATCHER_SQL) | {
+    EXACT_B_WATCHER_REGRESSION,
     "lib/currentWatcherAccountState.ts",
     "lib/currentWatcherAccountStateRefreshGate.ts",
     "tests/current-watcher-v3-refresh-retry.test.mts",
@@ -890,6 +894,14 @@ def exact_b_watcher_changes(checkout: Path, base: str) -> list[str]:
             exact_b_watcher_blob(checkout, raw)
         else:
             authorize_changed_source(checkout, base, raw)
+        if raw == EXACT_B_WATCHER_REGRESSION:
+            target = checkout
+            for part in relative_path(raw).parts:
+                target = target / part
+                if target.is_symlink():
+                    raise BoundaryHold("B_WATCHER_REGRESSION_SYMLINK")
+            if hashlib.sha256(target.read_bytes()).hexdigest() != EXACT_B_WATCHER_REGRESSION_SHA256:
+                raise BoundaryHold("B_WATCHER_REGRESSION_SHA")
         mode = git(checkout, "ls-files", "--stage", "--", raw)
         if not mode.startswith("100644 ") or len(mode.splitlines()) != 1:
             raise BoundaryHold("B_WATCHER_INDEX_MODE")
