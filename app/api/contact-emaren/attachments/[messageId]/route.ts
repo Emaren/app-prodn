@@ -126,13 +126,19 @@ export async function GET(
       },
     });
 
-    if (!message?.conversation.participants.some(participant=>participant.userId===viewer.id) ||
-        !message.attachmentDataUrl || !message.attachmentKind) {
+    if (!message?.attachmentDataUrl || !message.attachmentKind) {
       return NextResponse.json({ detail: "Attachment not found" }, { status: 404 });
     }
 
     if (message.attachmentKind !== "image" && message.attachmentKind !== "audio") {
       return NextResponse.json({ detail: "Attachment type is unsupported" }, { status: 415 });
+    }
+
+    const isParticipant = message.conversation.participants.some(
+      (participant) => participant.userId === viewer.id
+    );
+    if (!isParticipant) {
+      return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
     }
 
     const decoded = await loadDirectMessageAttachmentContent(message.attachmentDataUrl);
@@ -152,9 +158,7 @@ export async function GET(
           mimeType: responseMimeType,
           kind: message.attachmentKind,
         }),
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options":"nosniff",
-        "Content-Security-Policy":"sandbox",
+        "Cache-Control": "private, max-age=300",
       },
     });
   } catch (error) {
