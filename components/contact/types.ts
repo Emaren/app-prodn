@@ -157,6 +157,7 @@ export type ContactInboxPayload = {
   activeChallenges: ScheduledMatchTile[];
   activeChallenge: ScheduledMatchTile | null;
   messages: ContactInboxMessage[];
+  syncMarker?: string;
   messagePage: {
     hasMore: boolean;
     beforeMessageId: number | null;

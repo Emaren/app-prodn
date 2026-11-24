@@ -18,6 +18,7 @@ import type {
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
+import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import {
   MAX_DIRECT_IMAGE_BYTES,
@@ -200,6 +201,7 @@ export default function ContactEmarenWorkspace({
   const panelRequestIdRef = useRef(0);
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
+  const syncBaselineRef=useRef<DirectSyncBaseline|null>(null);
   const summaryAbortRef = useRef<AbortController | null>(null);
   const forcedChallengeTileRef = useRef<ContactInboxPayload["activeChallenge"]>(null);
 
@@ -340,7 +342,7 @@ export default function ContactEmarenWorkspace({
   );
 
   const refreshPanel = useCallback(
-    async (targetUid?: string | null, options?: { silent?: boolean }) => {
+    async (targetUid?: string | null, options?: { silent?: boolean; probe?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
       const nextTargetUid = targetUid ?? selectedTargetUidRef.current ?? undefined;
@@ -358,6 +360,8 @@ export default function ContactEmarenWorkspace({
         setError(null);
       }
       try {
+        if(options?.probe && !forcedChallengeId && await directInboxUnchanged(syncBaselineRef.current,uid,nextTargetUid,controller.signal))return null;
+        if(controller.signal.aborted || panelRequestIdRef.current!==requestId)return null;
         const payload = await requestInbox(
           nextTargetUid,
           false,
@@ -366,6 +370,7 @@ export default function ContactEmarenWorkspace({
           controller.signal
         );
         if (panelRequestIdRef.current !== requestId) return null;
+        syncBaselineRef.current=directSyncBaseline(payload);
         return applyInboxPayload(payload, { mode: "refresh" });
       } catch (fetchError) {
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
@@ -433,22 +438,23 @@ export default function ContactEmarenWorkspace({
     if (!uid) return;
     // SSE is process-local; a healthy connection can still miss another
     // worker's commit. Reconcile the visible thread without overlapping reads.
-    const reconcile = () => {
+    const reconcile = (probe=false) => {
       if (document.visibilityState !== "visible") return;
       if (selectedTargetUidRef.current) {
-        if (!panelAbortRef.current) void refreshPanel(undefined, { silent: true });
+        if (!panelAbortRef.current) void refreshPanel(undefined, { silent: true, probe });
       } else if (!summaryAbortRef.current) {
         void refreshSummary(undefined, { silent: true });
       }
     };
-    const interval = window.setInterval(reconcile, selectedTargetUid ? 5_000 : 60_000);
-    document.addEventListener("visibilitychange", reconcile);
-    window.addEventListener("online", reconcile);
+    const interval = window.setInterval(() => reconcile(true), selectedTargetUid ? 5_000 : 60_000);
+    const reconnect=()=>reconcile(false);
+    document.addEventListener("visibilitychange", reconnect);
+    window.addEventListener("online", reconnect);
 
     return () => {
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", reconcile);
-      window.removeEventListener("online", reconcile);
+      document.removeEventListener("visibilitychange", reconnect);
+      window.removeEventListener("online", reconnect);
     };
   }, [refreshPanel, refreshSummary, selectedTargetUid, uid]);
 

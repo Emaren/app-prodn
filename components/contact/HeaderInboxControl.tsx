@@ -19,6 +19,7 @@ import type {
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
+import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 
 const ContactInboxPanel = dynamic(
   () => import("@/components/contact/ContactInboxPanel"),
@@ -163,6 +164,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const panelRequestIdRef = useRef(0);
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
+  const syncBaselineRef=useRef<DirectSyncBaseline|null>(null);
   const draftHydratedTargetRef = useRef<string | null>(null);
 
   const updateDesktopAnchor = useCallback(() => {
@@ -280,7 +282,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   }, [applySelectedTargetUid, uid]);
 
   const refreshPanel = useCallback(
-    async (targetUid?: string | null, options?: { silent?: boolean }) => {
+    async (targetUid?: string | null, options?: { silent?: boolean; probe?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
       const requestedTargetUid = targetUid ?? selectedTargetUidRef.current ?? null;
@@ -302,6 +304,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       }
 
       try {
+        if(options?.probe && await directInboxUnchanged(syncBaselineRef.current,uid,requestedTargetUid,controller.signal))return null;
+        if(controller.signal.aborted || panelRequestIdRef.current!==requestId)return null;
         const payload = await requestInbox(
           requestedTargetUid ?? undefined,
           false,
@@ -311,6 +315,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         if (panelRequestIdRef.current !== requestId) {
           return null;
         }
+        syncBaselineRef.current=directSyncBaseline(payload);
         applyInboxPayload(payload);
         return payload;
       } catch (fetchError) {
@@ -347,18 +352,19 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
     void refreshPanel(selectedTargetUidRef.current);
     // Foreground readback also covers cross-worker commits and missed SSE.
-    const reconcile = () => {
+    const reconcile = (probe=false) => {
       if (document.visibilityState !== "visible" || panelAbortRef.current) return;
-      void refreshPanel(undefined, { silent: true });
+      void refreshPanel(undefined, { silent: true, probe });
     };
-    const interval = window.setInterval(reconcile, 5_000);
-    document.addEventListener("visibilitychange", reconcile);
-    window.addEventListener("online", reconcile);
+    const interval = window.setInterval(() => reconcile(true), 5_000);
+    const reconnect=()=>reconcile(false);
+    document.addEventListener("visibilitychange", reconnect);
+    window.addEventListener("online", reconnect);
 
     return () => {
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", reconcile);
-      window.removeEventListener("online", reconcile);
+      document.removeEventListener("visibilitychange", reconnect);
+      window.removeEventListener("online", reconnect);
     };
   }, [open, refreshPanel, uid]);
 

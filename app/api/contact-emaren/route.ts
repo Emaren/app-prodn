@@ -24,7 +24,8 @@ import { recordUserActivity } from "@/lib/userExperience";
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
-import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { usesNonfinancialProductionAuth, NONFINANCIAL_PRODUCTION_PROFILE } from "@/lib/productionAuth";
+import {readDirectInboxSyncMarker} from "@/lib/directInboxSync";
 import {
   callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
@@ -193,6 +194,18 @@ export async function GET(request: NextRequest) {
     }
 
     const prisma = getPrisma();
+    if(request.nextUrl.searchParams.has("sync")){
+      const p=request.nextUrl.searchParams;
+      const targets=p.getAll("user");
+      const noStore={"Cache-Control":"private, no-store"};
+      if(process.env.AOE2WAR_RUNTIME_PROFILE!==NONFINANCIAL_PRODUCTION_PROFILE ||
+         p.getAll("sync").length!==1 || p.get("sync")!=="1" || targets.length!==1 ||
+         [...p.keys()].some(key=>key!=="sync"&&key!=="user"))
+        return NextResponse.json({detail:"Sync unavailable"},{status:400,headers:noStore});
+      const syncMarker=await readDirectInboxSyncMarker(prisma,sessionUid,targets[0]);
+      if(!syncMarker)return NextResponse.json({detail:"Sync unavailable"},{status:404,headers:noStore});
+      return NextResponse.json({syncMarker},{headers:noStore});
+    }
     const summaryOnly = request.nextUrl.searchParams.get("summary") === "1";
     const targetUid = request.nextUrl.searchParams.get("user");
     const beforeMessageId = Number(request.nextUrl.searchParams.get("before")) || null;
