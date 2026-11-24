@@ -9,6 +9,8 @@ import {
   normalizeLeaderboardDisplayName,
   normalizeLeaderboardSteamId,
 } from "@/lib/leaderboardIdentity";
+
+import { createCurrentWatcherAccountStateRefreshGate } from "@/lib/currentWatcherAccountStateRefreshGate";
 /*
  * Receipt v1 is a frozen authority contract. An Engine Room parser upgrade
  * must not revoke or reinterpret an already accepted current-state snapshot.
@@ -44,21 +46,17 @@ type RawCurrentWatcherAccountState = {
   steamDmObservedAt: Date | null;
 };
 
-type CurrentWatcherAccountStateCache = {
-  expiresAt: number;
-  value: CurrentWatcherAccountState[];
-};
+const CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS = 15_000;
+const CURRENT_WATCHER_ACCOUNT_STATE_FAILURE_COOLDOWN_MS = 30_000;
 
-const CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS =
-  15_000;
-
-let currentWatcherAccountStateCache:
-  CurrentWatcherAccountStateCache | null =
-    null;
-
-let currentWatcherAccountStatePromise:
-  Promise<CurrentWatcherAccountState[]> | null =
-    null;
+const watcherRefreshGate =
+  createCurrentWatcherAccountStateRefreshGate<CurrentWatcherAccountState>({
+    successTtlMs: CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS,
+    failureCooldownMs: CURRENT_WATCHER_ACCOUNT_STATE_FAILURE_COOLDOWN_MS,
+    onBackgroundError(error) {
+      console.warn("Current Watcher account-state background refresh failed:", error);
+    },
+  });
 
 function iso(
   value: Date | null,
@@ -270,10 +268,7 @@ async function loadCurrentWatcherAccountStatesFresh(
             AND player->>'steam_dm_rating' ~ '^[0-9]{1,10}$'
             THEN CASE WHEN (player->>'steam_dm_rating')::numeric <= 2147483647
               THEN (player->>'steam_dm_rating')::integer END
-          END AS steam_dm_rating,
-          COUNT(*) OVER (
-            PARTITION BY a.attempt_id, player->>'steam_id'
-          ) AS identity_count
+          END AS steam_dm_rating
         FROM eligible_attempts a
         CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(a.observation->'players') = 'array'
@@ -283,7 +278,7 @@ async function loadCurrentWatcherAccountStatesFresh(
       valid_observations AS (
         SELECT DISTINCT ON (steam_id, replay_hash) *
         FROM raw_observations
-        WHERE steam_id ~ '^[0-9]{17}$' AND identity_count = 1
+        WHERE steam_id ~ '^[0-9]{17}$'
         ORDER BY steam_id, replay_hash, attempt_id ASC
       ),
 
@@ -436,77 +431,14 @@ async function loadCurrentWatcherAccountStatesFresh(
   return result;
 }
 
-function startCurrentWatcherAccountStateRefresh(
-  prisma: PrismaClient,
-): Promise<CurrentWatcherAccountState[]> {
-  if (currentWatcherAccountStatePromise) {
-    return currentWatcherAccountStatePromise;
-  }
-
-  const run =
-    loadCurrentWatcherAccountStatesFresh(
-      prisma,
-    )
-      .then((value) => {
-        currentWatcherAccountStateCache = {
-          expiresAt:
-            Date.now() +
-            CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS,
-          value,
-        };
-        return value;
-      })
-      .finally(() => {
-        if (
-          currentWatcherAccountStatePromise ===
-          run
-        ) {
-          currentWatcherAccountStatePromise =
-            null;
-        }
-      });
-
-  currentWatcherAccountStatePromise =
-    run;
-  return run;
-}
-
 export async function loadCurrentWatcherAccountStates(
   prisma: PrismaClient,
 ): Promise<CurrentWatcherAccountState[]> {
-  const cached =
-    currentWatcherAccountStateCache;
-
-  if (cached) {
-    if (
-      cached.expiresAt <= Date.now() &&
-      !currentWatcherAccountStatePromise
-    ) {
-      /*
-       * Current Watcher ratings are a presentation overlay. Once one good
-       * snapshot exists, an expensive exact-Steam history refresh must never
-       * turn an unrelated page navigation into a cold request cliff.
-       */
-      void startCurrentWatcherAccountStateRefresh(
-        prisma,
-      ).catch((error) => {
-        console.warn(
-          "Current Watcher account-state background refresh failed:",
-          error,
-        );
-      });
-    }
-
-    return cached.value;
-  }
-
-  // Only the first process-local population waits for the historical scan.
-  return startCurrentWatcherAccountStateRefresh(
-    prisma,
+  return watcherRefreshGate.read(
+    () => loadCurrentWatcherAccountStatesFresh(prisma),
   );
 }
 
 export function invalidateCurrentWatcherAccountStateCache() {
-  currentWatcherAccountStateCache = null;
-  currentWatcherAccountStatePromise = null;
+  watcherRefreshGate.invalidate();
 }
