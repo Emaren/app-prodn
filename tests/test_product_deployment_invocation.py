@@ -188,7 +188,7 @@ class InvocationClockTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "PATH_SCOPE"):
                 R.receipt_location(prefix + wrong)
 
-    def root_body_fixture(self, body):
+    def root_body_fixture(self, body, v3=False):
         journal = self.work / "journal"
         journal.mkdir(mode=0o700)
         state = {"source": self.approval["sourceSha"], "build": self.approval["buildId"]}
@@ -215,6 +215,16 @@ class InvocationClockTests(unittest.TestCase):
                     (journal / "public-evidence-T9-v1.json").read_bytes()).hexdigest()
         manifest_base = self.work / "root-manifests"
         manifest_base.mkdir(mode=0o700)
+        data_base = self.work / "data-stage"
+        if v3:
+            data_base.mkdir(mode=0o700)
+            stage = data_base / (".aoe2war-b-os-" + state["source"][:12]
+                                 + "-run-" + str(body["githubRunId"]))
+            stage.mkdir(mode=0o700)
+            archive = stage / "runtime.tar.gz"
+            archive.write_bytes(b"z" * body["runtimeArchiveBytes"])
+            archive.chmod(0o400)
+            body["artifactSha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
         manifest = {
             "schema": "aoe2war.product.web-release-manifest.v2",
             "source": state["source"], "build": state["build"],
@@ -224,6 +234,15 @@ class InvocationClockTests(unittest.TestCase):
             "previous_source": body["previousSourceSha"],
             "previous_build": body["previousBuildId"], "financial_authorized": False,
         }
+        if v3:
+            st = archive.stat()
+            manifest.update({
+                "schema": "aoe2war.product.web-release-manifest.v3",
+                "transport_mode": "data-archive-v1",
+                "archive_path": str(archive),
+                "archive_dev": st.st_dev,
+                "archive_inode": st.st_ino,
+            })
         manifest_path = manifest_base / (
             state["source"][:12] + "-run-" + str(body["githubRunId"]) + ".json")
         manifest_path.write_text(json.dumps(manifest))
@@ -233,6 +252,8 @@ class InvocationClockTests(unittest.TestCase):
         code = code.replace("OWNER_UID = 0", "OWNER_UID = " + str(os.geteuid()))
         exec(compile(code, "<root-invocation-schema-fixture>", "exec"), namespace)
         namespace["MANIFEST_BASE"] = manifest_base
+        if v3:
+            namespace["DATA_STAGE_BASE"] = data_base
         return namespace["bound_body"], state, journal
 
     def test_root_body_binds_actual_accepted_seal_and_rejects_mismatch(self):
@@ -264,7 +285,7 @@ class InvocationClockTests(unittest.TestCase):
             bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
 
 
-    def complete_body_fixture(self):
+    def complete_body_fixture(self, v3=False):
         clock = self.clock()
         clock.classify([], warm=False)
         clock.first_live()
@@ -272,8 +293,78 @@ class InvocationClockTests(unittest.TestCase):
         clock.record("REACTIVATED", proof="d" * 64)
         clock.accepted("b" * 64)
         body = clock.payload("b" * 64)
-        bound, state, journal = self.root_body_fixture(body)
+        bound, state, journal = self.root_body_fixture(body, v3=v3)
         return body, bound, state, journal
+
+    def data_manifest(self, body):
+        path = self.work / "root-manifests" / (
+            body["sourceSha"][:12] + "-run-" + str(body["githubRunId"]) + ".json")
+        return path, json.loads(path.read_text())
+
+    def update_data_manifest(self, body, **changes):
+        path, manifest = self.data_manifest(body)
+        manifest.update(changes)
+        path.write_text(json.dumps(manifest))
+        path.chmod(0o600)
+
+    def test_root_v3_positive_frozen_data_identity(self):
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_root_v3_denies_wrong_transport_and_device(self):
+        for bad in ({"transport_mode": "root-archive-v1"},
+                    {"archive_dev": 2049}, {"archive_dev": True}):
+            with self.subTest(bad=bad):
+                body, bound, state, journal = self.complete_body_fixture(v3=True)
+                self.update_data_manifest(body, **bad)
+                with self.assertRaisesRegex(RuntimeError, "DATA_IDENTITY"):
+                    bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_root_v3_denies_inode_and_path_substitutions(self):
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        self.update_data_manifest(body, archive_inode=987654321)
+        with self.assertRaisesRegex(RuntimeError, "DATA_INODE"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        self.update_data_manifest(body, archive_path="/tmp/runtime.tar.gz")
+        with self.assertRaisesRegex(RuntimeError, "DATA_PATH"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_root_v3_rejects_schema_downgrade_and_missing_data_identity(self):
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        self.update_data_manifest(body, schema="aoe2war.product.web-release-manifest.v2")
+        with self.assertRaisesRegex(RuntimeError, "ROOT_MANIFEST_IDENTITY"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        self.update_data_manifest(body, archive_inode=None)
+        with self.assertRaisesRegex(RuntimeError, "DATA_IDENTITY"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_root_v3_rejects_archive_content_drift(self):
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        _, manifest = self.data_manifest(body)
+        archive = Path(manifest["archive_path"])
+        archive.chmod(0o600)
+        with archive.open("r+b") as handle:
+            handle.seek(0)
+            handle.write(b"ADVERSARIAL")
+        archive.chmod(0o400)
+        with self.assertRaisesRegex(RuntimeError, "DATA_DIGEST_OR_RACE"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_root_v3_rejects_symlinked_archive(self):
+        body, bound, state, journal = self.complete_body_fixture(v3=True)
+        _, manifest = self.data_manifest(body)
+        archive = Path(manifest["archive_path"])
+        original = archive.with_name("original.tar.gz")
+        archive.rename(original)
+        archive.symlink_to(original.name)
+        with self.assertRaisesRegex(RuntimeError, "OWNER_OR_SYMLINK"):
+            bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
+
+    def test_historical_v2_still_accepts_unmodified_identity(self):
+        body, bound, state, journal = self.complete_body_fixture()
+        bound(R.INVOCATION_RECEIPT_NAME, json.dumps(body).encode(), state, journal)
 
     def test_root_rejects_forged_live_metric_without_matching_row(self):
         body, bound, state, journal = self.complete_body_fixture()
