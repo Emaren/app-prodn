@@ -321,7 +321,9 @@ class BoundaryTests(unittest.TestCase):
         names=sorted(p.EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED)
         self.assertEqual(branch,"we2/factory-v3-invocation-reconciliation-20261124")
         self.assertEqual(base,"f14bf4625ed124beafe80dc34188dcb7da16daa0")
-        self.assertEqual(len(names),4)
+        self.assertEqual(len(names),6)
+        self.assertTrue({"docs/DOCUMENTATION_CONTROL_PLANE.md",
+                         "docs/document-registry.json"}.issubset(set(names)))
         self.assertEqual(p.EXACT_WE2_FACTORY_DATA_PINS[
             "scripts/aoe2_product_release.py"],
             "59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab")
