@@ -23,7 +23,7 @@ test("complete canonical OS catalog is read from existing registry, not duplicat
   for (const entry of raw.subordinate_os) {
     const node = graph.nodes.find(n => n.id === entry.canonical_id);
     assert.equal(node?.name, entry.name);
-    assert.equal(node?.parentId, "aoe2war.os.umbrella");
+    assert.equal(node?.parentId, entry.parent_os_id ?? "aoe2war.os.umbrella");
     assert.equal(node?.liveStatus, "UNKNOWN");
     assert.equal(node?.evidenceAt, null);
   }
@@ -155,4 +155,23 @@ test("visual design includes touch, responsive, high contrast and static reduced
   assert.match(style, /\.drawer/);
   assert.match(component, /ARCHITECTURAL ORBIT · DECORATIVE/);
   assert.match(component, /Motion in this room is ambient art, not telemetry/);
+});
+
+
+test("Progress catalog parent and handoff remain source-only; unresolved estate is not a live count", () => {
+  const progress = raw.subordinate_os.find((x: { id: string }) => x.id === "progress");
+  assert.equal(progress.parent_os_id, "aoe2war.os.central-command");
+  assert.equal(graph.nodes.find(n => n.id === progress.canonical_id)?.liveStatus, "UNKNOWN");
+  assert.equal(graph.nodes.find(n => n.id === progress.canonical_id)?.parentId, progress.parent_os_id);
+  assert.equal(raw.lifecycle_extension_proposal.progress.execution_authorized, false);
+  assert.ok(raw.lifecycle_extension_proposal.progress.required.includes("next_eligible_action"));
+  assert.ok(raw.lifecycle_extension_proposal.progress.required.includes("do_not_repeat"));
+  assert.equal(raw.census_reconciliation_proposal.live_operational_count, null);
+  assert.equal(raw.census_reconciliation_proposal.execution_authorized, false);
+  assert.equal(raw.counts.planned_subordinate_os_total, raw.subordinate_os.length);
+  for (const parent of ["aoe2war.os.progress", "aoe2war.os.missing", "aoe2war.role.doctor", "bad"]) {
+    const fixture = structuredClone(raw);
+    fixture.subordinate_os.find((x: { id: string }) => x.id === "progress").parent_os_id = parent;
+    assert.equal(buildUmbrellaTree(fixture).errors[0], "INVALID_OR_UNORDERED_OS_PARENT");
+  }
 });

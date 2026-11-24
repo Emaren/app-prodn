@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9db479cb4de33e86c1b35db08b77c9bcc1cf3fa844963f9304b55721a74fd7fb",
+      "sha256": "60adc43b03f5a41265d235be8d142701abba2f39e281636cd5aa7196211b6e4b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-atlas-merge-transport-20261124",
-    "commit": "2f1ce18e58d486b111af06d39844099b39b15c5d"
+    "branch": "session-c/we3-kingdom-lifecycle-proposals-20261124",
+    "commit": "dcd8a2b47dcf557309164ce447eeb0b567d5e903"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
