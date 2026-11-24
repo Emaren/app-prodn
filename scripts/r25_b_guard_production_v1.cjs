@@ -19,8 +19,11 @@ const SOCIAL_ROUTES = new Set([
   "/api/social/clan-text", "/api/contact-emaren", "/api/lobby/chat",
 ]);
 const SOCIAL_SERVICE_PATHS = new Set([
-  "/v1/clan/text", "/v1/direct/text", "/v1/lobby/text",
+  "/v1/clan/text", "/v1/direct/text", "/v1/lobby/text", "/v1/direct/delivered",
 ]);
+const SOCIAL_IMAGE_PATH = "/v1/direct/image";
+const socialContextKey = Symbol("guard-owned-social-context");
+const socialContexts = new WeakMap();
 const APPEARANCE_ROUTES = new Set([
   "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
 ]);
@@ -41,21 +44,43 @@ function approvedAppearanceRequest(opts) {
     opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
     !opts.protocol && !opts.auth && approvedAppearanceHeaders(opts.headers);
 }
-function approvedSocialHeaders(h) {
+function approvedSocialHeaders(h, maxBytes = 4096) {
   return h && typeof h === "object" && Object.keys(h).length === 4 &&
     h["Content-Type"] === "application/json" && h.Connection === "close" &&
     Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
-    h["Content-Length"] <= 4096 &&
+    h["Content-Length"] <= maxBytes &&
     typeof h["x-social-signed-session"] === "string" &&
     h["x-social-signed-session"].length >= 32 &&
     h["x-social-signed-session"].length <= 4096;
 }
-function approvedSocialRequest(opts) {
-  if (!opts || typeof opts !== "object") return false;
-  return opts.socketPath === SOCIAL_SOCKET &&
-    SOCIAL_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
-    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
-    !opts.protocol && !opts.auth && approvedSocialHeaders(opts.headers);
+function socialRequestSnapshot(opts) {
+  if (!opts || typeof opts !== "object" ||
+      Reflect.ownKeys(opts).some(k => !["socketPath", "path", "method", "timeout", "headers"].includes(k))) return null;
+  const {socketPath, path, method, timeout, headers} = opts;
+  const image = path === SOCIAL_IMAGE_PATH;
+  if (socketPath !== SOCIAL_SOCKET || (!image && !SOCIAL_SERVICE_PATHS.has(path)) ||
+      method !== "POST" || timeout !== (image ? 8000 : 2300) ||
+      !headers || typeof headers !== "object" ||
+      Reflect.ownKeys(headers).some(k => !["Content-Type", "Content-Length", "x-social-signed-session", "Connection"].includes(k))) return null;
+  const snapshot = Object.freeze({
+    "Content-Type": headers["Content-Type"], "Content-Length": headers["Content-Length"],
+    "x-social-signed-session": headers["x-social-signed-session"], Connection: headers.Connection,
+  });
+  if (!approvedSocialHeaders(snapshot, image ? 13400000 : 4096)) return null;
+  return Object.freeze({socketPath, path, method, timeout, headers: snapshot});
+}
+function consumeSocialContext(opts) {
+  const token = opts[socialContextKey];
+  if (!token || typeof token !== "object") return false;
+  const bound = socialContexts.get(token);
+  if (!bound) return false;
+  socialContexts.delete(token);
+  return opts.path === SOCIAL_SOCKET && opts.socketPath === SOCIAL_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === bound.method &&
+    opts.timeout === bound.timeout &&
+    approvedSocialHeaders(opts.headers, bound.path === SOCIAL_IMAGE_PATH ? 13400000 : 4096) &&
+    Object.keys(bound.headers).every(k => opts.headers[k] === bound.headers[k]);
 }
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
@@ -72,7 +97,7 @@ const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECR
   "PATH", "HOME", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TERM",
   "INVOCATION_ID", "JOURNAL_STREAM", "SYSTEMD_EXEC_PID", "NOTIFY_SOCKET",
   "WATCHDOG_PID", "WATCHDOG_USEC", "TMPDIR", "NEXT_TELEMETRY_DISABLED",
-  "CACHE_DIRECTORY",
+  "CACHE_DIRECTORY", "SOCIAL_DIRECT_IMAGE_READ_ROOT",
   // Source-pinned, nonfinancial Storage OS receipt reader only. No teaching
   // owner key, deletion signer, custody authority or arbitrary env suffix.
   "AOE2WAR_OS_STORE_DIR", "AOE2WAR_OS_BRIDGE_TOKEN",
@@ -108,6 +133,9 @@ need(Object.keys(process.env).every((key) => allowed.has(key)), "UNREVIEWED_ENVI
 need(/^[A-Za-z0-9_./+=:-]{32,4096}$/.test(process.env.SESSION_SECRET || ""), "ORIGINAL_SESSION_IDENTITY_REQUIRED");
 need(!process.env.CACHE_DIRECTORY || process.env.CACHE_DIRECTORY === "/var/cache/aoe2war-web-prod",
   "PRIVATE_CACHE_DIRECTORY_REQUIRED");
+need(!Object.prototype.hasOwnProperty.call(process.env, "SOCIAL_DIRECT_IMAGE_READ_ROOT") ||
+  process.env.SOCIAL_DIRECT_IMAGE_READ_ROOT === "/run/aoe2war-private-direct-images",
+  "SOCIAL_IMAGE_READ_ROOT_EXACT");
 need(require.resolve(__filename) === GUARD, "CANONICAL_GUARD_PATH_REQUIRED");
 let database;
 try { database = new URL(process.env.DATABASE_URL); } catch { hold("DATABASE_URL_INVALID"); }
@@ -204,11 +232,7 @@ net.Socket.prototype.connect = function (...args) {
     opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
     !opts.protocol && !opts.auth && opts.method === "POST" &&
     opts.timeout === 2300 && approvedAppearanceHeaders(opts.headers);
-  const nodeSocialConnect = opts.path === SOCIAL_SOCKET &&
-    opts.socketPath === SOCIAL_SOCKET &&
-    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
-    !opts.protocol && !opts.auth && opts.method === "POST" &&
-    opts.timeout === 2300 && approvedSocialHeaders(opts.headers);
+  const nodeSocialConnect = consumeSocialContext(opts);
   const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
     !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect ||
     nodeSocialConnect;
@@ -240,11 +264,22 @@ for (const api of [http, https]) {
         hostname: new URL(first).hostname, port: new URL(first).port,
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
     const exactAppearance = api === http && approvedAppearanceRequest(opts);
-    const exactSocial = api === http && approvedSocialRequest(opts);
+    const exactSocial = api === http && first === opts && socialRequestSnapshot(opts);
     need(opts && (!opts.socketPath || exactAppearance || exactSocial) &&
       !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
-    if (exactAppearance || exactSocial) return original.apply(this, args);
+    if (exactSocial) {
+      need(args.length <= 2 && (args[1] === undefined || typeof args[1] === "function"),
+        "SOCIAL_CALLBACK_SHAPE_DENIED");
+      const token = Object.freeze({});
+      socialContexts.set(token, exactSocial);
+      // A fresh internal agent forces a new connection rather than a queued or
+      // reused global-agent socket. The caller never selects this transport.
+      const transport = { ...exactSocial, agent: false, [socialContextKey]: token };
+      try { return original.call(this, transport, args[1]); }
+      finally { socialContexts.delete(token); }
+    }
+    if (exactAppearance) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -284,9 +319,23 @@ http.Server.prototype.emit = function (event, ...args) {
       typeof request.headers?.["content-type"] === "string" &&
       request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
     const socialWrite = request.method === "POST" &&
-      SOCIAL_ROUTES.has(path) &&
+      SOCIAL_ROUTES.has(request.url) &&
       typeof request.headers?.["content-type"] === "string" &&
       request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
+    const multipartType = request.headers?.["content-type"];
+    const multipartLength = request.headers?.["content-length"];
+    const rawHeaderNames = Array.isArray(request.rawHeaders) ?
+      request.rawHeaders.filter((_, i) => i % 2 === 0).map(v => String(v).toLowerCase()) : [];
+    const directImageWrite = request.method === "POST" &&
+      request.url === "/api/contact-emaren" &&
+      typeof multipartType === "string" && multipartType.length <= 256 &&
+      /^multipart\/form-data;[ \t]*boundary=(?:[A-Za-z0-9'()+_,.\/:=?-]{1,70}|"[A-Za-z0-9'()+_,.\/:=?-]{1,70}")$/i.test(multipartType) &&
+      typeof multipartLength === "string" && /^[1-9][0-9]{0,7}$/.test(multipartLength) &&
+      Number(multipartLength) <= 10065536 &&
+      rawHeaderNames.filter(v => v === "content-type").length === 1 &&
+      rawHeaderNames.filter(v => v === "content-length").length === 1 &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      request.headers?.["content-encoding"] === undefined;
     // Storage ingest is the ONLY additionally permitted nonfinancial write.
     // Nginx MUST replace an external x-aoe2war-bridge-scope header with its
     // own storage_visual scope in an exact-route, POST-only proxy location.
@@ -329,7 +378,7 @@ http.Server.prototype.emit = function (event, ...args) {
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
-      appearanceWrite || socialWrite || storageVisualOnlyWrite ||
+      appearanceWrite || socialWrite || directImageWrite || storageVisualOnlyWrite ||
       operatorBridgeWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });

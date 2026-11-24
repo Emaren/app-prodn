@@ -121,6 +121,35 @@ assert.throws(()=>http.request({
  socketPath:socialSocket,path:'/v1/custody',method:'POST',
  timeout:2300,headers:socialHeaders
 }),/AOE2WAR_PRODUCTION_HOLD/);
+const imageOpts={socketPath:socialSocket,path:'/v1/direct/image',method:'POST',
+ timeout:8000,headers:{...socialHeaders,'Content-Length':13400000}};
+assert.equal(typeof http.request(imageOpts).end,'function');
+assert.equal(typeof http.request({socketPath:socialSocket,path:'/v1/direct/delivered',method:'POST',
+ timeout:2300,headers:socialHeaders}).end,'function');
+for (const bad of [
+ {...imageOpts,path:'/v1/direct/image?x=1'}, {...imageOpts,path:'/v1/direct/delivered'},
+ {...imageOpts,timeout:2300}, {...imageOpts,agent:false}, {...imageOpts,agent:http.globalAgent},
+ {...imageOpts,createConnection:()=>{}},
+ {...imageOpts,headers:{...imageOpts.headers,'Content-Length':13400001}},
+ {...imageOpts,[Symbol('guard-owned-social-context')]:{}}
+]) assert.throws(()=>http.request(bad),/AOE2WAR_PRODUCTION_HOLD/);
+assert.throws(()=>new net.Socket().connect([{...imageOpts,path:socialSocket,host:'localhost',port:80},()=>{}]),/NODE_EGRESS_DENIED/);
+const multipart={method:'POST',url:'/api/contact-emaren',
+ rawHeaders:['Content-Type','multipart/form-data; boundary=Test123','Content-Length','10065536'],
+ headers:{'content-type':'multipart/form-data; boundary=Test123','content-length':'10065536'}};
+assert.equal(new http.Server().emit('request',multipart,response),'passed');
+for(const bad of [
+ {...multipart,url:'/api/contact-emaren?x=1'}, {...multipart,url:'/api/lobby/chat'},
+ {...multipart,rawHeaders:multipart.rawHeaders.concat(['Content-Type','text/plain'])},
+ {...multipart,headers:{...multipart.headers,'content-length':'10065537'}},
+ {...multipart,headers:{...multipart.headers,'transfer-encoding':'chunked'}},
+ {...multipart,headers:{...multipart.headers,'content-encoding':'gzip'}},
+ {...multipart,headers:{...multipart.headers,'content-type':'multipart/form-data; boundary=x; boundary=y'}},
+ {...multipart,headers:{...multipart.headers,'content-type':'multipart/form-data; boundary='}}
+]) { assert.equal(new http.Server().emit('request',bad,response),true); assert.equal(status,405); }
+assert.equal(typeof setup({SOCIAL_DIRECT_IMAGE_READ_ROOT:'/run/aoe2war-private-direct-images'}).http.Server,'function');
+assert.throws(()=>setup({SOCIAL_DIRECT_IMAGE_READ_ROOT:'/tmp/private'}),/SOCIAL_IMAGE_READ_ROOT_EXACT/);
+assert.throws(()=>setup({SOCIAL_DIRECT_IMAGE_WRITE_ROOT:'/run/aoe2war-private-direct-images'}),/UNREVIEWED_ENVIRONMENT_KEY/);
 // Owner teaching POST requires separate independent tip-anchor admission.
 assert.equal(new http.Server().emit('request',{
  method:'POST',url:'/api/admin/storage-os/teaching',
@@ -224,5 +253,10 @@ console.log('PASS:actual_preloader_transport_and_http_boundaries');
         result=subprocess.run(["node","-e",script,str(ROOT/"scripts/r25_b_guard_production_v1.cjs")],capture_output=True,text=True,timeout=15)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn("PASS:actual_preloader",result.stdout)
+
+    def test_native_social_socket_context(self):
+        result=subprocess.run(["node",str(ROOT/"tests/r25_chat_native_node22.test.cjs")],capture_output=True,text=True,timeout=20)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("PASS real Node",result.stdout)
 
 if __name__ == '__main__': unittest.main()
