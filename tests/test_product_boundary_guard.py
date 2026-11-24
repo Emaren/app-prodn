@@ -387,8 +387,8 @@ class BoundaryTests(unittest.TestCase):
         changed=sorted(p.EXACT_WE2_V3_PUBLIC_CHANGED)
         self.assertEqual(branch,"we2/factory-v3-public-publisher-source-20261124")
         self.assertEqual(base,"d7797cf7e34b230031193c563e7505b3c2b55c64")
-        self.assertEqual(len(changed),8)
-        self.assertEqual(len(p.EXACT_WE2_V3_PUBLIC_PINS),4)
+        self.assertEqual(len(changed),10)
+        self.assertEqual(len(p.EXACT_WE2_V3_PUBLIC_PINS),6)
         for name,sha in p.EXACT_WE2_V3_PUBLIC_PINS.items():
             self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
         p.check_exact_we2_v3_public_source(

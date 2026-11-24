@@ -271,6 +271,8 @@ EXACT_WE2_V3_PUBLIC_PINS = {
     'scripts/aoe2_product_release.py': 'e34dda657b6a1d4ce06ce800e5eeb3ea06a5818b45f2e6dfe623b3f383480a90',
     'tests/test_factory_public_status_v2.py': '22c103c203f5604bce9ad73c60c147609fc7a8eaac90f04403af5de64fc249bd',
     'tests/test_product_factory_publication.py': 'a46a33d359795286eae3303847a2efd1631bc4e668db353a911e933cef958c3e',
+    'scripts/release/we2_factory_v3_public_publisher_reconcile_20261124.py': 'c69a252f6a9ba7a8d7b5c7cbde5db2b8c1871d7abeb52b28bec4a72075b92299',
+    'tests/test_we2_factory_v3_public_publisher_reconcile.py': 'a98b887bec0399278e35eabf42f54d4313df93cb18dabf114401b7a2a968b2c4',
 }
 EXACT_WE2_V3_PUBLIC_GENERATED = frozenset({
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json"
