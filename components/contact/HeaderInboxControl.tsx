@@ -343,23 +343,33 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     if (!open || !uid) return;
 
     void refreshPanel(selectedTargetUidRef.current);
-    const interval = window.setInterval(() => {
+    // Foreground readback also covers cross-worker commits and missed SSE.
+    const reconcile = () => {
+      if (document.visibilityState !== "visible" || panelAbortRef.current) return;
       void refreshPanel(undefined, { silent: true });
-    }, 60_000);
+    };
+    const interval = window.setInterval(reconcile, 5_000);
+    document.addEventListener("visibilitychange", reconcile);
+    window.addEventListener("online", reconcile);
 
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", reconcile);
+      window.removeEventListener("online", reconcile);
     };
   }, [open, refreshPanel, uid]);
 
   useEffect(() => {
     if (!uid) return;
     let timer: number | null = null;
+    let refreshActive = false;
     const unsubscribe = subscribeSharedInboxEvents((payload) => {
-      if (timer) window.clearTimeout(timer);
+      refreshActive ||= !payload.targetUid || payload.targetUid === selectedTargetUidRef.current;
+      if (timer !== null) return;
       timer = window.setTimeout(() => {
-        const affectsOpenThread =
-          !payload.targetUid || payload.targetUid === selectedTargetUidRef.current;
+        timer = null;
+        const affectsOpenThread = refreshActive;
+        refreshActive = false;
         if (open && affectsOpenThread) {
           void refreshPanel(undefined, { silent: true });
         } else {

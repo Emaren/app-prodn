@@ -306,3 +306,21 @@ test("restricted inbox live events do not attempt legacy delivery writes or emit
   }
   assert.match(route, /multipart\/form-data[\s\S]*?Your message was not sent\.[\s\S]*?status: 415/);
 });
+
+
+test("direct chat foreground reconciliation covers missed process-local events without overlapping fallback requests", () => {
+  const workspace = readFileSync(new URL("../components/contact/ContactEmarenWorkspace.tsx", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../components/contact/HeaderInboxControl.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /setInterval\(reconcile, selectedTargetUid \? 5_000 : 60_000\)/);
+  assert.match(workspace, /if \(!panelAbortRef\.current\) void refreshPanel/);
+  assert.match(header, /document\.visibilityState !== "visible" \|\| panelAbortRef\.current/);
+  assert.match(header, /setInterval\(reconcile, 5_000\)/);
+  for (const source of [workspace, header]) {
+    assert.match(source, /addEventListener\("visibilitychange", reconcile\)/);
+    assert.match(source, /removeEventListener\("visibilitychange", reconcile\)/);
+    assert.match(source, /addEventListener\("online", reconcile\)/);
+    assert.match(source, /removeEventListener\("online", reconcile\)/);
+    assert.match(source, /refreshActive \|\|=/);
+    assert.match(source, /const (?:active|affectsOpenThread) = refreshActive;\s*refreshActive = false;/);
+  }
+});

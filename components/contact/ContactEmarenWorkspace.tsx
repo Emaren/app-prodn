@@ -428,16 +428,24 @@ export default function ContactEmarenWorkspace({
 
   useEffect(() => {
     if (!uid) return;
-    const interval = window.setInterval(() => {
-      if (selectedTargetUid) {
-        void refreshPanel(undefined, { silent: true });
-      } else {
+    // SSE is process-local; a healthy connection can still miss another
+    // worker's commit. Reconcile the visible thread without overlapping reads.
+    const reconcile = () => {
+      if (document.visibilityState !== "visible") return;
+      if (selectedTargetUidRef.current) {
+        if (!panelAbortRef.current) void refreshPanel(undefined, { silent: true });
+      } else if (!summaryAbortRef.current) {
         void refreshSummary(undefined, { silent: true });
       }
-    }, 60_000);
+    };
+    const interval = window.setInterval(reconcile, selectedTargetUid ? 5_000 : 60_000);
+    document.addEventListener("visibilitychange", reconcile);
+    window.addEventListener("online", reconcile);
 
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", reconcile);
+      window.removeEventListener("online", reconcile);
     };
   }, [refreshPanel, refreshSummary, selectedTargetUid, uid]);
 
@@ -445,6 +453,7 @@ export default function ContactEmarenWorkspace({
     if (!uid) return;
     const events = new EventSource("/api/contact-emaren/events");
     let refreshTimer: number | null = null;
+    let refreshActive = false;
     events.onmessage = (event) => {
       let payload: { type?: string; targetUid?: string | null };
       try {
@@ -453,12 +462,14 @@ export default function ContactEmarenWorkspace({
         return;
       }
       // A reconnect can follow missed commits; reconcile from authenticated history.
-      if (refreshTimer) window.clearTimeout(refreshTimer);
+      refreshActive ||= Boolean(selectedTargetUidRef.current &&
+        (!payload.targetUid || payload.targetUid === selectedTargetUidRef.current));
+      if (refreshTimer !== null) return;
       refreshTimer = window.setTimeout(() => {
-        if (
-          selectedTargetUidRef.current &&
-          (!payload.targetUid || payload.targetUid === selectedTargetUidRef.current)
-        ) {
+        refreshTimer = null;
+        const active = refreshActive;
+        refreshActive = false;
+        if (active && selectedTargetUidRef.current) {
           void refreshPanel(undefined, { silent: true });
         } else {
           void refreshSummary(undefined, { silent: true });
