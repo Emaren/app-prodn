@@ -226,13 +226,17 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
     ),
   ];
 
+  // Deliberately return an unordered PostgreSQL corpus. The application must
+  // independently re-establish latest-first order, including ID tie breaks,
+  // without silently losing the historical meetings beyond 800 rows.
   const corpus = [
+    ...olderMeetings.slice().reverse(),
+    ...unrelatedRecentRows.slice().reverse(),
     currentMeeting,
-    ...unrelatedRecentRows,
-    ...olderMeetings,
   ];
 
   let queryTake: number | undefined;
+  let queryOrderBy: unknown;
   let matchupQueryCount = 0;
   let generationRevision = 1;
   const prisma = {
@@ -248,10 +252,12 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
       findMany: async (
         options: {
           take?: number;
+          orderBy?: unknown;
         }
       ) => {
         matchupQueryCount += 1;
         queryTake = options.take;
+        queryOrderBy = options.orderBy;
         return corpus;
       },
     },
@@ -318,6 +324,16 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   assert.equal(
     queryTake,
     undefined
+  );
+  assert.equal(
+    queryOrderBy,
+    undefined,
+    "unbounded historical reads must not ask PostgreSQL to sort wide JSON rows"
+  );
+  assert.deepEqual(
+    canonicalRows.slice(0, 4).map((row) => row.id),
+    [20_000, 10_799, 10_798, 10_797],
+    "application sorting must recover latest-first and deterministic same-time ID order from unsorted rows"
   );
   assert.equal(
     matchupQueryCount,
