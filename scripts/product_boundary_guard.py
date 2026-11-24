@@ -784,6 +784,118 @@ def check_checkout(checkout: Path, repo_name: str, expected_sha: str,
     return {"repo": repo_name, "sha": expected_sha, "branch": expected_branch, "origin": origin}
 
 
+# B-owned source-only admission for the exact WE1-reviewed Watcher SQL pair.
+# No change to general SQL denial, task argv, financial or DB write authority.
+EXACT_B_WATCHER_BASE = "a187ada489ce76c939d6d52218ee5a7f22520921"
+EXACT_B_WATCHER_BRANCH = "session-c/we3-watcher-v3-release-20261124"
+EXACT_B_WATCHER_REVIEWED = "c5577d3050631a2426ea66816dc6b18c0a9ddd84"
+EXACT_B_WATCHER_SQL = {
+    "config/nonfinancial-public-watcher-v3.sql":
+        (13699, "b46f4eb2804cb49a8fdc807e7d0a6f80b49c6bce023581acf7568120ef55c820"),
+    "tests/fixtures/current-watcher-v3-original.sql":
+        (12687, "d97dc6cc41cd33a86f5a8e0529593ae99b905535cf626f4775b5be4264d1236d"),
+}
+EXACT_B_WATCHER_CHANGED = frozenset(EXACT_B_WATCHER_SQL) | {
+    "lib/currentWatcherAccountState.ts",
+    "lib/currentWatcherAccountStateRefreshGate.ts",
+    "tests/current-watcher-v3-refresh-retry.test.mts",
+    "tests/replay-projection-cache-v2.test.mts",
+    "tests/test_current_watcher_v3_sql_pg.py",
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+
+
+def exact_b_watcher_blob(checkout: Path, raw: str) -> str:
+    if raw not in EXACT_B_WATCHER_SQL:
+        raise BoundaryHold("B_WATCHER_UNREVIEWED_SQL")
+    size, digest = EXACT_B_WATCHER_SQL[raw]
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("B_WATCHER_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or st.st_uid != os.geteuid() or st.st_size != size
+            or stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("B_WATCHER_SOURCE_CUSTODY")
+    identity = lambda x: (x.st_dev, x.st_ino, x.st_size, x.st_mtime_ns,
+                          x.st_ctime_ns, x.st_uid, x.st_mode, x.st_nlink)
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if identity(os.fstat(fd)) != identity(st):
+            raise BoundaryHold("B_WATCHER_SOURCE_RACE")
+        data = os.read(fd, size + 1)
+        if identity(os.fstat(fd)) != identity(st):
+            raise BoundaryHold("B_WATCHER_SOURCE_RACE")
+    finally:
+        os.close(fd)
+    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+        raise BoundaryHold("B_WATCHER_SQL_SHA")
+    return raw
+
+
+def check_exact_b_watcher_context(checkout: Path, repo: str, branch: str,
+                                  base: str, sha: str, *, ci: bool) -> None:
+    if repo != "Emaren/app-prodn" or base != EXACT_B_WATCHER_BASE:
+        raise BoundaryHold("B_WATCHER_REPO_OR_BASE")
+    if branch not in (EXACT_B_WATCHER_BRANCH, "main"):
+        raise BoundaryHold("B_WATCHER_BRANCH")
+    if ci:
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+        if branch == EXACT_B_WATCHER_BRANCH:
+            pr = event.get("pull_request", {})
+            h, b = pr.get("head", {}), pr.get("base", {})
+            if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
+                    or event.get("number") != 1499
+                    or (h.get("repo") or {}).get("full_name") != repo
+                    or (b.get("repo") or {}).get("full_name") != repo
+                    or h.get("ref") != branch or h.get("sha") != sha
+                    or b.get("ref") != "main" or b.get("sha") != base):
+                raise BoundaryHold("B_WATCHER_PR_IDENTITY")
+        elif (os.environ.get("GITHUB_EVENT_NAME") != "push"
+              or event.get("ref") != "refs/heads/main"
+              or event.get("before") != base or event.get("after") != sha
+              or (event.get("repository") or {}).get("full_name") != repo):
+            raise BoundaryHold("B_WATCHER_MAIN_IDENTITY")
+    if branch == "main":
+        parents = git(checkout, "rev-list", "--parents", "-n", "1", sha).split()
+        if len(parents) != 3 or parents[:2] != [sha, base]:
+            raise BoundaryHold("B_WATCHER_MAIN_PARENTS")
+        candidate = parents[2]
+        if git(checkout, "rev-parse", sha + "^{tree}") != git(
+                checkout, "rev-parse", candidate + "^{tree}"):
+            raise BoundaryHold("B_WATCHER_MAIN_TREE")
+    else:
+        candidate = sha
+    if git(checkout, "merge-base", EXACT_B_WATCHER_REVIEWED, candidate) != EXACT_B_WATCHER_REVIEWED:
+        raise BoundaryHold("B_WATCHER_REVIEW_ANCESTRY")
+    if git(checkout, "merge-base", base, candidate) != base:
+        raise BoundaryHold("B_WATCHER_BASE_ANCESTRY")
+
+
+def exact_b_watcher_changes(checkout: Path, base: str) -> list[str]:
+    # Include deletions and type changes; do not inherit ordinary diff-filter.
+    changes = git(checkout, "diff", "--name-status", "--no-renames", base, "HEAD", "--")
+    rows = [line.split("\t") for line in changes.splitlines()]
+    if (any(len(row) != 2 or row[0] not in ("A", "M") for row in rows)
+            or len(rows) != len(EXACT_B_WATCHER_CHANGED)
+            or {row[1] for row in rows} != EXACT_B_WATCHER_CHANGED):
+        raise BoundaryHold("B_WATCHER_EXACT_CHANGED_SCOPE")
+    for _, raw in rows:
+        if raw in EXACT_B_WATCHER_SQL:
+            exact_b_watcher_blob(checkout, raw)
+        else:
+            authorize_changed_source(checkout, base, raw)
+        mode = git(checkout, "ls-files", "--stage", "--", raw)
+        if not mode.startswith("100644 ") or len(mode.splitlines()) != 1:
+            raise BoundaryHold("B_WATCHER_INDEX_MODE")
+    return [row[1] for row in rows]
+
+
 def changed_source(checkout: Path, base: str) -> list[str]:
     if not SHA.fullmatch(base):
         raise BoundaryHold("UNPINNED_BASE_SHA")
@@ -1138,7 +1250,14 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        receipt["changed_files"] = changed_source(checkout, base)
+        if (branch == EXACT_B_WATCHER_BRANCH or
+                (branch == "main" and base == EXACT_B_WATCHER_BASE
+                 and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
+                         for p in EXACT_B_WATCHER_SQL))):
+            check_exact_b_watcher_context(checkout, repo_name, branch, base, sha, ci=ci)
+            receipt["changed_files"] = exact_b_watcher_changes(checkout, base)
+        else:
+            receipt["changed_files"] = changed_source(checkout, base)
         check_exact_we2_factory_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_factory_retention_source(
@@ -1162,7 +1281,7 @@ def main() -> int:
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
-    except (BoundaryHold, KeyError, OSError, subprocess.TimeoutExpired) as exc:
+    except (BoundaryHold, KeyError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         print(json.dumps({"status": "HOLD_PRODUCT_BOUNDARY", "reason": str(exc)}), file=sys.stderr)
         return 3
 
