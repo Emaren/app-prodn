@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-watcher-v3-release-20261124` at `d718243265cef6607a48738e7fab2a70e46cf08d`
+Implementation baseline: `we2/r25-chat-media-exact-20261124` at `41813ee6698c450c7cdede8736b6d85b13817e77`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

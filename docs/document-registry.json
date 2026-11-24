@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55120a545a7cb1bfa58abe00b269df02f0487e7bf7f556ed8bbe030fa97e0ed9",
+      "sha256": "892fcacdbaff9330aba85e7663b8814f530cac69925fd3207cc4e4d97eae835a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-watcher-v3-release-20261124",
-    "commit": "d718243265cef6607a48738e7fab2a70e46cf08d"
+    "branch": "we2/r25-chat-media-exact-20261124",
+    "commit": "41813ee6698c450c7cdede8736b6d85b13817e77"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
