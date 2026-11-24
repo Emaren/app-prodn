@@ -239,8 +239,7 @@ EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
 }
 EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
     frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
-    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
-     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json"}
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
 )
 
 # WE2 root-security source review: one branch/base with immutable candidate
