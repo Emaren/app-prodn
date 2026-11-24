@@ -81,6 +81,12 @@ class FactoryPublicationTests(unittest.TestCase):
         self.assertFalse(any("release_controller" in command for command in self.calls))
         return report
 
+    def test_v3_publisher_source_hash_is_pinned_for_reconciliation(self):
+        source=(Path(__file__).parents[1] /
+                "docs/release/artifacts/aoe2war_factory_public_status_v2.py")
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
+                         R.FACTORY_PUBLISHER_SHA)
+
     def test_pinned_existing_publisher_and_independent_https_match(self):
         result = self.refresh()
         self.assertEqual(result["state"], "pass")

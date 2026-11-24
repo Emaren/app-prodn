@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "traffic-canonical-website-only-exact-daily-finality-required"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -52,3 +52,14 @@ Review basis: the retained original document and the current canonical App main 
 The retained chart source renders PremiumTimeSeriesChart and publicTraffic.ts filters complete published UTC days. Provisional per-request or project-rollup visitor counts are not canonical Total/Potential/Confirmed Humans. The public archive physically ends October 19; no missing October/November day is certified by this documentation.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `app/traffic/page.tsx`: current canonical-main blob `f24bb376573b3f98de031d85ae1cbb025e51ce90`
+- `lib/publicTraffic.ts`: current canonical-main blob `1b8be987b16abdbc39f8357b9a761d1f2e664dea`
+
+**Current finding:** Traffic page and completed-day reader source unchanged. Original 131-day chart ending October 19 is historical; newer dates require WE4 independent signatures.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

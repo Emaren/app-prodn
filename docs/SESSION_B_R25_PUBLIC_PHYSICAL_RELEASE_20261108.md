@@ -8,7 +8,7 @@ systems: ["app-prodn", "traffic-api"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "physical-public-website-release-only-financial-gates-held"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -80,3 +80,14 @@ Review basis: the retained original document and the current canonical App main 
 The signed Factory coordinator and durable ledger source are retained. This historical document's older e058 web runtime and November 8 PID/storage observations are NOT the current website. The accepted live source is e31e1c053a3b39904929a64a1a9af700a9ad5426, BUILD dVF3e9_shOY_BRFdn5Zyl; Ember Reign needs its own permit and physical T10.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `scripts/aoe2_product_release.py`: current canonical-main blob `7aafc9386ad33fabaaa0ea06462de1ce8d5ecb2b`
+- `scripts/aoe2_product_release_ledger.py`: current canonical-main blob `da12e4280a91c592494f8f7fb869dae21a584765`
+
+**Current finding:** Factory runner changed from the old ec47c987... blob; append-only ledger stayed unchanged. Old November 8 e058 runtime and PID are historical. Atlas is separately T10-sealed on ed4b0ac878725eeb62c86b79ae416511da903e7d; the ninth invocation remains a separate outstanding contract.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

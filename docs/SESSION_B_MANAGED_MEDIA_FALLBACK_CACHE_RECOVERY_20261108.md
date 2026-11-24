@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-media-cache-no-db-owner-or-physical-release"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -144,3 +144,14 @@ Review basis: the retained original document and the current canonical App main 
 The fallback-cache policy and separate physical avatar acceptance script remain in source. Their existence does not prove specific managed avatar bytes have been restored on HEL1; prior historical space/headroom and native-cache HOLDS must not be represented as current physical acceptance.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `lib/mediaFallbackCachePolicy.ts`: current canonical-main blob `b2f2d8cce558246cd4967e360490329bbd83b842`
+- `scripts/r25_public_avatar_cache_acceptance.py`: current canonical-main blob `ede8ae9421aed8efb178aa0625db9ec45d9fc3ef`
+
+**Current finding:** Media-cache policy and avatar acceptance code are unchanged. Source existence cannot prove a fresh HEL1 avatar restore or physical acceptance.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

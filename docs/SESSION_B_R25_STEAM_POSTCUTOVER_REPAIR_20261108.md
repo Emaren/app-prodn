@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-uid990-outbound-recovery-no-funded-release"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -95,3 +95,14 @@ Review basis: the retained original document and the current canonical App main 
 The guarded Steam check_authentication retry code and retained V6 original repair source remain. V6 cutover findings are historical; HEL1 currently uses independently observed Steam V27 SHA256 2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca. This review is not a new Steam footprint enrollment.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `lib/steamAuth.ts`: current canonical-main blob `1910f3a5fb08118d6b8fc2f1c39fff37f3e4ccdd`
+- `scripts/release/r25_steam_refresh_inplace_r25_v6.py`: current canonical-main blob `6be6858f4ac2df9f7d65b7c9de02d7f516d2e0f7`
+
+**Current finding:** Original V6 Steam source remains unchanged; historical V6 cutover facts do not authorize replacing independently observed V27.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

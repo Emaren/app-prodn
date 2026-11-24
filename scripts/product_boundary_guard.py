@@ -226,6 +226,62 @@ EXACT_WE2_FACTORY_DATA_CHANGED=(frozenset(EXACT_WE2_FACTORY_DATA_PINS)
     "tests/test_product_boundary_guard.py",
 }
 
+# WE2 post-T10 Factory V3 invocation-only repair. Historical DATA-stage SHA
+# pins remain immutable. This admits exactly the new reviewed source + tests
+# from canonical main without authorizing a WEBSITE permit or T7-T10 replay.
+EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH = "we2/factory-v3-invocation-reconciliation-20261124"
+EXACT_WE2_FACTORY_V3_RECEIPT_BASE = "f14bf4625ed124beafe80dc34188dcb7da16daa0"
+EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
+    "scripts/aoe2_product_release.py":
+        "5f261cd84bf54a05e6d462d368708e143b816a8f0abad47def41ccf4841bd454",
+    "tests/test_product_deployment_invocation.py":
+        "d888e194153f48a5fa7daf05acba89c23d40a1dc43ca9d8fde255a80b219d99a",
+}
+EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS = {
+    'docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md': '72c4f17896d9ef6a99cb4ad12c7fa53f2c24bdad56db2567c38152c17a43e0c2',
+    'docs/R25_B4_KINGDOM_GRAPH_RELEASE.md': 'a1d46cb0dfcccc452cedfe44fdab39bae55626942cccad11dab97b16c0324237',
+    'docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md': 'a278607d713aab54426074ccdf7bb238f56751186d03cf8b20fb67a3f7371a54',
+    'docs/SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md': '9a5be6f084ba809c5bf655cc72a7a2c602c22e7be7f31cdac6507c9df8c48148',
+    'docs/SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md': 'f5fe36b2e669bd480f6f14b1d15b4a837b9d6d1c62001854640d84b42d0d28cb',
+    'docs/SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md': 'a3549f1952e1a6e08c372964b5e336d3d2c7f4d6fe309fcdf36c655573262f3b',
+    'docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md': 'cc00d413e77741f658378c3cf18dcddaa3da601695690f6884b16254f999f18f',
+    'docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md': '9578fec04e4689da8b963f7976e62150cffa12f205c1509ff191ac6cecb6011f',
+    'docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md': 'd00d4ba9128c653724aa99c2b20f3fc6302d489b0fb65ecd30400ec1613f6030',
+    'docs/SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md': '648a1808ed35b68a63e5141e1bfd6e98e1e45392ff85ab49b1100ea1b5bee018',
+    'docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md': '5ef5dccd95f8354ac375a95fad31d18b71edc08b11845f12614a640aa2a6d36a',
+    'docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md': 'a07901d5aa4ed54118afd5e74ed72d357b9da85b8398c2684e6cc7910f7454c1',
+    'docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md': 'e7cbd7bd5a4aeb775c6e2dd698d18d48b25395bdbf5f9e85c22be7a853393ae8',
+}
+EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
+    frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+    frozenset(EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS) |
+    EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED |
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
+)
+
+# WE2 separately reviewed public V3 invocation projection. Retain historic
+# exact DATA and ninth-root pins; this is source review only, never ROOT install.
+EXACT_WE2_V3_PUBLIC_BRANCH = 'we2/factory-v3-public-publisher-source-20261124'
+EXACT_WE2_V3_PUBLIC_BASE = 'd7797cf7e34b230031193c563e7505b3c2b55c64'
+EXACT_WE2_V3_PUBLIC_PINS = {
+    'docs/release/artifacts/aoe2war_factory_public_status_v2.py': 'e1ba18b10824a00b3d942d94b7748a2d66fc20d6b100b402130ea89552c050af',
+    'scripts/aoe2_product_release.py': 'e34dda657b6a1d4ce06ce800e5eeb3ea06a5818b45f2e6dfe623b3f383480a90',
+    'tests/test_factory_public_status_v2.py': '22c103c203f5604bce9ad73c60c147609fc7a8eaac90f04403af5de64fc249bd',
+    'tests/test_product_factory_publication.py': 'a46a33d359795286eae3303847a2efd1631bc4e668db353a911e933cef958c3e',
+    'scripts/release/we2_factory_v3_public_publisher_reconcile_20261124.py': 'a8ef33b00a6669d60ec1e332f784e1fd8f86faea8cd52b8756286b0d4b1ced55',
+    'tests/test_we2_factory_v3_public_publisher_reconcile.py': 'aa08b72b83bfd04f4a17650dfc013821eb1571409eb4cc8836ae7635a2bdd675',
+}
+EXACT_WE2_V3_PUBLIC_GENERATED = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json"
+})
+EXACT_WE2_V3_PUBLIC_CHANGED = (
+    frozenset(EXACT_WE2_V3_PUBLIC_PINS) | EXACT_WE2_V3_PUBLIC_GENERATED |
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
+)
+
 # WE2 root-security source review: one branch/base with immutable candidate
 # guard/proxy bytes. This is *not* a scripts/ or WE2 wildcard.
 # WE1 independently reviewed *new* original Factory post-T10 retention source.
@@ -293,7 +349,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -517,6 +573,17 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_DATA_BRANCH and
             raw in EXACT_WE2_FACTORY_DATA_PINS):
         return exact_we2_factory_data_blob(checkout,raw)
+    # Original DATA Factory source remains frozen. Post-T10 V3 receipt
+    # code is a separately qualified exact branch/base/hash transition.
+    if (base == EXACT_WE2_FACTORY_V3_RECEIPT_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH and
+            raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS):
+        return exact_we2_factory_v3_receipt_blob(checkout, raw)
+    # Separate frozen-root public publisher V3 projection source admission.
+    if (base == EXACT_WE2_V3_PUBLIC_BASE and
+        os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_V3_PUBLIC_BRANCH and
+        raw in EXACT_WE2_V3_PUBLIC_PINS):
+        return exact_we2_v3_public_blob(checkout, raw)
     # New exact post-T10 source review, distinct from the frozen v3 runner.
     if (base == EXACT_WE2_FACTORY_RETENTION_BASE and
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_RETENTION_BRANCH
@@ -760,6 +827,94 @@ def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
         raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_SHA")
     return raw
 
+def exact_we2_factory_v3_receipt_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_FACTORY_V3_RECEIPT_PINS.get(raw, EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS.get(raw))
+    if expected is None:
+        raise BoundaryHold("WE2_V3_RECEIPT_UNPINNED")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("WE2_V3_RECEIPT_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+            not 1 <= st.st_size <= 150000):
+        raise BoundaryHold("WE2_V3_RECEIPT_FILE_AUTHORITY")
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        observed = os.fstat(fd)
+        if (observed.st_dev, observed.st_ino, observed.st_size,
+                observed.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_V3_RECEIPT_INODE_RACE")
+        raw_bytes = os.read(fd, 150001)
+    finally:
+        os.close(fd)
+    if (len(raw_bytes) != st.st_size or
+            hashlib.sha256(raw_bytes).hexdigest() != expected):
+        raise BoundaryHold("WE2_V3_RECEIPT_SHA")
+    return raw
+
+
+def check_exact_we2_factory_v3_receipt_source(checkout: Path, repo: str,
+                                              branch: str, base: str,
+                                              changes: list[str]) -> None:
+    if branch != EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY_V3_RECEIPT_BASE:
+        raise BoundaryHold("WE2_V3_RECEIPT_BASE_OR_REPO")
+    if (len(changes) != len(EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED) or
+            frozenset(changes) != EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED):
+        raise BoundaryHold("WE2_V3_RECEIPT_CHANGED_SCOPE")
+    for raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+    for raw in EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+
+
+def exact_we2_v3_public_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_V3_PUBLIC_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_V3_PUBLIC_UNPINNED")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("WE2_V3_PUBLIC_SYMLINK")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+            not 1 <= st.st_size <= 150000):
+        raise BoundaryHold("WE2_V3_PUBLIC_FILE_AUTHORITY")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        live = os.fstat(fd)
+        if ((live.st_dev,live.st_ino,live.st_size,live.st_mtime_ns) !=
+            (st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns)):
+            raise BoundaryHold("WE2_V3_PUBLIC_INODE_RACE")
+        data = os.read(fd,150001)
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("WE2_V3_PUBLIC_SHA")
+    return raw
+
+
+def check_exact_we2_v3_public_source(checkout: Path, repo: str,
+                                     branch: str, base: str,
+                                     changes: list[str]) -> None:
+    if branch != EXACT_WE2_V3_PUBLIC_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_V3_PUBLIC_BASE:
+        raise BoundaryHold("WE2_V3_PUBLIC_BASE_OR_REPO")
+    if (len(changes)!=len(EXACT_WE2_V3_PUBLIC_CHANGED) or
+            frozenset(changes)!=EXACT_WE2_V3_PUBLIC_CHANGED):
+        raise BoundaryHold("WE2_V3_PUBLIC_CHANGED_SCOPE")
+    for raw in EXACT_WE2_V3_PUBLIC_PINS:
+        exact_we2_v3_public_blob(checkout, raw)
+
+
 def check_exact_we2_factory_data_source(checkout: Path, repo: str, branch: str,
                                         base: str, changes: list[str]) -> None:
     if branch!=EXACT_WE2_FACTORY_DATA_BRANCH:
@@ -989,6 +1144,10 @@ def main() -> int:
         check_exact_we2_factory_retention_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_factory_data_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_v3_receipt_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_v3_public_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_storage_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
