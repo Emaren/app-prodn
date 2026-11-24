@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9db479cb4de33e86c1b35db08b77c9bcc1cf3fa844963f9304b55721a74fd7fb",
+      "sha256": "2f988f9fb8b87e39e8e7584239e41a5a47b0115c4ba3fcf906ac5f0ce5994431",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-atlas-merge-transport-20261124",
-    "commit": "2f1ce18e58d486b111af06d39844099b39b15c5d"
+    "branch": "session-c/we3-direct-image-writer-20261124",
+    "commit": "de2e8b526ff1db9df53f39b10b9d5bff9aae679c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
