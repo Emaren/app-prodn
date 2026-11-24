@@ -293,3 +293,16 @@ test("championship custody mirrors never masquerade as human Direct Chat honors"
   assert.match(trophyService, /createdByUserId: null/);
   assert.match(trophyService, /label: \{ startsWith: "Belt: " \}/);
 });
+
+
+test("restricted inbox live events do not attempt legacy delivery writes or emit read-only receipt loops", () => {
+  const stream = readFileSync(new URL("../app/api/contact-emaren/events/route.ts", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../app/api/contact-emaren/route.ts", import.meta.url), "utf8");
+  assert.match(stream, /if \(!usesNonfinancialProductionAuth\(\) && !isLiveProductionReadOnlyPreview\(\)\) \{[\s\S]*?prisma\.directMessage\.updateMany/);
+  assert.match(route, /if \(!usesNonfinancialProductionAuth\(\) && !summaryOnly && payload\.activeTargetUid\)/);
+  for (const path of ["ContactEmarenWorkspace.tsx", "HeaderInboxControl.tsx"]) {
+    const source = readFileSync(new URL("../components/contact/" + path, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /if \(payload\.type === "connected"\) return/);
+  }
+  assert.match(route, /multipart\/form-data[\s\S]*?Your message was not sent\.[\s\S]*?status: 415/);
+});

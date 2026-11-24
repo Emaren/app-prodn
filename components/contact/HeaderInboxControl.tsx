@@ -113,7 +113,7 @@ function subscribeSharedInboxEvents(
       } catch {
         return;
       }
-      if (payload.type === "connected") return;
+      // Reconnect also invalidates the authenticated inbox summary.
       for (const listener of sharedInboxEventSubscribers) {
         listener(payload);
       }

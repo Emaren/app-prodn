@@ -452,7 +452,7 @@ export default function ContactEmarenWorkspace({
       } catch {
         return;
       }
-      if (payload.type === "connected") return;
+      // A reconnect can follow missed commits; reconcile from authenticated history.
       if (refreshTimer) window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
         if (

@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
       beforeMessageId,
       challengeId,
     });
-    if (!summaryOnly && payload.activeTargetUid) {
+    if (!usesNonfinancialProductionAuth() && !summaryOnly && payload.activeTargetUid) {
       publishDirectMessageEvent(payload.activeTargetUid, {
         type: "receipt",
         targetUid: sessionUid,
@@ -227,6 +227,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Same-origin request required." }, { status: 403 });
     const token = signedSocialCookie(request);
     if (!token) return NextResponse.json({ detail: "Signed session required." }, { status: 401 });
+    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "multipart/form-data") {
+      return NextResponse.json({ detail: "Image and voice attachments are not yet enabled by the production message writer. Your message was not sent." }, { status: 415 });
+    }
     let action: unknown;
     try { action = await readBoundedSocialJson(request); }
     catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
