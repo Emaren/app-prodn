@@ -1400,7 +1400,12 @@ def bound_body(name, raw, state, journal):
         trusted(MANIFEST_BASE, 0o700, directory=True)
         trusted(manifest_path, 0o600)
         manifest = json.loads(manifest_path.read_bytes())
-        need(manifest.get("schema") == "aoe2war.product.web-release-manifest.v2"
+        # Historical V2 was ROOT-backed. V3 is the reviewed DATA-backed
+        # Factory artifact transport. Never accept V3 identity via a V2
+        # schema downgrade or a merely matching archive checksum.
+        schema = manifest.get("schema")
+        need(schema in ("aoe2war.product.web-release-manifest.v2",
+                        "aoe2war.product.web-release-manifest.v3")
              and manifest.get("source") == state["source"]
              and manifest.get("build") == state["build"]
              and manifest.get("github_run_id") == body["githubRunId"]
@@ -1410,6 +1415,54 @@ def bound_body(name, raw, state, journal):
              and manifest.get("previous_build") == body["previousBuildId"]
              and manifest.get("financial_authorized") is False,
              "INVOCATION_ROOT_MANIFEST_IDENTITY")
+        if schema.endswith(".v2"):
+            # A V3 DATA identity cannot be relabeled as historical ROOT V2.
+            need(not any(key in manifest for key in
+                         ("transport_mode", "archive_dev", "archive_inode")),
+                 "INVOCATION_ROOT_MANIFEST_IDENTITY")
+        else:
+            need(manifest.get("transport_mode") == "data-archive-v1"
+                 and type(manifest.get("archive_dev")) is int
+                 and manifest["archive_dev"] == 2064
+                 and type(manifest.get("archive_inode")) is int
+                 and manifest["archive_inode"] > 0,
+                 "INVOCATION_ROOT_MANIFEST_DATA_IDENTITY")
+            data_base = Path(
+                "/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1")
+            stage = data_base / (".aoe2war-b-os-" + state["source"][:12]
+                                 + "-run-" + str(body["githubRunId"]))
+            archive = stage / "runtime.tar.gz"
+            need(manifest.get("archive_path") == str(archive),
+                 "INVOCATION_ROOT_MANIFEST_DATA_PATH")
+            trusted(stage, 0o700, directory=True)
+            trusted(archive, 0o400)
+            # Root has already promoted the immutable DATA member. Check its
+            # genuine mounted identity and contents, not just manifest fields.
+            fd = os.open(archive, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                before = os.fstat(fd)
+                need(before.st_dev == manifest["archive_dev"]
+                     and before.st_ino == manifest["archive_inode"]
+                     and before.st_size == manifest["archive_bytes"]
+                     and before.st_uid == OWNER_UID and before.st_nlink == 1
+                     and stat.S_ISREG(before.st_mode)
+                     and stat.S_IMODE(before.st_mode) == 0o400,
+                     "INVOCATION_ROOT_MANIFEST_DATA_INODE")
+                archive_hash = hashlib.sha256()
+                while True:
+                    chunk = os.read(fd, 1024 * 1024)
+                    if not chunk:
+                        break
+                    archive_hash.update(chunk)
+                after = os.fstat(fd)
+                need((before.st_dev, before.st_ino, before.st_size,
+                      before.st_mtime_ns, before.st_ctime_ns) ==
+                     (after.st_dev, after.st_ino, after.st_size,
+                      after.st_mtime_ns, after.st_ctime_ns)
+                     and archive_hash.hexdigest() == body["artifactSha256"],
+                     "INVOCATION_ROOT_MANIFEST_DATA_DIGEST_OR_RACE")
+            finally:
+                os.close(fd)
         evidence_fd = os.open(journal, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
             for selected_row, filename in (
