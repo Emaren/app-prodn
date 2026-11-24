@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8016a5b87fdb1463b36aa3194585a8784a86aad0c7b6bb16e863bb2563605e7",
+      "sha256": "96fbbdc815878780b92c539342ef162d1b76a4ad67931ccf39d067ff7e4dc7f7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-kingdom-lifecycle-proposals-20261124",
-    "commit": "eb6b26c1d703b427272f586eafc61c1ab1c95882"
+    "commit": "f9546434b837d3d17a10e58bb2a1a876d8b9e1ee"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
