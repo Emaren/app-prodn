@@ -30,6 +30,7 @@ import {
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
 import { readBoundedDirectImage } from "@/lib/directImageIngress";
+import { readPrivateDirectAttachment } from "@/lib/directMessageAttachmentResponse";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
 import { normalizeReactionEmoji } from "@/lib/reactionEmoji";
@@ -182,6 +183,9 @@ async function resolveLobbyShareRoom(
 }
 
 export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.has("attachmentMessageId")) {
+    return readPrivateDirectAttachment(request);
+  }
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {

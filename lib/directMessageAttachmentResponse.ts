@@ -5,8 +5,9 @@ import { isRestrictedImageReference, readRestrictedImage } from "@/lib/restricte
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+function privateJson(detail: string, status: number) {
+  return NextResponse.json({detail}, {status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+}
 
 function parseMessageId(raw: string) {
   const messageId = Number(raw);
@@ -82,20 +83,20 @@ function buildContentDisposition({
   return `inline; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`;
 }
 
-export async function GET(
+export async function readPrivateDirectAttachment(
   request: NextRequest
 ) {
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {
-      return NextResponse.json({ detail: "No active session" }, { status: 401 });
+      return privateJson("No active session", 401);
     }
 
-    const ids=request.nextUrl.searchParams.getAll("messageId");
+    const ids=request.nextUrl.searchParams.getAll("attachmentMessageId");
     const messageId = ids.length===1 && /^[1-9]\d{0,9}$/.test(ids[0]) && Number(ids[0])<=2147483647
       ? parseMessageId(ids[0]) : null;
     if (!messageId) {
-      return NextResponse.json({ detail: "Invalid attachment id" }, { status: 400 });
+      return privateJson("Invalid attachment id", 400);
     }
 
     const prisma = getPrisma();
@@ -105,7 +106,7 @@ export async function GET(
     });
 
     if (!viewer) {
-      return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
+      return privateJson("Viewer not found", 404);
     }
 
     const message = await prisma.directMessage.findUnique({
@@ -129,18 +130,18 @@ export async function GET(
 
     if (!message?.conversation.participants.some(participant=>participant.userId===viewer.id) ||
         !message.attachmentDataUrl || !message.attachmentKind) {
-      return NextResponse.json({ detail: "Attachment not found" }, { status: 404 });
+      return privateJson("Attachment not found", 404);
     }
 
     if (message.attachmentKind !== "image" && message.attachmentKind !== "audio") {
-      return NextResponse.json({ detail: "Attachment type is unsupported" }, { status: 415 });
+      return privateJson("Attachment type is unsupported", 415);
     }
 
     const decoded = isRestrictedImageReference(message.attachmentDataUrl)
       ? await readRestrictedImage(process.env.SOCIAL_DIRECT_IMAGE_READ_ROOT, message.attachmentDataUrl, message.attachmentMimeType)
       : await loadDirectMessageAttachmentContent(message.attachmentDataUrl);
     if (!decoded) {
-      return NextResponse.json({ detail: "Attachment is unreadable" }, { status: 422 });
+      return privateJson("Attachment is unreadable", 422);
     }
 
     const responseMimeType =
@@ -162,6 +163,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Direct-message attachment unavailable");
-    return NextResponse.json({ detail: "Attachment unavailable" }, { status: 500 });
+    return privateJson("Attachment unavailable", 500);
   }
 }

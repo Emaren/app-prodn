@@ -326,10 +326,12 @@ test("direct chat foreground reconciliation covers missed process-local events w
 });
 
 test("restricted image URL is a literal private no-store route and legacy loader cannot serve its bytes",()=>{
- const reader=readFileSync(new URL("../app/api/contact-emaren/attachments/route.ts",import.meta.url),"utf8");
+ const reader=readFileSync(new URL("../lib/directMessageAttachmentResponse.ts",import.meta.url),"utf8");
  const inbox=readFileSync(new URL("../lib/contactInbox.ts",import.meta.url),"utf8");
  const legacy=readFileSync(new URL("../lib/directMessageAttachments.ts",import.meta.url),"utf8");
- assert.match(inbox,/\/api\/contact-emaren\/attachments\?messageId=/);
+ assert.match(inbox,/\/api\/contact-emaren\?attachmentMessageId=/);
+ const route=readFileSync(new URL("../app/api/contact-emaren/route.ts",import.meta.url),"utf8");
+ assert.match(route,/searchParams\.has\("attachmentMessageId"\)[\s\S]*?return readPrivateDirectAttachment\(request\)/);
  assert.match(reader,/participants\.some[\s\S]*?readRestrictedImage\(process\.env\.SOCIAL_DIRECT_IMAGE_READ_ROOT/);
  assert.match(reader,/"Cache-Control": "private, no-store"/);
  assert.match(legacy,/if \(isRestrictedImageReference\(storedAttachment\)\) return null/);

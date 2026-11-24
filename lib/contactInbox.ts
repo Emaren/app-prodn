@@ -308,7 +308,7 @@ function buildMessageAttachment(message: {
     kind: message.attachmentKind,
     name: message.attachmentName ?? null,
     mimeType: message.attachmentMimeType ?? null,
-    url: `/api/contact-emaren/attachments?messageId=${message.id}`,
+    url: `/api/contact-emaren?attachmentMessageId=${message.id}`,
     durationSeconds:
       typeof message.attachmentDurationSeconds === "number"
         ? message.attachmentDurationSeconds
