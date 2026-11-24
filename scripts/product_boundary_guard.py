@@ -1322,15 +1322,22 @@ def check_exact_we2_r25_chat_context(checkout: Path, repo: str, branch: str,
         else:
             if (os.environ.get("GITHUB_EVENT_NAME") != "push"
                     or event.get("ref") != "refs/heads/main"
-                    or event.get("before") != base or event.get("after") != sha):
+                    or event.get("before") != base or event.get("after") != sha
+                    or (event.get("repository") or {}).get("full_name") != repo):
                 raise BoundaryHold("R25_CHAT_MAIN_EVENT")
             parents=git(checkout,"rev-list","--parents","-n","1",sha).split()
-            if len(parents)!=3 or parents[1]!=base:
+            if len(parents)!=3 or parents[:2]!=[sha,base]:
                 raise BoundaryHold("R25_CHAT_MAIN_MERGE")
             if git(checkout,"rev-parse",sha+"^{tree}") != git(checkout,"rev-parse",parents[2]+"^{tree}"):
                 raise BoundaryHold("R25_CHAT_MAIN_TREE")
     elif branch == "main":
         raise BoundaryHold("R25_CHAT_MAIN_CI_REQUIRED")
+    candidate = parents[2] if branch == "main" else sha
+    frozen = "b90a9c036ae78d1a1c8055818be640e0c164a8a6"
+    if git(checkout,"merge-base",frozen,candidate) != frozen:
+        raise BoundaryHold("R25_CHAT_REVIEW_ANCESTRY")
+    if git(checkout,"merge-base",base,candidate) != base:
+        raise BoundaryHold("R25_CHAT_CANDIDATE_BASE")
 
 
 def exact_we2_r25_chat_changes(checkout: Path, base: str) -> list[str]:
