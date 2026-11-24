@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-atlas-merge-transport-20261124` at `2f1ce18e58d486b111af06d39844099b39b15c5d`
+Implementation baseline: `session-c/we3-direct-chat-sync-incident-20261124` at `8d0fa7f8e03bc03e655cfa9f19b656859310b032`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
