@@ -97,6 +97,7 @@ export type ContactTextMessage = {
   createdAt: string;
   sender: ContactInboxSender;
   receipt: ContactInboxReceipt | null;
+  deliveryPending?: boolean;
   body: string;
   attachment: ContactMessageAttachment | null;
   reactions: ContactMessageReaction[];

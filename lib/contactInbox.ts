@@ -114,6 +114,7 @@ export type InboxTextMessage = {
   createdAt: string;
   sender: InboxSender;
   receipt: InboxReadReceipt | null;
+  deliveryPending?: boolean;
   body: string;
   attachment: InboxMessageAttachment | null;
   reactions: InboxMessageReaction[];
@@ -1621,7 +1622,9 @@ async function loadConversationMessages(
         : { badges: [], gifts: [], giftedWolo: 0 };
 
     const isOutgoing = sender?.id === viewerUserId;
-    const readAt = isOutgoing && counterpartParticipant?.lastReadAt && counterpartParticipant.lastReadAt >= message.createdAt
+    // Restricted read acknowledgments are not admitted. Do not turn a legacy
+    // timestamp (also advanced by sends) into a new claim of human reading.
+    const readAt = !usesNonfinancialProductionAuth() && isOutgoing && counterpartParticipant?.lastReadAt && counterpartParticipant.lastReadAt >= message.createdAt
       ? counterpartParticipant.lastReadAt.toISOString()
       : null;
     const replayIdMatch = message.body?.match(/\/game-stats\/(\d+)/);
@@ -1664,6 +1667,7 @@ async function loadConversationMessages(
         durationSeconds: replay.duration ?? replay.game_duration ?? null,
         playedAt: (replay.played_on ?? replay.timestamp)?.toISOString() ?? null,
       } : null,
+      ...(usesNonfinancialProductionAuth() && !isOutgoing && sender?.id===targetUserId && !message.deliveredAt ? {deliveryPending:true} : {}),
       receipt: isOutgoing ? {
         status: readAt ? "read" : message.deliveredAt ? "delivered" : "sent",
         deliveredAt: message.deliveredAt?.toISOString() ?? null,

@@ -17,6 +17,7 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import {
   MAX_DIRECT_IMAGE_BYTES,
@@ -143,7 +144,9 @@ async function requestInbox(
     throw new Error(readDetail(payload) || "Inbox failed.");
   }
 
-  return payload as ContactInboxPayload;
+  const inbox=payload as ContactInboxPayload;
+  if(!signal?.aborted)void acknowledgeReceivedInbox(inbox,Boolean(summaryOnly),document.visibilityState==="visible");
+  return inbox;
 }
 
 type ContactEmarenWorkspaceProps = {

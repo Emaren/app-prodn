@@ -18,6 +18,7 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
 
 const ContactInboxPanel = dynamic(
   () => import("@/components/contact/ContactInboxPanel"),
@@ -71,7 +72,9 @@ async function requestInbox(
     throw new Error(readDetail(payload) || "Inbox failed.");
   }
 
-  return payload as ContactInboxPayload;
+  const inbox=payload as ContactInboxPayload;
+  if(!signal?.aborted)void acknowledgeReceivedInbox(inbox,Boolean(summaryOnly),document.visibilityState==="visible");
+  return inbox;
 }
 
 type HeaderInboxEventPayload = {

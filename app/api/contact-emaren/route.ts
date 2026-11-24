@@ -26,7 +26,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
-  callSocialWriter, callSocialImageWriter, readBoundedSocialJson, signedSocialCookie,
+  callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
 import { readBoundedDirectImage } from "@/lib/directImageIngress";
@@ -248,7 +248,20 @@ export async function POST(request: NextRequest) {
       catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
       if (!action || typeof action !== "object" || Array.isArray(action))
         return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
-      result=await callSocialWriter("direct", token, action as Record<string,unknown>);
+      const fields=action as Record<string,unknown>;
+      if(fields.action==="ack_delivery"){
+        if(Object.keys(fields).length!==3 || typeof fields.targetUid!=="string" ||
+           !/^[A-Za-z0-9_.:-]{1,100}$/.test(fields.targetUid) ||
+           !Array.isArray(fields.messageIds) || fields.messageIds.length<1 || fields.messageIds.length>50 ||
+           !fields.messageIds.every(id=>Number.isSafeInteger(id)&&id>0&&id<=2147483647) ||
+           new Set(fields.messageIds).size!==fields.messageIds.length)
+          return NextResponse.json({detail:"INVALID_DIRECT_DELIVERY_REQUEST"},{status:400,headers:{"Cache-Control":"no-store"}});
+        const ack=await callSocialDeliveryWriter(token,{targetUid:fields.targetUid,messageIds:fields.messageIds});
+        if(ack.status===200 && ack.body.ok===true && typeof ack.body.updatedCount==="number" && ack.body.updatedCount>0)
+          publishDirectMessageEvent(fields.targetUid,{type:"receipt",targetUid:sessionUid});
+        return NextResponse.json(ack.body,{status:ack.status,headers:{"Cache-Control":"no-store"}});
+      }
+      result=await callSocialWriter("direct", token, fields);
     }
     if (result.status !== 201) return NextResponse.json(result.body, { status: result.status });
     const targetUid = result.body.targetUid;

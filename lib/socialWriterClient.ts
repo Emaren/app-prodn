@@ -61,6 +61,9 @@ export async function callSocialWriter(
 export async function callSocialImageWriter(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/direct/image",signedSession,input,13_400_000,8_000);
 }
+export async function callSocialDeliveryWriter(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/delivered",signedSession,input,MAX_BYTES,TIMEOUT);
+}
 async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");

@@ -8,6 +8,7 @@ import pg from "pg";
 import { verifySocialSignedSession } from "../lib/socialWriterSession.mjs";
 import { executeSocialTextWrite } from "../lib/socialWriterCore.mjs";
 import { executeSocialImageWrite, MAX_IMAGE_RPC_BYTES } from "../lib/socialImageWriterCore.mjs";
+import { executeSocialDeliveryWrite } from "../lib/socialDeliveryWriterCore.mjs";
 
 const SOCKET = "/run/aoe2war-social-writer/social.sock";
 const ROLE = "aoe2war_social_writer";
@@ -76,7 +77,8 @@ const server = http.createServer(async(req,res)=>{
   const finish=(status,body)=>{if(!res.writableEnded){res.writeHead(status);res.end(JSON.stringify(body));}};
   const scope=req.url==="/v1/clan/text"?"clan":req.url==="/v1/direct/text"?"direct":req.url==="/v1/lobby/text"?"lobby":null;
   const isImage=req.url==="/v1/direct/image";
-  if(req.method!=="POST"||(!scope&&!isImage)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
+  const isDelivery=req.url==="/v1/direct/delivered";
+  if(req.method!=="POST"||(!scope&&!isImage&&!isDelivery)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
   if(req.headers["content-type"]!=="application/json"){finish(415,{detail:"JSON_ONLY"});return;}
   const token=req.headers["x-social-signed-session"];
   if(typeof token!=="string"||token.length<32||token.length>SESSION_MAX_BYTES){
@@ -102,6 +104,12 @@ const server = http.createServer(async(req,res)=>{
   }
   let input;
   try{input=await readBoundedJson(req);}catch{finish(400,{detail:"INVALID_SOCIAL_JSON"});return;}
+  if(isDelivery){
+    const result=await executeSocialDeliveryWrite({pool,sessionToken:token,input,
+      verifySession:(t)=>verifySocialSignedSession(t,secret),
+      onError:(code)=>process.stderr.write("SOCIAL_DELIVERY_FAIL_CLOSED code="+code+"\n")});
+    finish(result.status,result.body);return;
+  }
   const result=await executeSocialTextWrite({
     pool,sessionToken:token,scope,input,
     verifySession:(t)=>verifySocialSignedSession(t,secret),
