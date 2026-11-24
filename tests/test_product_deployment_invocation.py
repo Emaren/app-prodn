@@ -217,11 +217,12 @@ class InvocationClockTests(unittest.TestCase):
         manifest_base.mkdir(mode=0o700)
         data_base = self.work / "data-stage"
         if v3:
-            data_base.mkdir(mode=0o700)
+            data_base.mkdir(mode=0o700, exist_ok=True)
             stage = data_base / (".aoe2war-b-os-" + state["source"][:12]
                                  + "-run-" + str(body["githubRunId"]))
-            stage.mkdir(mode=0o700)
+            stage.mkdir(mode=0o700, exist_ok=True)
             archive = stage / "runtime.tar.gz"
+            archive.unlink(missing_ok=True)
             archive.write_bytes(b"z" * body["runtimeArchiveBytes"])
             archive.chmod(0o400)
             body["artifactSha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -254,6 +255,7 @@ class InvocationClockTests(unittest.TestCase):
         namespace["MANIFEST_BASE"] = manifest_base
         if v3:
             namespace["DATA_STAGE_BASE"] = data_base
+            namespace["DATA_STAGE_DEV"] = archive.stat().st_dev
         return namespace["bound_body"], state, journal
 
     def test_root_body_binds_actual_accepted_seal_and_rejects_mismatch(self):
