@@ -317,7 +317,7 @@ class InvocationClockTests(unittest.TestCase):
 
     def test_root_v3_denies_wrong_transport_and_device(self):
         for bad in ({"transport_mode": "root-archive-v1"},
-                    {"archive_dev": 2049}, {"archive_dev": True}):
+                    {"archive_dev": 0}, {"archive_dev": True}):
             with self.subTest(bad=bad):
                 body, bound, state, journal = self.complete_body_fixture(v3=True)
                 self.update_data_manifest(body, **bad)
