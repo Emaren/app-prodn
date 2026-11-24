@@ -180,6 +180,11 @@ export function buildUmbrellaTree(
     ["aoe2war.os.release", "aoe2war.os.recovery"],
     ["aoe2war.os.documentation", "aoe2war.os.central-command"],
     ["aoe2war.os.storage", "aoe2war.os.host"],
+    ["aoe2war.os.campaign", "aoe2war.os.operation"],
+    ["aoe2war.os.operation", "aoe2war.os.storage"],
+    ["aoe2war.os.operation", "aoe2war.os.orchestra"],
+    ["aoe2war.os.neuron", "aoe2war.os.synapse"],
+    ["aoe2war.os.synapse", "aoe2war.os.neuronal-net"],
   ];
   for (const [from, to] of lateral) {
     if (ids.has(from) && ids.has(to)) edges.push({

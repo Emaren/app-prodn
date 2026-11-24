@@ -393,6 +393,116 @@
       "live_deployment_proof": "UNVERIFIED",
       "has_exclusive_financial_authority": false,
       "taxonomy": "subordinate"
+    },
+    {
+      "id": "campaign",
+      "name": "Campaign OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1500",
+      "responsibility": "Charter, scope, baseline, outcomes and archived lessons; Renaissance remains its domain evidence owner.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.campaign",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "campaign-lifecycle-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1500"
+      ],
+      "value_gate": "Measured campaign milestones, independent evidence coverage and closure.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "operation",
+      "name": "Operation OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1501",
+      "responsibility": "Finite mission scope, responsible lane, budgets, blockers, handback and closure; domain controllers retain execution.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.operation",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "finite-mission-lifecycle-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1501"
+      ],
+      "value_gate": "Exact outcome receipts and closure; never grant execution or retirement.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "neuron",
+      "name": "Neuron OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1502",
+      "responsibility": "Validate stable module IDs, versioned contracts and lifecycle; reuse the existing registry.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.neuron",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "module-contract-lifecycle-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1502"
+      ],
+      "value_gate": "Reject duplicate identity and conflicting authority.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "synapse",
+      "name": "Synapse OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1502",
+      "responsibility": "Validate versioned provenance-preserving inter-module handoffs; Orchestra retains leases and scheduling.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.synapse",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "typed-handoff-contract-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1502"
+      ],
+      "value_gate": "Reject incompatible contracts, replay and unbounded messages.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "neuronal-net",
+      "name": "Neuronal Net OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1502",
+      "responsibility": "Compose existing graph and provenance models; detect blocking cycles, never dispatch.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.neuronal-net",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "read-only-dependency-projection-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1502"
+      ],
+      "value_gate": "Source-pinned dependency graph and stale evidence handling.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
     }
   ],
   "supervisory_roles": [
@@ -509,13 +619,13 @@
     "confirmed_constellation_os": 8,
     "existing_central_os_outside_constellation": 1,
     "additional_existing_code_health_os_source": 1,
-    "planned_additional_subordinate_identities": 5,
-    "planned_subordinate_os_total": 15,
-    "planned_total_including_umbrella": 16,
+    "planned_additional_subordinate_identities": 10,
+    "planned_subordinate_os_total": 20,
+    "planned_total_including_umbrella": 21,
     "non_os_supervisory_roles": 3,
     "verified_autonomous_running_os_workers": null,
     "systemwide_unique_operational_os_total": null,
-    "count_scope": "15 subordinate identities (10 source-present + 5 draft/proposed), 1 umbrella; 3 non-OS roles (Doctor, Shepherd, Composer). No verified live-worker census.",
+    "count_scope": "20 subordinate planning identities (10 source-present + 10 draft/proposed), 1 umbrella; 3 non-OS roles. Five proposals dated 2026-11-24, not a live-worker census.",
     "non_os_supervisory_existing_ui_roles": 2,
     "non_os_supervisory_proposed_roles": 1
   },
@@ -528,7 +638,7 @@
     "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
     "Code Health has distinct existing source contract; add it to planning roster without claiming separate daemon",
     "Performance is an alias of Speed, Renaissance integration facet, Council composite diagnostic, Loop and Graph engines are cross-cutting rather than OS",
-    "16 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count",
+    "21 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count",
     "System Composer is a proposed Orchestra OS role; never a subordinate OS or autonomous production authority.",
     "Seven visual modes share one evidence projection. Never promote simulation/polling/animation to observed live telemetry.",
     "P3 visual and composition planning cannot block F #1083 P0 website #1061 or alter Deployment OS #1088."
@@ -706,5 +816,75 @@
       "no cyclic blocking edges or duplicate write leases",
       "bounded retained receipt, least-privilege visibility"
     ]
+  },
+  "lifecycle_extension_proposal": {
+    "schema": "aoe2war.os.lifecycle-extension.proposal.v0",
+    "review_date": "2026-11-24",
+    "accepted_base": "a187ada489ce76c939d6d52218ee5a7f22520921",
+    "execution_authorized": false,
+    "campaign": {
+      "states": [
+        "PLANNED",
+        "ACTIVE",
+        "HOLD",
+        "COMPLETE",
+        "RETIRED"
+      ],
+      "required": [
+        "id",
+        "charter",
+        "scope",
+        "baseline",
+        "outcomes",
+        "milestones",
+        "dependencies",
+        "work_refs",
+        "review_cadence",
+        "closure_criteria"
+      ],
+      "example_ref": "https://github.com/Emaren/app-prodn/issues/724",
+      "domain_source": "config/renaissance-campaign.json",
+      "status": "UNKNOWN"
+    },
+    "operation": {
+      "states": [
+        "PLANNED",
+        "ACTIVE",
+        "HOLD",
+        "COMPLETE",
+        "RETIRED"
+      ],
+      "required": [
+        "id",
+        "objective",
+        "responsible_lane",
+        "scope",
+        "budget",
+        "dependencies",
+        "work_refs",
+        "blockers",
+        "next_action",
+        "closure_receipts"
+      ],
+      "example_ref": "https://github.com/Emaren/VPSSentry/issues/63",
+      "status": "HOLD",
+      "evidence_ref": "https://github.com/Emaren/VPSSentry/issues/136#issuecomment-7135907553",
+      "actual_reclaim_bytes": null
+    },
+    "handoff": {
+      "base_contract": "aoe2war.orchestra.event.v1",
+      "required": [
+        "objective",
+        "source_sha",
+        "status",
+        "evidence_ref",
+        "blocker",
+        "next_action",
+        "owner",
+        "budget"
+      ],
+      "execution_authorized": false
+    },
+    "boundary": "Proposed logical identities only. Central prioritizes, Orchestra leases, original domain controllers execute. Renaissance remains integration facet. Reuse existing composer graph/provenance; no new scheduler, daemon, authority or release prerequisite."
   }
 }
