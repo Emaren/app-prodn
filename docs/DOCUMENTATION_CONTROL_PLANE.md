@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-kingdom-lifecycle-proposals-20261124` at `f9546434b837d3d17a10e58bb2a1a876d8b9e1ee`
+Implementation baseline: `session-c/we3-kingdom-lifecycle-proposals-20261124` at `dcd8a2b47dcf557309164ce447eeb0b567d5e903`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
