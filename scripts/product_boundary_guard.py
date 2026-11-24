@@ -237,8 +237,28 @@ EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
     "tests/test_product_deployment_invocation.py":
         "d888e194153f48a5fa7daf05acba89c23d40a1dc43ca9d8fde255a80b219d99a",
 }
+EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS = {
+    'docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md': '72c4f17896d9ef6a99cb4ad12c7fa53f2c24bdad56db2567c38152c17a43e0c2',
+    'docs/R25_B4_KINGDOM_GRAPH_RELEASE.md': 'a1d46cb0dfcccc452cedfe44fdab39bae55626942cccad11dab97b16c0324237',
+    'docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md': 'a278607d713aab54426074ccdf7bb238f56751186d03cf8b20fb67a3f7371a54',
+    'docs/SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md': '9a5be6f084ba809c5bf655cc72a7a2c602c22e7be7f31cdac6507c9df8c48148',
+    'docs/SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md': 'f5fe36b2e669bd480f6f14b1d15b4a837b9d6d1c62001854640d84b42d0d28cb',
+    'docs/SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md': 'a3549f1952e1a6e08c372964b5e336d3d2c7f4d6fe309fcdf36c655573262f3b',
+    'docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md': 'cc00d413e77741f658378c3cf18dcddaa3da601695690f6884b16254f999f18f',
+    'docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md': '9578fec04e4689da8b963f7976e62150cffa12f205c1509ff191ac6cecb6011f',
+    'docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md': 'd00d4ba9128c653724aa99c2b20f3fc6302d489b0fb65ecd30400ec1613f6030',
+    'docs/SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md': '648a1808ed35b68a63e5141e1bfd6e98e1e45392ff85ab49b1100ea1b5bee018',
+    'docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md': '5ef5dccd95f8354ac375a95fad31d18b71edc08b11845f12614a640aa2a6d36a',
+    'docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md': 'a07901d5aa4ed54118afd5e74ed72d357b9da85b8398c2684e6cc7910f7454c1',
+    'docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md': 'e7cbd7bd5a4aeb775c6e2dd698d18d48b25395bdbf5f9e85c22be7a853393ae8',
+}
+EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
 EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
     frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+    frozenset(EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS) |
+    EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED |
     {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
 )
 
@@ -783,7 +803,7 @@ def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
     return raw
 
 def exact_we2_factory_v3_receipt_blob(checkout: Path, raw: str) -> str:
-    expected = EXACT_WE2_FACTORY_V3_RECEIPT_PINS.get(raw)
+    expected = EXACT_WE2_FACTORY_V3_RECEIPT_PINS.get(raw, EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS.get(raw))
     if expected is None:
         raise BoundaryHold("WE2_V3_RECEIPT_UNPINNED")
     target = checkout
@@ -823,6 +843,8 @@ def check_exact_we2_factory_v3_receipt_source(checkout: Path, repo: str,
             frozenset(changes) != EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED):
         raise BoundaryHold("WE2_V3_RECEIPT_CHANGED_SCOPE")
     for raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+    for raw in EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS:
         exact_we2_factory_v3_receipt_blob(checkout, raw)
 
 

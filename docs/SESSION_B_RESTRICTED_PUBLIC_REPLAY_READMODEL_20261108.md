@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-public-read-projection-no-financial-permit"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -41,3 +41,14 @@ Review basis: the retained original document and the current canonical App main 
 The restricted public replay projection and renderer are retained source. Former SOURCE-ONLY HOLD and e058 public deployment references reflect November 8, not the later accepted e31e source. This scalar read model confers no private parser evidence, betting or settlement permission.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `lib/restrictedPublicReplay.ts`: current canonical-main blob `57fdab96349e3b6fbcbc5855ce2f06d90a69cd9e`
+- `components/game-stats/RestrictedPublicReplayDetail.tsx`: current canonical-main blob `087dc4bed39d4bd7c9faf9fd72351f66937ac1bf`
+
+**Current finding:** Replay public scalar projection and renderer unchanged. Neither exposes privileged parser data nor grants financial access.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

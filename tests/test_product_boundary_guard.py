@@ -321,7 +321,12 @@ class BoundaryTests(unittest.TestCase):
         names=sorted(p.EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED)
         self.assertEqual(branch,"we2/factory-v3-invocation-reconciliation-20261124")
         self.assertEqual(base,"f14bf4625ed124beafe80dc34188dcb7da16daa0")
-        self.assertEqual(len(names),4)
+        self.assertEqual(len(names),19)
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS),13)
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED),2)
+        for name,sha in p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
+
         self.assertEqual(p.EXACT_WE2_FACTORY_DATA_PINS[
             "scripts/aoe2_product_release.py"],
             "59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab")
@@ -346,7 +351,8 @@ class BoundaryTests(unittest.TestCase):
                     root,repository,branch,prior,changed)
         with tempfile.TemporaryDirectory() as td:
             dest=Path(td)
-            for name in p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+            for name in (set(p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+                         set(p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS)):
                 target=dest/name
                 target.parent.mkdir(exist_ok=True,parents=True)
                 target.write_bytes((root/name).read_bytes())
