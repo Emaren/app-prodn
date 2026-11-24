@@ -8,11 +8,11 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 161 exact page templates and 291 handler templates match Git HEAD",()=>{
+test("all 166 exact page templates and 293 handler templates match Git HEAD",()=>{
   const actual=census(withRestrictedReadOnlyGitHead(() => gitHeadPaths()),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
-    pageTemplates:161,adminTemplates:40,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:13,routeHandlerTemplates:291,apiHandlerTemplates:288,nonApiHandlerTemplates:3
+    pageTemplates:166,adminTemplates:45,dynamicTemplates:20,publicIndexTemplates:88,
+    excludedStaticTemplates:13,routeHandlerTemplates:293,apiHandlerTemplates:290,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
@@ -20,8 +20,8 @@ test("all 161 exact page templates and 291 handler templates match Git HEAD",()=
 });
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);
-  assert.equal(phases.length,161);
-  assert.equal(new Set(phases).size,161);
+  assert.equal(phases.length,166);
+  assert.equal(new Set(phases).size,166);
   assert.deepEqual([...phases].sort(),inventory.pages.map(p=>p.href).sort());
   assert.deepEqual(renaissance.modules.map(m=>m.href).sort(),phases.filter(h=>h==="/renaissance"||h.startsWith("/renaissance/")).sort());
 });
@@ -34,8 +34,16 @@ test("path scope is not an authorization claim or public detail disclosure",()=>
   assert.equal(inventory.pages.find(p=>p.href==="/admin/living-kingdom")?.scope,"admin-path");
   assert.equal(inventory.pages.find(p=>p.href==="/admin/aoe2war-os/umbrella-tree")?.scope,"admin-path");
   assert.equal(inventory.pages.find(p=>p.href==="/admin/storage-os/explorer")?.scope,"admin-path");
+  for(const href of ["/admin/storage-os/atlas","/admin/storage-os/atlas/hel1-root",
+    "/admin/storage-os/atlas/hel1-data","/admin/storage-os/atlas/m1",
+    "/admin/storage-os/atlas/intel"]){
+    assert.equal(inventory.pages.find(p=>p.href===href)?.scope,"admin-path");
+  }
+  assert.equal(inventory.handlers.filter(h=>h.entrypoint===
+    "app/api/admin/storage-os/atlas/route.ts"&&h.scope==="api").length,1);
   assert.ok(inventory.handlers.some(h=>h.entrypoint==="app/api/admin/storage-os/teaching/route.ts"&&h.scope==="api"));
   assert.ok(inventory.handlers.some(h=>h.entrypoint==="app/api/admin/storage-os/dry-run/route.ts"&&h.scope==="api"));
+  assert.equal(inventory.handlers.filter(h=>h.entrypoint==="app/api/admin/storage-os/bae/route.ts"&&h.scope==="api").length,1);
   assert.equal(inventory.pages.find(p=>p.href==="/admin/living-kingdom/[uid]")?.assurance,"unverified");
   assert.equal(inventory.handlers.filter(h=>h.entrypoint.startsWith("app/api/admin/living-kingdom/")).length,2);
   assert.equal(inventory.pages.find(p=>p.href==="/wallet")?.scope,"excluded-static");
