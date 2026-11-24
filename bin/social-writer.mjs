@@ -85,10 +85,11 @@ const server = http.createServer(async(req,res)=>{
   if(isImage){
     if(!process.env.SOCIAL_DIRECT_IMAGE_ROOT){finish(503,{detail:"SOCIAL_IMAGE_NOT_ADMITTED"});return;}
     if(imageActive){res.setHeader("Connection","close");finish(429,{detail:"SOCIAL_IMAGE_BUSY_RETRY_SAME_KEY"});return;}
-    // Admit the signed session before accepting the larger body.
-    try{await verifySocialSignedSession(token,secret);}catch{finish(401,{detail:"INVALID_SIGNED_SESSION"});return;}
+    // Claim the bounded slot before awaiting verification to prevent concurrent admission.
     imageActive=true;
     try{
+      // Admit the signed session before accepting the larger body.
+      try{await verifySocialSignedSession(token,secret);}catch{finish(401,{detail:"INVALID_SIGNED_SESSION"});return;}
       let input;
       try{input=await readBoundedJson(req,MAX_IMAGE_RPC_BYTES);}catch{finish(400,{detail:"INVALID_SOCIAL_IMAGE_JSON"});return;}
       const result=await executeSocialImageWrite({pool,sessionToken:token,input,
