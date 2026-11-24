@@ -1208,6 +1208,7 @@ from pathlib import Path
 OWNER_UID = 0
 BASE = Path("/var/lib/aoe2war-product-release-v1")
 MANIFEST_BASE = Path("/root/aoe2war-product-release-manifests")
+DATA_STAGE_BASE = Path("/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1")
 UNIT = Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
 LOCK = Path("/run/lock/aoe2war-product-release-v1.lock")
 NAMES = {
@@ -1427,9 +1428,7 @@ def bound_body(name, raw, state, journal):
                  and type(manifest.get("archive_inode")) is int
                  and manifest["archive_inode"] > 0,
                  "INVOCATION_ROOT_MANIFEST_DATA_IDENTITY")
-            data_base = Path(
-                "/mnt/HC_Volume_105319120/aoe2war/we2-factory-artifact-stage-v1")
-            stage = data_base / (".aoe2war-b-os-" + state["source"][:12]
+            stage = DATA_STAGE_BASE / (".aoe2war-b-os-" + state["source"][:12]
                                  + "-run-" + str(body["githubRunId"]))
             archive = stage / "runtime.tar.gz"
             need(manifest.get("archive_path") == str(archive),
