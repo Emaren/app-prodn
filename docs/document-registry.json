@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7ba0a44d65ed4c394fdaa83f18a3455049ff2abf353d1de504286601cafede7c",
+      "sha256": "6ddd2e3f5c7048617fec61d1351ac1cef79592d6cec57c6f1225e1a7a6784976",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3596,8 +3596,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we2/factory-v3-invocation-reconciliation-20261124",
-    "commit": "05c7c9736cc1479cb7cb7ff9cd90f5381da2bed8"
+    "branch": "we2/factory-v3-public-publisher-source-20261124",
+    "commit": "344ffef9b2a28c71585c95c27205b2025fcfa2c7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -319,7 +319,7 @@ def verified_local_cache(approval, work):
 
 FACTORY_PUBLISHER = "/usr/local/sbin/aoe2war_factory_public_status_v2.py"
 # Owner replaces this fail-closed placeholder after final reviewed publisher freeze.
-FACTORY_PUBLISHER_SHA = "ca7a8150ecc860ef6a9ea328ca1921665a69e2720ebc0f48b5ffae7f716c364a"
+FACTORY_PUBLISHER_SHA = "e1ba18b10824a00b3d942d94b7748a2d66fc20d6b100b402130ea89552c050af"
 FACTORY_STATUS_MAX_BYTES = 2 * 1024 * 1024
 
 

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-v3-invocation-reconciliation-20261124` at `05c7c9736cc1479cb7cb7ff9cd90f5381da2bed8`
+Implementation baseline: `we2/factory-v3-public-publisher-source-20261124` at `344ffef9b2a28c71585c95c27205b2025fcfa2c7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
