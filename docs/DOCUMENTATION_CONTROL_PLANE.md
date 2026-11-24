@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-watcher-v3-release-20261124` at `d718243265cef6607a48738e7fab2a70e46cf08d`
+Implementation baseline: `session-c/we3-matchups-profile-repair-20261124` at `3de7482e0f89c6ca43b1d8cd87ccafac8d9916e7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

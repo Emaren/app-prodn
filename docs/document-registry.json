@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55120a545a7cb1bfa58abe00b269df02f0487e7bf7f556ed8bbe030fa97e0ed9",
+      "sha256": "4d800ca0985ece186241ed6715ecec81321539ad9e7d37e12ac018e2677ad4aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-watcher-v3-release-20261124",
-    "commit": "d718243265cef6607a48738e7fab2a70e46cf08d"
+    "branch": "session-c/we3-matchups-profile-repair-20261124",
+    "commit": "3de7482e0f89c6ca43b1d8cd87ccafac8d9916e7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
