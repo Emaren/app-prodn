@@ -38,6 +38,8 @@ class PublicV3OneFileTests(unittest.TestCase):
         self.backup_dir=self.base/"backup"
         self.orig=self.backup_dir/"original-publisher-v2.py"
         self.receipt=self.backup_dir/"installed-receipt-v1.json"
+        self.real_read_stable = M.read_stable
+        self.real_trusted = M.trusted
         self.patchers=[
             patch.object(M,"STAGED_DIR",self.stage),
             patch.object(M,"STAGED",self.stage_file),
@@ -74,6 +76,25 @@ class PublicV3OneFileTests(unittest.TestCase):
         fd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,mode)
         try:os.write(fd,data);os.fchmod(fd,mode)
         finally:os.close(fd)
+
+    def test_native_fd_reader_checks_real_stability_and_nofollow(self):
+        real=self.base/"true-stable-file"
+        real.write_bytes(b"original immutable root receipt fixture")
+        real.chmod(0o600)
+        with patch.object(M,"trusted",side_effect=self.real_trusted):
+            self.assertEqual(self.real_read_stable(real,os.getuid(),0o600),
+                             b"original immutable root receipt fixture")
+        real.chmod(0o644)
+        with patch.object(M,"trusted",side_effect=self.real_trusted):
+            with self.assertRaisesRegex(M.Hold,"INODE_AUTHORITY"):
+                self.real_read_stable(real,os.getuid(),0o600)
+        real.chmod(0o600)
+        saved=real.with_name("saved-fixture")
+        real.rename(saved)
+        real.symlink_to(saved.name)
+        with patch.object(M,"trusted",side_effect=self.real_trusted):
+            with self.assertRaisesRegex(M.Hold,"INODE_AUTHORITY"):
+                self.real_read_stable(real,os.getuid(),0o600)
 
     def test_exact_preflight_and_initial_preimage(self):
         blob,state=M.preflight()

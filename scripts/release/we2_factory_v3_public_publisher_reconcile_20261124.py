@@ -56,7 +56,7 @@ def read_stable(path,owner,mode,maxbytes=200000):
         after=os.fstat(fd)
         need(len(raw)==s.st_size and len(raw)<=maxbytes and
              (before.st_dev,before.st_ino,before.st_size,before.st_ctime_ns,before.st_mtime_ns)==
-             (after.st_dev,after.st_ino,after.st_size,after.st_ctime_ns) and
+             (after.st_dev,after.st_ino,after.st_size,after.st_ctime_ns,after.st_mtime_ns) and
              (before.st_dev,before.st_ino)==(s.st_dev,s.st_ino),
              "READ_RACE_"+path.name)
         return raw
