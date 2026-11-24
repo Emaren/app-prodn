@@ -235,7 +235,7 @@ EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
     "scripts/aoe2_product_release.py":
         "5f261cd84bf54a05e6d462d368708e143b816a8f0abad47def41ccf4841bd454",
     "tests/test_product_deployment_invocation.py":
-        "2b07a51699ecae1a56f3f9a67d0a3bfbe1f91ae9f5db8e078ab4dd51d63dcff5",
+        "d888e194153f48a5fa7daf05acba89c23d40a1dc43ca9d8fde255a80b219d99a",
 }
 EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
     frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
