@@ -226,6 +226,22 @@ EXACT_WE2_FACTORY_DATA_CHANGED=(frozenset(EXACT_WE2_FACTORY_DATA_PINS)
     "tests/test_product_boundary_guard.py",
 }
 
+# WE2 post-T10 Factory V3 invocation-only repair. Historical DATA-stage SHA
+# pins remain immutable. This admits exactly the new reviewed source + tests
+# from canonical main without authorizing a WEBSITE permit or T7-T10 replay.
+EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH = "we2/factory-v3-invocation-reconciliation-20261124"
+EXACT_WE2_FACTORY_V3_RECEIPT_BASE = "f14bf4625ed124beafe80dc34188dcb7da16daa0"
+EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
+    "scripts/aoe2_product_release.py":
+        "5f261cd84bf54a05e6d462d368708e143b816a8f0abad47def41ccf4841bd454",
+    "tests/test_product_deployment_invocation.py":
+        "2b07a51699ecae1a56f3f9a67d0a3bfbe1f91ae9f5db8e078ab4dd51d63dcff5",
+}
+EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
+    frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
+)
+
 # WE2 root-security source review: one branch/base with immutable candidate
 # guard/proxy bytes. This is *not* a scripts/ or WE2 wildcard.
 # WE1 independently reviewed *new* original Factory post-T10 retention source.
@@ -517,6 +533,12 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_DATA_BRANCH and
             raw in EXACT_WE2_FACTORY_DATA_PINS):
         return exact_we2_factory_data_blob(checkout,raw)
+    # Original DATA Factory source remains frozen. Post-T10 V3 receipt
+    # code is a separately qualified exact branch/base/hash transition.
+    if (base == EXACT_WE2_FACTORY_V3_RECEIPT_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH and
+            raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS):
+        return exact_we2_factory_v3_receipt_blob(checkout, raw)
     # New exact post-T10 source review, distinct from the frozen v3 runner.
     if (base == EXACT_WE2_FACTORY_RETENTION_BASE and
             os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_RETENTION_BRANCH
@@ -760,6 +782,50 @@ def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
         raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_SHA")
     return raw
 
+def exact_we2_factory_v3_receipt_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_FACTORY_V3_RECEIPT_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_V3_RECEIPT_UNPINNED")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("WE2_V3_RECEIPT_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+            not 1 <= st.st_size <= 150000):
+        raise BoundaryHold("WE2_V3_RECEIPT_FILE_AUTHORITY")
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        observed = os.fstat(fd)
+        if (observed.st_dev, observed.st_ino, observed.st_size,
+                observed.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_V3_RECEIPT_INODE_RACE")
+        raw_bytes = os.read(fd, 150001)
+    finally:
+        os.close(fd)
+    if (len(raw_bytes) != st.st_size or
+            hashlib.sha256(raw_bytes).hexdigest() != expected):
+        raise BoundaryHold("WE2_V3_RECEIPT_SHA")
+    return raw
+
+
+def check_exact_we2_factory_v3_receipt_source(checkout: Path, repo: str,
+                                              branch: str, base: str,
+                                              changes: list[str]) -> None:
+    if branch != EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY_V3_RECEIPT_BASE:
+        raise BoundaryHold("WE2_V3_RECEIPT_BASE_OR_REPO")
+    if (len(changes) != len(EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED) or
+            frozenset(changes) != EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED):
+        raise BoundaryHold("WE2_V3_RECEIPT_CHANGED_SCOPE")
+    for raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+
+
 def check_exact_we2_factory_data_source(checkout: Path, repo: str, branch: str,
                                         base: str, changes: list[str]) -> None:
     if branch!=EXACT_WE2_FACTORY_DATA_BRANCH:
@@ -989,6 +1055,8 @@ def main() -> int:
         check_exact_we2_factory_retention_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_factory_data_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_v3_receipt_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_storage_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
