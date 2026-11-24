@@ -288,6 +288,8 @@ class InvocationClockTests(unittest.TestCase):
 
 
     def complete_body_fixture(self, v3=False):
+        # Each adversarial case needs its own append-only invocation journal.
+        self.work = Path(tempfile.mkdtemp(prefix="case-", dir=self.temp.name)).resolve()
         clock = self.clock()
         clock.classify([], warm=False)
         clock.first_live()
