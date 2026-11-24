@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-atlas-merge-transport-20261124` at `2f1ce18e58d486b111af06d39844099b39b15c5d`
+Implementation baseline: `session-c/we3-kingdom-lifecycle-proposals-20261124` at `eb6b26c1d703b427272f586eafc61c1ab1c95882`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
