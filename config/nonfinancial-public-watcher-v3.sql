@@ -3,20 +3,27 @@
 -- Only seven sanitized account display fields are exposed, no raw replay
 -- evidence, source hashes, uploader identities, signed keys or financial data.
 BEGIN;
+SET LOCAL search_path = pg_catalog, public;
 DO $preflight$
 BEGIN
  IF current_user <> 'postgres'
    OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles
        WHERE rolname='aoe2war_web_prod' AND rolcanlogin
          AND NOT rolsuper AND NOT rolbypassrls AND NOT rolcreaterole)
-   OR pg_catalog.to_regclass('public.replay_parse_attempts') IS NULL
+   OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class
+       WHERE oid=pg_catalog.to_regclass('public.replay_parse_attempts') AND relkind IN ('r','p'))
  THEN RAISE EXCEPTION 'PUBLIC_WATCHER_SOURCE_PREFLIGHT_HOLD';
  END IF;
 END
 $preflight$;
 CREATE SCHEMA IF NOT EXISTS aoe2war_public_v3 AUTHORIZATION postgres;
-REVOKE ALL ON SCHEMA aoe2war_public_v3 FROM PUBLIC;
-GRANT USAGE ON SCHEMA aoe2war_public_v3 TO aoe2war_web_prod;
+DO $schema_acl$
+BEGIN
+ IF NOT pg_catalog.has_schema_privilege('aoe2war_web_prod','aoe2war_public_v3','USAGE') THEN
+   GRANT USAGE ON SCHEMA aoe2war_public_v3 TO aoe2war_web_prod;
+ END IF;
+END
+$schema_acl$;
 CREATE OR REPLACE VIEW aoe2war_public_v3.current_watcher_account_states
 WITH (security_barrier=true) AS
 WITH eligible_attempts AS (
@@ -25,7 +32,7 @@ WITH eligible_attempts AS (
           LOWER(a.replay_hash) AS replay_hash,
           a.played_on AS observed_game_at,
           a.evidence::jsonb->'current_account_observation' AS observation
-        FROM replay_parse_attempts a
+        FROM public.replay_parse_attempts a
         WHERE a.upload_mode = 'watcher'
           AND a.parse_source IN ('watcher_live', 'watcher_final')
           AND a.status IN (
@@ -170,10 +177,7 @@ WITH eligible_attempts AS (
             AND player->>'steam_dm_rating' ~ '^[0-9]{1,10}$'
             THEN CASE WHEN (player->>'steam_dm_rating')::numeric <= 2147483647
               THEN (player->>'steam_dm_rating')::integer END
-          END AS steam_dm_rating,
-          COUNT(*) OVER (
-            PARTITION BY a.attempt_id, player->>'steam_id'
-          ) AS identity_count
+          END AS steam_dm_rating
         FROM eligible_attempts a
         CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(a.observation->'players') = 'array'
@@ -183,7 +187,7 @@ WITH eligible_attempts AS (
       valid_observations AS (
         SELECT DISTINCT ON (steam_id, replay_hash) *
         FROM raw_observations
-        WHERE steam_id ~ '^[0-9]{17}$' AND identity_count = 1
+        WHERE steam_id ~ '^[0-9]{17}$'
         ORDER BY steam_id, replay_hash, attempt_id ASC
       ),
 
@@ -272,11 +276,26 @@ WITH eligible_attempts AS (
 
       ORDER BY account_ids.steam_id
 ;
-REVOKE ALL ON aoe2war_public_v3.current_watcher_account_states FROM PUBLIC,aoe2war_web_prod;
-GRANT SELECT ON aoe2war_public_v3.current_watcher_account_states TO aoe2war_web_prod;
+DO $view_acl$
+BEGIN
+ IF NOT pg_catalog.has_table_privilege('aoe2war_web_prod','aoe2war_public_v3.current_watcher_account_states','SELECT') THEN
+   GRANT SELECT ON aoe2war_public_v3.current_watcher_account_states TO aoe2war_web_prod;
+ END IF;
+ IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c CROSS JOIN LATERAL
+   pg_catalog.aclexplode(COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) a
+   WHERE c.oid='aoe2war_public_v3.current_watcher_account_states'::regclass AND a.grantee=0)
+ OR EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL
+   pg_catalog.aclexplode(COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
+   WHERE n.nspname='aoe2war_public_v3' AND a.grantee=0)
+ THEN RAISE EXCEPTION 'PUBLIC_WATCHER_PUBLIC_ACL_DRIFT';
+ END IF;
+END
+$view_acl$;
 DO $postflight$
 BEGIN
- IF pg_catalog.has_table_privilege('aoe2war_web_prod','public.replay_parse_attempts','SELECT')
+ IF pg_catalog.has_any_column_privilege('aoe2war_web_prod','public.replay_parse_attempts','SELECT,INSERT,UPDATE,REFERENCES')
+ OR pg_catalog.has_table_privilege('aoe2war_web_prod','public.replay_parse_attempts','INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+ OR pg_catalog.has_table_privilege('aoe2war_web_prod','aoe2war_public_v3.current_watcher_account_states','INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
  OR pg_catalog.has_schema_privilege('aoe2war_web_prod','aoe2war_public_v3','CREATE')
  THEN RAISE EXCEPTION 'PUBLIC_WATCHER_RAW_EVIDENCE_AUTHORITY_DRIFT';
  END IF;

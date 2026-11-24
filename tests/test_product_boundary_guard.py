@@ -864,6 +864,124 @@ class BoundaryTests(unittest.TestCase):
                     checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE,
                     "scripts/aoe2_product_unreviewed_future.py")
 
+    def test_b_watcher_exact_sql_custody_and_default_deny(self):
+        source = GUARD.parent.parent
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in policy.EXACT_B_WATCHER_SQL:
+                self.denied_source(name)
+                out = root / name
+                out.parent.mkdir(parents=True, exist_ok=True)
+                original = (source / name).read_bytes()
+                out.write_bytes(original)
+                self.assertEqual(policy.exact_b_watcher_blob(root, name), name)
+                out.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+                with self.assertRaisesRegex(policy.BoundaryHold, "SQL_SHA"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.write_bytes(original)
+                out.chmod(0o666)
+                with self.assertRaisesRegex(policy.BoundaryHold, "CUSTODY"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.chmod(0o644)
+                alias = root / "alias"
+                os.link(out, alias)
+                with self.assertRaisesRegex(policy.BoundaryHold, "CUSTODY"):
+                    policy.exact_b_watcher_blob(root, name)
+                alias.unlink()
+                out.rename(alias)
+                out.symlink_to(alias)
+                with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.unlink()
+                alias.rename(out)
+            for name in ("config/other.sql", "tests/fixtures/other.sql",
+                         "db/financial.sql", "prisma/migrations/other.sql"):
+                self.denied_source(name)
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.exact_b_watcher_blob(root, name)
+
+    def test_b_watcher_exact_changed_scope(self):
+        source = GUARD.parent.parent
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in policy.EXACT_B_WATCHER_SQL:
+                out = root / name
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes((source / name).read_bytes())
+            regression = root / policy.EXACT_B_WATCHER_REGRESSION
+            original = (source / policy.EXACT_B_WATCHER_REGRESSION).read_bytes()
+            regression.write_bytes(original)
+            rows = ["M\t" + name for name in sorted(policy.EXACT_B_WATCHER_CHANGED)]
+            def check(data, mode="100644 abc 0\tfile"):
+                def fake_git(_, *args):
+                    return "\n".join(data) if args[0] == "diff" else mode
+                with mock.patch.object(policy, "git", side_effect=fake_git):
+                    return policy.exact_b_watcher_changes(root, policy.EXACT_B_WATCHER_BASE)
+            self.assertEqual(set(check(rows)), policy.EXACT_B_WATCHER_CHANGED)
+            regression.write_bytes(original + b"\n")
+            with self.assertRaisesRegex(policy.BoundaryHold, "REGRESSION_SHA"):
+                check(rows)
+            regression.write_bytes(original)
+            for bad in (rows[:-1], rows + ["A\tconfig/third.sql"],
+                        rows + ["D\tlib/other.ts"], rows + [rows[0]],
+                        ["D" + rows[0][1:]] + rows[1:],
+                        ["T" + rows[0][1:]] + rows[1:]):
+                with self.assertRaisesRegex(policy.BoundaryHold, "CHANGED_SCOPE"):
+                    check(bad)
+            with self.assertRaisesRegex(policy.BoundaryHold, "INDEX_MODE"):
+                check(rows, "120000 abc 0\tfile")
+
+    def test_b_watcher_context_and_exact_main_merge(self):
+        import json
+        base = policy.EXACT_B_WATCHER_BASE
+        branch = policy.EXACT_B_WATCHER_BRANCH
+        sha, second, tree = "a"*40, "b"*40, "c"*40
+        repo = "Emaren/app-prodn"
+        with tempfile.TemporaryDirectory() as tmp:
+            event_path = Path(tmp) / "event.json"
+            event = {"number":1499,"pull_request":{
+                "head":{"repo":{"full_name":repo},"ref":branch,"sha":sha},
+                "base":{"repo":{"full_name":repo},"ref":"main","sha":base}}}
+            def fake_git(_, *args):
+                if args[0] == "merge-base":
+                    return args[1]
+                if args[0] == "rev-list":
+                    return f"{sha} {base} {second}"
+                if args[0] == "rev-parse":
+                    return tree
+                raise AssertionError(args)
+            def check(r=repo,b=branch,ba=base,ci=True):
+                policy.check_exact_b_watcher_context(Path(tmp),r,b,ba,sha,ci=ci)
+            with mock.patch.object(policy,"git",side_effect=fake_git), mock.patch.dict(
+                    os.environ,{"GITHUB_EVENT_PATH":str(event_path),
+                                "GITHUB_EVENT_NAME":"pull_request"}):
+                event_path.write_text(json.dumps(event))
+                check()
+                for r,b,ba in ((repo,"session-c/other",base),
+                               ("Emaren/kingdom-traders",branch,base),
+                               (repo,branch,"0"*40)):
+                    with self.assertRaises(policy.BoundaryHold):
+                        check(r,b,ba)
+                event["pull_request"]["head"]["repo"]["full_name"]="fork/app-prodn"
+                event_path.write_text(json.dumps(event))
+                with self.assertRaisesRegex(policy.BoundaryHold,"PR_IDENTITY"):
+                    check()
+                event_path.write_text(json.dumps({"ref":"refs/heads/main",
+                    "before":base,"after":sha,"repository":{"full_name":repo}}))
+                with mock.patch.dict(os.environ,{"GITHUB_EVENT_NAME":"push"}):
+                    check(b="main")
+                    with mock.patch.object(policy,"git",return_value=f"{sha} {base}"):
+                        with self.assertRaisesRegex(policy.BoundaryHold,"MAIN_PARENTS"):
+                            check(b="main")
+                    def wrong_tree(_, *args):
+                        return "d"*40 if args == ("rev-parse",second+"^{tree}") else fake_git(_, *args)
+                    with mock.patch.object(policy,"git",side_effect=wrong_tree):
+                        with self.assertRaisesRegex(policy.BoundaryHold,"MAIN_TREE"):
+                            check(b="main")
+            with mock.patch.object(policy,"git",return_value="d"*40):
+                with self.assertRaisesRegex(policy.BoundaryHold,"REVIEW_ANCESTRY"):
+                    check(ci=False)
+
     def test_prior_nine_negative_cases(self):
         values = (
             "../FINANCIAL/never_write.txt",
