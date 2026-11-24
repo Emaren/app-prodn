@@ -159,37 +159,25 @@ export function projectStorageBaeTopology(
       "Present a source-and-destination scoped same-host copy/restore receipt before marking transfer.",
       ["SAME_HOST_LANE_TRANSFER_RECEIPT_NOT_ADMITTED"]),
     lane("hel1_intel_direct","HEL1 → Intel Direct","hel1-root","intel","WE4 / owner",
-      "Use the existing direct-transfer controller with an exact owner permit and verified ciphertext receipt.",
+      "Direct route not admitted; ask the source owner for an independently reviewed route-specific controller.",
       ["DIRECT_LANE_PERMIT_AND_TRANSFER_RECEIPT_NOT_ADMITTED"]),
   ];
-  // The signed Intel TENANT report can attest its historical M1-ARCHIVE
-  // campaigns; these are NOT a current copy permit, item-to-item correlation,
-  // proof for other lanes, or permission to retire originals.
+  // Historical tenant and catalog summaries are not a campaign/object/route
+  // receipt chain. Keep them in the independently signed Intel view; never
+  // promote a tenant's unrelated last-copy and last-restore or an aggregate
+  // destination inventory to a route gate. A future authenticated per-object
+  // adapter can supply a correlated projection without changing authority.
   const m1Archive=admittedIntel?intel.tenants.find(t=>
     t.id==="WE2"&&t.identity==="ISOLATED"&&t.namespace==="M1-ARCHIVE"):undefined;
-  if(m1Archive?.lastTransfer){
-    lanes[1].gates["TRANSFERRED"]="VERIFIED";
-    lanes[1].sourceReceiptScope="SIGNED_INTEL_WE2_TENANT_LAST_TRANSFER_ONLY";
-    lanes[1].blockers.push("HISTORICAL_TRANSFER_NOT_CURRENT_ITEM_AUTHORITY");
-  }
-  if(m1Archive?.lastRestore){
-    lanes[1].gates["RESTORE VERIFIED"]="VERIFIED";
+  if(m1Archive?.lastTransfer||m1Archive?.lastRestore){
     lanes[1].sourceReceiptScope="SIGNED_INTEL_WE2_TENANT_HISTORICAL_PROOFS";
-    lanes[1].blockers.push("RESTORE_CAMPAIGN_NOT_BOUND_TO_NEXT_RETIREMENT");
+    lanes[1].blockers.push("HISTORICAL_TENANT_PROOFS_NOT_BOUND_TO_SAME_OBJECT");
   }
-  // Signed Intel object inventory can prove an historical HEL1-RECOVERY
-  // ciphertext is physically present and hashed at the Intel destination.
-  // It cannot prove the transport route, an original copy permit, or reclaim.
   const hel1Archive=admittedIntel?intel.objects?.filter(o=>
     o.namespace==="HEL1-RECOVERY"&&o.contentSha256VerifiedNow)??[]:[];
   if(hel1Archive.length>0){
-    lanes[2].gates["DESTINATION VERIFIED"]="VERIFIED";
-    lanes[2].gates["TRANSFERRED"]="VERIFIED";
-    lanes[2].gates["HASH VERIFIED"]="VERIFIED";
-    if(hel1Archive.some(o=>o.restore==="HISTORICAL_RESTORE_PROOF_PRESENT"))
-      lanes[2].gates["RESTORE VERIFIED"]="VERIFIED";
     lanes[2].sourceReceiptScope="SIGNED_INTEL_HEL1_RECOVERY_HISTORICAL_OBJECT_ONLY";
-    lanes[2].blockers.push("HISTORICAL_OBJECT_DOES_NOT_PROVE_CURRENT_TRANSFER_AUTHORITY");
+    lanes[2].blockers.push("HISTORICAL_DESTINATION_INVENTORY_NOT_ROUTE_PROOF");
   }
   return {
     schema:BAE_SCHEMA,authority:"ADMIN_READ_ONLY_NO_TRANSFER_OR_RETIREMENT",

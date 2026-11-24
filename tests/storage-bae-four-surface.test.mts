@@ -103,11 +103,12 @@ test("signed tenant historical transfer/restore do not authorize future copy, ha
  const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intel as unknown as IntelArg,null,now);
  const lane=x.lanes[1];
  assert.equal(x.machines[3].trust,"INTEL_WE2_DERIVED_ED25519");
- assert.equal(lane.gates["TRANSFERRED"],"VERIFIED");
- assert.equal(lane.gates["RESTORE VERIFIED"],"VERIFIED");
+ assert.equal(lane.gates["TRANSFERRED"],"NOT_PROVEN");
+ assert.equal(lane.gates["RESTORE VERIFIED"],"NOT_PROVEN");
  for(const gate of ["COPY AUTHORIZED","HASH VERIFIED","RETIREMENT ELIGIBLE"] as const)
   assert.equal(lane.gates[gate],"NOT_PROVEN");
  assert.equal(x.lanes[2].gates["TRANSFERRED"],"NOT_PROVEN");
+ assert.ok(lane.blockers.includes("HISTORICAL_TENANT_PROOFS_NOT_BOUND_TO_SAME_OBJECT"));
 });
 test("stale observation cannot count as a current inventory",()=>{
  const d=storage() as unknown as StorageArg;
@@ -135,12 +136,13 @@ test("verified historical HEL1-recovery object never grants a fresh direct trans
   tenants:[]};
  const x=projectStorageBaeTopology(storage() as unknown as StorageArg,intel as unknown as IntelArg,null,now);
  const lane=x.lanes[2];
- assert.equal(lane.gates["TRANSFERRED"],"VERIFIED");
- assert.equal(lane.gates["HASH VERIFIED"],"VERIFIED");
- assert.equal(lane.gates["RESTORE VERIFIED"],"VERIFIED");
+ assert.equal(lane.gates["TRANSFERRED"],"NOT_PROVEN");
+ assert.equal(lane.gates["HASH VERIFIED"],"NOT_PROVEN");
+ assert.equal(lane.gates["RESTORE VERIFIED"],"NOT_PROVEN");
  assert.equal(lane.gates["COPY AUTHORIZED"],"NOT_PROVEN");
  assert.equal(lane.gates["RETIREMENT ELIGIBLE"],"NOT_PROVEN");
  assert.equal(x.lanes[4].gates["TRANSFERRED"],"NOT_PROVEN");
+ assert.ok(lane.blockers.includes("HISTORICAL_DESTINATION_INVENTORY_NOT_ROUTE_PROOF"));
  assert.equal(x.machines[3].certifiedCapacity.present,false);
 });
 test("protected ACK reader must reauthenticate exact hashed visual bytes",async()=>{
