@@ -503,6 +503,32 @@
       "live_deployment_proof": "UNVERIFIED",
       "has_exclusive_financial_authority": false,
       "taxonomy": "subordinate"
+    },
+    {
+      "id": "progress",
+      "name": "Progress OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1504",
+      "responsibility": "Measure outcome deltas, evidence stage, blocked age, rework and next eligible action using the existing Central ledger and Kingdom Progress projection.",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.progress",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "delivery-feedback-planning",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1504",
+        "docs/KINGDOM_BRAIN_PROGRESS.md",
+        "lib/kingdomProgressProjection.ts",
+        "config/kingdom-progress-projects.json"
+      ],
+      "value_gate": "Measure real outcomes and source-to-live latency, never activity or self-scored progress.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate",
+      "parent_os_id": "aoe2war.os.central-command"
     }
   ],
   "supervisory_roles": [
@@ -619,13 +645,13 @@
     "confirmed_constellation_os": 8,
     "existing_central_os_outside_constellation": 1,
     "additional_existing_code_health_os_source": 1,
-    "planned_additional_subordinate_identities": 10,
-    "planned_subordinate_os_total": 20,
-    "planned_total_including_umbrella": 21,
+    "planned_additional_subordinate_identities": 11,
+    "planned_subordinate_os_total": 21,
+    "planned_total_including_umbrella": 22,
     "non_os_supervisory_roles": 3,
     "verified_autonomous_running_os_workers": null,
     "systemwide_unique_operational_os_total": null,
-    "count_scope": "20 subordinate planning identities (10 source-present + 10 draft/proposed), 1 umbrella; 3 non-OS roles. Five proposals dated 2026-11-24, not a live-worker census.",
+    "count_scope": "21 subordinate planning identities (10 source-present + 11 draft/proposed), 1 umbrella; 3 non-OS roles. Proposed Progress OS is not a live worker.",
     "non_os_supervisory_existing_ui_roles": 2,
     "non_os_supervisory_proposed_roles": 1
   },
@@ -638,7 +664,7 @@
     "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
     "Code Health has distinct existing source contract; add it to planning roster without claiming separate daemon",
     "Performance is an alias of Speed, Renaissance integration facet, Council composite diagnostic, Loop and Graph engines are cross-cutting rather than OS",
-    "21 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count",
+    "22 named planning identities including umbrella; verified live estate remains UNKNOWN; never present planning count as certified operational count",
     "System Composer is a proposed Orchestra OS role; never a subordinate OS or autonomous production authority.",
     "Seven visual modes share one evidence projection. Never promote simulation/polling/animation to observed live telemetry.",
     "P3 visual and composition planning cannot block F #1083 P0 website #1061 or alter Deployment OS #1088."
@@ -885,6 +911,268 @@
       ],
       "execution_authorized": false
     },
-    "boundary": "Proposed logical identities only. Central prioritizes, Orchestra leases, original domain controllers execute. Renaissance remains integration facet. Reuse existing composer graph/provenance; no new scheduler, daemon, authority or release prerequisite."
+    "boundary": "Proposed logical identities only. Central prioritizes, Orchestra leases, original domain controllers execute. Renaissance remains integration facet. Reuse existing composer graph/provenance; no new scheduler, daemon, authority or release prerequisite.",
+    "progress": {
+      "schema": "aoe2war.progress.handoff.proposal.v0",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1504",
+      "existing_sources": [
+        "docs/KINGDOM_BRAIN_PROGRESS.md",
+        "lib/kingdomProgressProjection.ts",
+        "lib/kingdomProgressPublicRelay.ts",
+        "config/kingdom-progress-projects.json",
+        "docs/CENTRAL_COMMAND_OS.md"
+      ],
+      "required": [
+        "objective_id",
+        "owner",
+        "last_accepted_source",
+        "artifact_deployed_identity",
+        "prior_outcome_counters",
+        "current_outcome_counters",
+        "receipt_references",
+        "observation_freshness",
+        "blocker_code",
+        "blocker_first_seen",
+        "external_or_internal_wait",
+        "next_eligible_action",
+        "approved_command_or_runbook",
+        "dependency",
+        "budget",
+        "requested_owner_action",
+        "do_not_repeat"
+      ],
+      "evidence_stages": [
+        "SOURCE",
+        "TEST",
+        "CI",
+        "HOST",
+        "LIVE"
+      ],
+      "truth_rules": [
+        "UNKNOWN is not zero",
+        "gross allocation is not net reclaimed bytes",
+        "source coverage is not independent restore or retirement",
+        "public projection excludes private paths and secrets",
+        "no execution authority or additional release gate"
+      ],
+      "execution_authorized": false
+    }
+  },
+  "census_reconciliation_proposal": {
+    "schema": "aoe2war.os.census-extension.proposal.v0",
+    "coverage": "BOUNDED_APP_PRODN_MAIN_AND_REFERENCED_DRAFTS_NOT_COMPLETE_ESTATE",
+    "accepted_main": "a187ada489ce76c939d6d52218ee5a7f22520921",
+    "live_operational_count": null,
+    "execution_authorized": false,
+    "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+    "source_cells": [
+      {
+        "name": "Scan OS",
+        "resolution": "EXISTING_SOURCE_NOT_LIVE_PROOF",
+        "parent": "aoe2war.os.umbrella",
+        "sources": [
+          "https://github.com/Emaren/app-prodn/pull/1455",
+          "scripts/scan_os.py",
+          "config/scan-os-catalog.v1.json"
+        ],
+        "feature": "Bounded acquisition and coverage; source-only planning."
+      },
+      {
+        "name": "Organization OS",
+        "resolution": "EXISTING_DRAFT_NOT_MAIN",
+        "parent": "aoe2war.os.umbrella",
+        "sources": [
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "config/organization-os-source-links.v1.json",
+          "scripts/organization_os.py",
+          "docs/SCAN_ORGANIZATION_OS.md"
+        ],
+        "feature": "Canonical source links and derived navigation views."
+      },
+      {
+        "name": "Transfer OS",
+        "resolution": "EXISTING_CROSS_REPO_CONTRACT_REVIEW_REQUIRED",
+        "parent": "aoe2war.os.storage",
+        "sources": [
+          "https://github.com/Emaren/VPSSentry/pull/192",
+          "https://github.com/Emaren/app-prodn/pull/1505"
+        ],
+        "feature": "Object movement and authenticated phase receipts; no retirement authority."
+      },
+      {
+        "name": "Classification and Disposition OS",
+        "resolution": "EXISTING_STORAGE_POLICY_NOT_SEPARATE_AUTHORITY",
+        "parent": "aoe2war.os.storage",
+        "sources": [
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "config/storage-disposition-policy.v1.json"
+        ],
+        "feature": "Classification and protected disposition vocabulary."
+      }
+    ],
+    "proposed_cells": [
+      {
+        "name": "Architecture OS",
+        "parent": "aoe2war.os.umbrella",
+        "responsibility": "Module boundaries, topology and contracts.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Engineering OS",
+        "parent": "aoe2war.os.umbrella",
+        "responsibility": "Engineering standards, methods and toolchain.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Commands OS",
+        "parent": "Organization OS",
+        "responsibility": "Approved command catalog, scope, preconditions, expected output and errors.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Scripts OS",
+        "parent": "Organization OS",
+        "responsibility": "Versioned executable inventory, source and tests.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Features OS",
+        "parent": "Organization OS",
+        "responsibility": "Capability inventory and feature lifecycle.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Detection OS",
+        "parent": "Scan OS",
+        "responsibility": "Identify drift and anomalies from bounded observations.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Investigation OS",
+        "parent": "Scan OS",
+        "responsibility": "Diagnose causes without granting remediation.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Classification OS",
+        "parent": "aoe2war.os.storage",
+        "responsibility": "Resolve to existing classification contract first.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Duplication OS",
+        "parent": "aoe2war.os.storage",
+        "responsibility": "Identify byte, content and source equivalence.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Redundancy OS",
+        "parent": "aoe2war.os.storage",
+        "responsibility": "Distinguish necessary resilience from waste.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Reconciler OS",
+        "parent": "aoe2war.os.workspace",
+        "responsibility": "Resolve divergence to accepted identity.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Harmonizer OS",
+        "parent": "aoe2war.os.umbrella",
+        "responsibility": "Validate inter-module compatibility.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "name": "Pruning OS",
+        "parent": "aoe2war.os.storage",
+        "responsibility": "Reviewed retention and eligible removal plan; existing controllers only.",
+        "resolution": "PROPOSED_MAP_EXISTING_EQUIVALENTS_BEFORE_REGISTRATION",
+        "reference": "https://github.com/Emaren/app-prodn/issues/1502#issuecomment-7136340855",
+        "live_proof": "UNVERIFIED"
+      }
+    ],
+    "organization_views": [
+      {
+        "name": "Index",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Menu",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Contents",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Glossary",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Encyclopedia",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Appendix",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Atlas",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Ledger",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      },
+      {
+        "name": "Accounting",
+        "parent": "Organization OS",
+        "resolution": "DERIVED_VIEW_NOT_SEPARATE_STORE",
+        "reference": "https://github.com/Emaren/app-prodn/pull/1466"
+      }
+    ],
+    "existing_aliases": "Reuse unreconciled_named_capabilities and each registered aliases array; do not count aliases twice.",
+    "completion_gate": "Original source owners must reconcile all repos, exact scripts/commands, aliases, hierarchy, lifecycle and native/live evidence. Unknown inventory remains UNKNOWN."
   }
 }

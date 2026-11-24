@@ -126,8 +126,11 @@ export function buildUmbrellaTree(
       entry.immutable_id !== true) return emptyGraph("INVALID_OS_ID");
     const id = entry.canonical_id;
     if (id === "aoe2war.os.workspace") workspacePresent = true;
+    const parent = entry.parent_os_id ?? "aoe2war.os.umbrella";
+    if (!canonical(parent) || !parent.startsWith("aoe2war.os.") || !ids.has(parent) || parent === id)
+      return emptyGraph("INVALID_OR_UNORDERED_OS_PARENT");
     if (!add({
-      ...common, id, parentId: "aoe2war.os.umbrella",
+      ...common, id, parentId: parent,
       name: label(entry.name), kind: "os",
       catalogState: classifyLifecycle(entry.lifecycle),
       authority: label(entry.authority_domain, "UNSPECIFIED"),
@@ -185,6 +188,8 @@ export function buildUmbrellaTree(
     ["aoe2war.os.operation", "aoe2war.os.orchestra"],
     ["aoe2war.os.neuron", "aoe2war.os.synapse"],
     ["aoe2war.os.synapse", "aoe2war.os.neuronal-net"],
+    ["aoe2war.os.progress", "aoe2war.os.operation"],
+    ["aoe2war.os.progress", "aoe2war.os.campaign"],
   ];
   for (const [from, to] of lateral) {
     if (ids.has(from) && ids.has(to)) edges.push({
