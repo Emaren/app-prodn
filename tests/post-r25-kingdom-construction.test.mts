@@ -3,8 +3,13 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 import registry from "../config/aoe2war-os-registry.v1.json" with {type:"json"};
 const read=(p:string)=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
-test("fifteen subordinate planning identities and three distinct non-OS roles",()=>{
- assert.equal(registry.subordinate_os.length,15);
+test("registered identities reconcile with declared counts and separate Kingdom 100 roster",()=>{
+ assert.equal(registry.subordinate_os.length,registry.counts.planned_subordinate_os_total);
+ assert.equal(registry.counts.planned_total_including_umbrella,registry.subordinate_os.length+1);
+ assert.equal(new Set(registry.subordinate_os.map(o=>o.canonical_id)).size,registry.subordinate_os.length);
+ assert.equal(registry.kingdom_100.slots.length,100);
+ assert.equal(registry.kingdom_100.registered_subordinate_ids,registry.subordinate_os.length);
+ assert.equal(registry.kingdom_100.verified_live_workers,null);
  assert.equal(registry.supervisory_roles.length,3);
  assert.equal(registry.visual_modes.length,7);
  assert.ok(registry.subordinate_os.every(o=>o.independent_live_worker_proven===false));

@@ -1174,5 +1174,1879 @@
     ],
     "existing_aliases": "Reuse unreconciled_named_capabilities and each registered aliases array; do not count aliases twice.",
     "completion_gate": "Original source owners must reconcile all repos, exact scripts/commands, aliases, hierarchy, lifecycle and native/live evidence. Unknown inventory remains UNKNOWN."
+  },
+  "kingdom_100": {
+    "schema": "aoe2war.kingdom-100.roadmap.v1",
+    "mandate": "https://github.com/Emaren/app-prodn/issues/1507",
+    "authority": "SOURCE_ONLY_CATALOG_NO_EXECUTION",
+    "count_scope": "100 founder names; not 100 canonical identities or live workers",
+    "registered_subordinate_ids": 21,
+    "verified_live_workers": null,
+    "organization_contract": "https://github.com/Emaren/app-prodn/pull/1466",
+    "intelligence_contract": "docs/KINGDOM_INTELLIGENCE.md",
+    "brain_contract": "docs/KINGDOM_BRAIN_PROGRESS.md",
+    "priority_slots": [
+      22,
+      23,
+      24,
+      34,
+      36,
+      50,
+      53,
+      60
+    ],
+    "slots": [
+      {
+        "slot": 1,
+        "name": "Release OS",
+        "focus": "release execution, certification and release evidence",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.release",
+        "parent_slot": null,
+        "owner_slot": 1,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "bin/aoe2war",
+          "scripts/aoe2_release.py",
+          "scripts/aoe2_release_ship.py",
+          "docs/RELEASE_RECOVERY_OS.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 2,
+        "name": "Documentation OS",
+        "focus": "docs health, contracts and federation",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.documentation",
+        "parent_slot": null,
+        "owner_slot": 2,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "scripts/docs_v2_check.py",
+          "docs/DOCUMENTATION_OS.md",
+          "docs/document-registry.json"
+        ],
+        "command_refs": [
+          "aoe2war docs status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 3,
+        "name": "Storage OS",
+        "focus": "storage preservation, capacity, retention and restore evidence",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.storage",
+        "parent_slot": null,
+        "owner_slot": 3,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/STORAGE_OS.md",
+          "scripts/aoe2_storage_retention.py"
+        ],
+        "command_refs": [
+          "aoe2war storage status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 4,
+        "name": "Host OS",
+        "focus": "host maintenance, service inventory and native safeguards",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.host",
+        "parent_slot": null,
+        "owner_slot": 4,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/HOST_MAINTENANCE.md",
+          "scripts/aoe2_host.py"
+        ],
+        "command_refs": [
+          "aoe2war host status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 5,
+        "name": "Recovery OS",
+        "focus": "bounded and tested failure recovery and rollback",
+        "aliases": [
+          "Release Recovery OS"
+        ],
+        "canonical_id": "aoe2war.os.recovery",
+        "parent_slot": null,
+        "owner_slot": 5,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "scripts/aoe2_release_rollback.py",
+          "docs/RELEASE_RECOVERY_OS.md"
+        ],
+        "command_refs": [
+          "aoe2war recovery status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 6,
+        "name": "Workspace OS",
+        "focus": "workspace and source-state observations",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.workspace",
+        "parent_slot": null,
+        "owner_slot": 6,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "lib/kingdomIntelligencePublic.ts",
+          "bin/aoe2war"
+        ],
+        "command_refs": [
+          "aoe2war workspace status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 7,
+        "name": "Speed OS",
+        "focus": "performance/speed measurement and optimization",
+        "aliases": [
+          "Performance OS"
+        ],
+        "canonical_id": "aoe2war.os.speed",
+        "parent_slot": null,
+        "owner_slot": 7,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/PERFORMANCE_OS.md",
+          "bin/aoe2war"
+        ],
+        "command_refs": [
+          "aoe2war speed status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 8,
+        "name": "Replay Truth OS",
+        "focus": "replay/parser provenance and result truth",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.replay-truth",
+        "parent_slot": null,
+        "owner_slot": 8,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/REPLAY_TRUTH_OS.md",
+          "lib/kingdomIntelligencePublic.ts"
+        ],
+        "command_refs": [
+          "aoe2war truth status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 9,
+        "name": "Central Command OS",
+        "focus": "human owner delegated queue, evidence, review, priority and six-lane dispatch; never doubles as the runtime agent scheduler",
+        "aliases": [
+          "Central OS"
+        ],
+        "canonical_id": "aoe2war.os.central-command",
+        "parent_slot": null,
+        "owner_slot": 9,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/CENTRAL_COMMAND_OS.md",
+          "app/admin/central-command"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 10,
+        "name": "Deployment OS",
+        "focus": "versioned component scope admission and release-phase coordination; Release OS remains actual executor",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.deployment",
+        "parent_slot": null,
+        "owner_slot": 10,
+        "lifecycle": "draft-unmerged",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "scripts/aoe2_deploy_os_web_parallel.py (PR #1088; non-merged)",
+          "deploy/deployment-os/WEBSITE_ONLY_PARALLEL_POLICY_V1.md (PR #1088)"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 11,
+        "name": "Orchestra OS",
+        "focus": "workflow DAG planning, leases and handoffs; reuse Central queue, don't create new release authority",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.orchestra",
+        "parent_slot": null,
+        "owner_slot": 11,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1060"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 12,
+        "name": "Agent OS",
+        "focus": "bounded single worker lifecycle, tools, state, sandbox, permissions, verification and expense budgets",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.agent",
+        "parent_slot": null,
+        "owner_slot": 12,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/pull/1086"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 13,
+        "name": "Swarm OS",
+        "focus": "coordinated fleet scheduling, isolation and adversarial reviews with measured 6-to-1000 promotion",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.swarm",
+        "parent_slot": null,
+        "owner_slot": 13,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "docs/CENTRAL_SWARM_1000_ENGINEERING_ROADMAP.md (PR #1025)"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 14,
+        "name": "WoloChain OS",
+        "focus": "read-only chain health, RPC/consensus/indexer/bridge lineage and independently proven mainnet reconciliation; custody remains separate",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.wolochain",
+        "parent_slot": null,
+        "owner_slot": 14,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/wolochain/issues/5"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 15,
+        "name": "Code Health OS",
+        "focus": "bounded source inventory and hashed diagnostic receipts; no independent release or automatic refactor authority",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.code-health",
+        "parent_slot": null,
+        "owner_slot": 15,
+        "lifecycle": "source-present",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "scripts/aoe2_code_health.py",
+          "bin/aoe2war"
+        ],
+        "command_refs": [
+          "aoe2war code-health --json --no-receipt"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 16,
+        "name": "Campaign OS",
+        "focus": "Charter, scope, baseline, outcomes and archived lessons; Renaissance remains its domain evidence owner.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.campaign",
+        "parent_slot": null,
+        "owner_slot": 16,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1500"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 17,
+        "name": "Operation OS",
+        "focus": "Finite mission scope, responsible lane, budgets, blockers, handback and closure; domain controllers retain execution.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.operation",
+        "parent_slot": null,
+        "owner_slot": 17,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1501"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 18,
+        "name": "Neuron OS",
+        "focus": "Validate stable module IDs, versioned contracts and lifecycle; reuse the existing registry.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.neuron",
+        "parent_slot": null,
+        "owner_slot": 18,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1502"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 19,
+        "name": "Synapse OS",
+        "focus": "Validate versioned provenance-preserving inter-module handoffs; Orchestra retains leases and scheduling.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.synapse",
+        "parent_slot": null,
+        "owner_slot": 19,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1502"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 20,
+        "name": "Neuronal Net OS",
+        "focus": "Compose existing graph and provenance models; detect blocking cycles, never dispatch.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.neuronal-net",
+        "parent_slot": null,
+        "owner_slot": 20,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1502"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 21,
+        "name": "Progress OS",
+        "focus": "Measure outcome deltas, evidence stage, blocked age, rework and next eligible action using the existing Central ledger and Kingdom Progress projection.",
+        "aliases": [],
+        "canonical_id": "aoe2war.os.progress",
+        "parent_slot": 9,
+        "owner_slot": 21,
+        "lifecycle": "proposed",
+        "resolution": "REGISTERED_ID",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1504",
+          "docs/KINGDOM_BRAIN_PROGRESS.md",
+          "lib/kingdomProgressProjection.ts",
+          "config/kingdom-progress-projects.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 22,
+        "name": "Priority OS",
+        "focus": "Ranks objectives and dependency urgency",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/CENTRAL_COMMAND_OS.md",
+          "https://github.com/Emaren/app-prodn/issues/984"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 23,
+        "name": "Dispatch OS",
+        "focus": "Compiles exact lane assignments and handoff packets",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/CENTRAL_COMMAND_OS.md",
+          "https://github.com/Emaren/app-prodn/issues/1060"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 24,
+        "name": "Bottleneck OS",
+        "focus": "Locates critical-path constraints and wait causes",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/CENTRAL_COMMAND_OS.md",
+          "lib/kingdomProgressProjection.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 25,
+        "name": "Vision OS",
+        "focus": "Owns long-range destination and design principles",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 26,
+        "name": "Future Thoughts OS",
+        "focus": "Captures untriaged ideas and hypotheses",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 27,
+        "name": "Memory OS",
+        "focus": "Retrieves durable accepted decisions and lessons",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 2,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/ENGINEERING_MEMORY.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 28,
+        "name": "Kingdom Reasoning OS",
+        "focus": "Composes evidence and evaluates candidate decisions",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_INTELLIGENCE.md",
+          "scripts/aoe2_council.py"
+        ],
+        "command_refs": [
+          "aoe2war council --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 29,
+        "name": "Reports OS",
+        "focus": "Formats source-linked operational reports",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_INTELLIGENCE.md",
+          "scripts/central_command_status.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 30,
+        "name": "Foresight OS",
+        "focus": "Forecasts capacity, risks and dependency deadlines",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 31,
+        "name": "Kingdom Intelligence",
+        "focus": "Aggregates verified operational knowledge and recommendations",
+        "aliases": [
+          "Intelligence OS",
+          "deterministic Brain"
+        ],
+        "canonical_id": null,
+        "parent_slot": 9,
+        "owner_slot": 9,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_INTEGRATION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_INTELLIGENCE.md",
+          "scripts/aoe2_brain.py",
+          "lib/kingdomIntelligencePublic.ts"
+        ],
+        "command_refs": [
+          "aoe2war brain --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 32,
+        "name": "Architecture OS",
+        "focus": "Maintains boundaries, contracts and topology",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/umbrellaTreeModel.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 33,
+        "name": "Engineering OS",
+        "focus": "Maintains methods, tooling and engineering practices",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 15,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/ENGINEERING_MEMORY.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 34,
+        "name": "Registry OS",
+        "focus": "Validates unique module IDs, lifecycle and aliases",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 18,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "config/aoe2war-os-registry.v1.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 35,
+        "name": "Organization OS",
+        "focus": "Maintains canonical source-linked object relationships",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "draft-review",
+        "resolution": "DRAFT_SOURCE",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "config/organization-os-source-links.v1.json (PR #1466)",
+          "scripts/organization_os.py (PR #1466)",
+          "docs/SCAN_ORGANIZATION_OS.md (PR #1466)"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 36,
+        "name": "Kingdom Phonebook OS",
+        "focus": "Resolves a capability to its owner, contract and entrypoint",
+        "aliases": [
+          "Phonebook OS",
+          "Kingdom Phonebook"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "draft-review",
+        "resolution": "DRAFT_SOURCE",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/kingdom_phonebook.py",
+          "config/aoe2war-os-registry.v1.json",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [
+          "python3 scripts/kingdom_phonebook.py lookup 'Priority OS'"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 37,
+        "name": "Kingdom Catalog OS",
+        "focus": "Enumerates registered objects by type",
+        "aliases": [
+          "Catalog OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 38,
+        "name": "Kingdom Index OS",
+        "focus": "Provides searchable keyed lookup and evidence links",
+        "aliases": [
+          "Index OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_PROJECTION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "config/kingdom-index-routes.json",
+          "config/kingdom-index-inventory.json",
+          "docs/KINGDOM_BRAIN_PROGRESS.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 39,
+        "name": "Kingdom Contents OS",
+        "focus": "Navigates hierarchy and table of contents",
+        "aliases": [
+          "Contents OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 40,
+        "name": "Kingdom Glossary OS",
+        "focus": "Defines canonical terms and distinctions",
+        "aliases": [
+          "Glossary OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 41,
+        "name": "Kingdom Encyclopedia OS",
+        "focus": "Explains systems and their relationships in depth",
+        "aliases": [
+          "Encyclopedia OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 42,
+        "name": "Kingdom Appendix OS",
+        "focus": "Indexes supporting references and evidence",
+        "aliases": [
+          "Appendix OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 43,
+        "name": "Kingdom Ledger OS",
+        "focus": "Projects immutable transaction and event history",
+        "aliases": [
+          "Ledger OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "scripts/aoe2_product_release_ledger.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 44,
+        "name": "Kingdom Accounting OS",
+        "focus": "Quantifies resource and outcome deltas",
+        "aliases": [
+          "Accounting OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_DERIVED_VIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "lib/kingdomProgressProjection.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 45,
+        "name": "Kingdom Atlas OS",
+        "focus": "Visualizes topology and resource placement",
+        "aliases": [
+          "Atlas OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_PROJECTION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/navigationAtlas.ts",
+          "scripts/aoe2_storage_atlas.py",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 46,
+        "name": "Kingdom Menu OS",
+        "focus": "Provides capability navigation and entrypoints",
+        "aliases": [
+          "Menu OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_PROJECTION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/navigationAtlas.ts",
+          "components/HeaderMenu.tsx"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 47,
+        "name": "Commands OS",
+        "focus": "Indexes approved command recipes and preconditions",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "bin/aoe2war",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 48,
+        "name": "Scripts OS",
+        "focus": "Maintains executable inventory, versions and tests",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "scripts/aoe2_module_graph.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 49,
+        "name": "Features OS",
+        "focus": "Tracks capability scope and feature lifecycle",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/pull/1466",
+          "config/kingdom-index-inventory.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 50,
+        "name": "Inventory OS",
+        "focus": "Reconciles counted assets and coverage boundaries",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "config/kingdom-index-inventory.json",
+          "scripts/aoe2_speed_inventory.py",
+          "https://github.com/Emaren/app-prodn/pull/1466"
+        ],
+        "command_refs": [
+          "aoe2war speed inventory"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 51,
+        "name": "Standards OS",
+        "focus": "Maintains versioned requirements and rubrics",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 35,
+        "owner_slot": 35,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/issues/1467"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 52,
+        "name": "Scan OS",
+        "focus": "Collects bounded observations and scan coverage",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_CONTRACT",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/scan_os.py",
+          "config/scan-os-catalog.v1.json",
+          "https://github.com/Emaren/app-prodn/pull/1455"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 53,
+        "name": "Detection OS",
+        "focus": "Identifies deviations and threshold events",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 52,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "config/scan-os-catalog.v1.json",
+          "scripts/aoe2_storage_probe.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 54,
+        "name": "Investigation OS",
+        "focus": "Tests hypotheses and establishes causes",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 52,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_doctor.py"
+        ],
+        "command_refs": [
+          "aoe2war doctor --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 55,
+        "name": "Classification OS",
+        "focus": "Assigns evidence-backed object classes",
+        "aliases": [
+          "Storage Classification and Disposition OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_POLICY",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "config/storage-disposition-policy.v1.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 56,
+        "name": "Duplication OS",
+        "focus": "Identifies equivalent content and overlap",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 57,
+        "name": "Redundancy OS",
+        "focus": "Distinguishes necessary resilience from waste",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 58,
+        "name": "Reconciler OS",
+        "focus": "Resolves divergent state against accepted authority",
+        "aliases": [
+          "Reconciliation OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 6,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_workspace.py",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md"
+        ],
+        "command_refs": [
+          "aoe2war workspace status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 59,
+        "name": "Harmonizer OS",
+        "focus": "Validates compatibility and cross-module contracts",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/umbrellaTreeModel.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 60,
+        "name": "Pruning OS",
+        "focus": "Plans eligible removal and records verified disposition",
+        "aliases": [
+          "Prune OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "scripts/aoe2_storage_retention.py",
+          "scripts/aoe2_storage_local_plan.py"
+        ],
+        "command_refs": [
+          "aoe2war storage local-plan"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 61,
+        "name": "Transfer OS",
+        "focus": "Moves objects with authenticated progress and measured goodput",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 3,
+        "owner_slot": 3,
+        "lifecycle": "draft-review",
+        "resolution": "DRAFT_CROSS_REPO_CONTRACT",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/VPSSentry/pull/192",
+          "https://github.com/Emaren/app-prodn/pull/1505",
+          "scripts/aoe2_product_release_transport.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 62,
+        "name": "Capacity OS",
+        "focus": "Measures free space, reserve and deployment peaks",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 3,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/sessionCStorageCapacity.mjs",
+          "scripts/aoe2_storage_probe.py",
+          "docs/STORAGE_OS.md"
+        ],
+        "command_refs": [
+          "aoe2war storage status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 63,
+        "name": "Retention OS",
+        "focus": "Defines bounded lifecycle and protection tiers",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 3,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_POLICY",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "scripts/aoe2_storage_retention.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 64,
+        "name": "Backup OS",
+        "focus": "Produces recoverable protected copies",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 5,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_db_snapshot_retention.py",
+          "docs/STORAGE_OS.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 65,
+        "name": "Archive OS",
+        "focus": "Catalogs historical cold objects and retrieval manifests",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 5,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "lib/intelColdStorageEvidence.ts",
+          "scripts/aoe2_storage_artifacts.py",
+          "docs/STORAGE_OS.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 66,
+        "name": "Checkpoint OS",
+        "focus": "Tracks durable resumable transaction boundaries",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 5,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_host_checkpoint.py",
+          "https://github.com/Emaren/VPSSentry/pull/192"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 67,
+        "name": "Rollback OS",
+        "focus": "Verifies reversal and previous-generation restoration",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 5,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_release_rollback.py",
+          "docs/RELEASE_RECOVERY_OS.md"
+        ],
+        "command_refs": [
+          "aoe2war recovery status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 68,
+        "name": "Certification OS",
+        "focus": "Collects required evidence and validates completion criteria",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_release_gate.py",
+          "docs/release/DEPLOYMENT_OS_FINAL_CERTIFICATION_AUDIT_20261114.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 69,
+        "name": "Verification OS",
+        "focus": "Validates exact evidence and identity correspondence",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 70,
+        "name": "Integrity OS",
+        "focus": "Maintains content and lineage integrity checks",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_audit.py",
+          "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
+        ],
+        "command_refs": [
+          "aoe2war audit --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 71,
+        "name": "Telemetry OS",
+        "focus": "Defines and collects bounded typed operational measurements",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 5,
+        "owner_slot": 20,
+        "lifecycle": "draft-review",
+        "resolution": "DRAFT_CROSS_REPO_CONTRACT",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/VPSSentry/pull/192",
+          "lib/kingdomIntelligenceEvidence.ts",
+          "https://github.com/Emaren/app-prodn/pull/1505"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 72,
+        "name": "Kingdom Brainstem OS",
+        "focus": "Routes validated sensor summaries to cognition and approved dispatch back",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_BRAIN_PROGRESS.md",
+          "docs/KINGDOM_INTELLIGENCE.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 73,
+        "name": "Kingdom Nerve Endings OS",
+        "focus": "Defines edge observer contracts and freshness",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_BRAIN_PROGRESS.md",
+          "config/scan-os-catalog.v1.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 74,
+        "name": "Observability OS",
+        "focus": "Composes telemetry for system diagnosis",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_PROJECTION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_INTELLIGENCE.md",
+          "lib/kingdomIntelligenceEvidence.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 75,
+        "name": "Alert OS",
+        "focus": "Routes actionable threshold or failure notifications",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_INTELLIGENCE.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 76,
+        "name": "Incident OS",
+        "focus": "Tracks incidents, containment, recovery and closure",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/SECURITY_INCIDENT_NOTES.md",
+          "docs/HOST_MAINTENANCE.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 77,
+        "name": "Remediation OS",
+        "focus": "Plans safe reviewed repair through existing executors",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "docs/HOST_MAINTENANCE.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 78,
+        "name": "Kingdom Brain",
+        "focus": "Projects authoritative topology and operational state for inspection",
+        "aliases": [
+          "Visual Kingdom Brain",
+          "Brain atlas"
+        ],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_PROJECTION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/KINGDOM_BRAIN_PROGRESS.md",
+          "config/kingdom-brain-authorities.json"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 79,
+        "name": "Configuration OS",
+        "focus": "Tracks validated settings and versioned configuration drift",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_module_graph.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 80,
+        "name": "Dependency OS",
+        "focus": "Tracks dependency edges and impact",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_module_graph.py",
+          "lib/umbrellaTreeModel.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 81,
+        "name": "Compatibility OS",
+        "focus": "Tracks supported devices, interfaces and backward compatibility",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 20,
+        "owner_slot": 20,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "tests/umbrella-tree-contract.test.mts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 82,
+        "name": "Security OS",
+        "focus": "Coordinates defensive posture and security controls",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/SECURITY_INCIDENT_NOTES.md",
+          "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md"
+        ],
+        "command_refs": [
+          "aoe2war deps-security --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 83,
+        "name": "Threat Awareness OS",
+        "focus": "Classifies verified threat indicators and uncertainty",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/SECURITY_INCIDENT_NOTES.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 84,
+        "name": "VPS Sentry Integration OS",
+        "focus": "Consumes authenticated authorized Sentry observations",
+        "aliases": [
+          "Sentry Integration OS"
+        ],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "draft-review",
+        "resolution": "DRAFT_CROSS_REPO_CONTRACT",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/VPSSentry/issues/63",
+          "lib/storageSignedFreshness.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 85,
+        "name": "Defense OS",
+        "focus": "Tracks protective actions and independently verified outcomes",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 86,
+        "name": "Audit OS",
+        "focus": "Checks evidence trails and policy compliance",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_audit.py"
+        ],
+        "command_refs": [
+          "aoe2war audit --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 87,
+        "name": "Access OS",
+        "focus": "Tracks least-privilege access contracts",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md",
+          "scripts/product_boundary_guard.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 88,
+        "name": "Secrets OS",
+        "focus": "Tracks secret references and lifecycle without exposing values",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/scan_tracked_secrets.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 89,
+        "name": "Policy OS",
+        "focus": "Maintains versioned policy boundaries",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/STORAGE_CLASSIFICATION_DISPOSITION_OS_V1.md",
+          "scripts/product_boundary_guard.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 90,
+        "name": "Trust OS",
+        "focus": "Tracks verified trust anchors and reviewed lifecycle",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md",
+          "lib/storageSignedFreshness.ts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 91,
+        "name": "Identity OS",
+        "focus": "Reconciles canonical actor and object identities",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 4,
+        "owner_slot": 4,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 92,
+        "name": "Test OS",
+        "focus": "Owns test catalog, coverage and reproducibility",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "tests/post-r25-kingdom-construction.test.mts",
+          "tests/umbrella-tree-contract.test.mts"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 93,
+        "name": "Browser OS",
+        "focus": "Owns genuine browser/device acceptance evidence",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/aoe2_r25_g_browser_acceptance.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 94,
+        "name": "Build OS",
+        "focus": "Owns reproducible build orchestration contracts",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 95,
+        "name": "Artifact OS",
+        "focus": "Tracks exact build identity and provenance",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 96,
+        "name": "Grading OS",
+        "focus": "Maintains evidence-based score engine",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/issues/1467"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 97,
+        "name": "Scorecard OS",
+        "focus": "Projects versioned scores and improvement priorities",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "proposed-review",
+        "resolution": "PROPOSED_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/app-prodn/issues/1467"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 98,
+        "name": "Renaissance OS",
+        "focus": "Coordinates page-by-page quality campaign overlay",
+        "aliases": [
+          "Renaissance"
+        ],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 16,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_INTEGRATION",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/RENAISSANCE_OS.md",
+          "scripts/renaissance.py",
+          "config/renaissance-campaign.json"
+        ],
+        "command_refs": [
+          "aoe2war renaissance map --json"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 99,
+        "name": "Maintenance OS",
+        "focus": "Tracks scheduled upkeep and verified completion",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 4,
+        "lifecycle": "source-linked-facet",
+        "resolution": "SOURCE_PRESENT_FACET",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "docs/HOST_MAINTENANCE.md",
+          "scripts/aoe2_maintenance_run.sh"
+        ],
+        "command_refs": [
+          "aoe2war host status"
+        ],
+        "live_proof": "UNVERIFIED"
+      },
+      {
+        "slot": 100,
+        "name": "Traffic OS",
+        "focus": "Tracks ingestion, certified publication and data freshness",
+        "aliases": [],
+        "canonical_id": null,
+        "parent_slot": 1,
+        "owner_slot": 1,
+        "lifecycle": "proposed-review",
+        "resolution": "CROSS_REPO_SOURCE_REVIEW",
+        "source_refs": [
+          "https://github.com/Emaren/app-prodn/issues/1507",
+          "https://github.com/Emaren/traffic-api/issues/31",
+          "docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md"
+        ],
+        "command_refs": [],
+        "live_proof": "UNVERIFIED"
+      }
+    ],
+    "rules": [
+      "Parent slot is founder catalog hierarchy, owner slot is proposed existing authority routing; neither grants permission. Null canonical ID means distinct registration not approved.",
+      "Commands are catalog references, not permission or automatic invocation. Follow source owner scope and existing approvals.",
+      "Organization source links remain canonical for object records. Phonebook indexes this existing registry, no second datastore.",
+      "Intelligence is deterministic operational collection and recommendations; Kingdom Brain is read-only visual authority/dependency atlas.",
+      "No secrets, new services, release gate or self-certified live proof. All unverified runtime states stay UNKNOWN."
+    ]
   }
 }
