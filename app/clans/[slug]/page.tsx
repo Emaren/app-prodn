@@ -11,6 +11,7 @@ import {
   normalizeClanView,
 } from "@/lib/clans";
 import { getPrisma } from "@/lib/prisma";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
   SESSION_COOKIE_NAME,
   verifySession,
@@ -131,6 +132,7 @@ export default async function ClanHallPage({
       <ClanHallClient
         initialSnapshot={snapshot}
         initialView={view}
+        restrictedProductionChat={usesNonfinancialProductionAuth()}
       />
     </>
   );
