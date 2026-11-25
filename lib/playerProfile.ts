@@ -13,7 +13,7 @@ import {
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS } from "@/lib/replayResultAdjudications";
-import { loadRestrictedWatcherActivity, loadRestrictedViewerMemberships, type PublicWatcherActivity } from "@/lib/restrictedPlayerProfile";
+import { loadRestrictedWatcherActivity, loadRestrictedViewerMemberships, loadRestrictedExactSteamSnapshots, type PublicWatcherActivity } from "@/lib/restrictedPlayerProfile";
 import { normalizeSessionKey } from "@/lib/liveSessionSnapshot";
 import {
   loadPendingWoloClaimSummariesByName,
@@ -1571,8 +1571,9 @@ async function loadExactSteamCandidateIndex(
   steamId: string,
 ): Promise<ExactSteamCandidateIndex | null> {
   try {
-    const snapshots =
-      await prisma.replayPlayerSnapshot.findMany({
+    const snapshots = isNonfinancialPublicReadProfile()
+      ? await loadRestrictedExactSteamSnapshots(prisma, steamId)
+      : await prisma.replayPlayerSnapshot.findMany({
         where: {
           playerKey: `steam:${steamId}`,
           projection: {

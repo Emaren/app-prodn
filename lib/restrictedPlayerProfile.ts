@@ -41,3 +41,16 @@ export async function loadRestrictedViewerMemberships(
   const requested = new Set(ids);
   return new Set(rows.map(row => row.gameStatsId).filter(id => requested.has(id)));
 }
+
+/** Exact Steam candidate identity through the admitted accepted-projection view.
+ * Final-corpus and participant checks remain in the profile caller. */
+export async function loadRestrictedExactSteamSnapshots(
+  prisma: Pick<PrismaClient, "$queryRaw">, steamId: string,
+): Promise<Array<{ gameStatsId: number; displayName: string }>> {
+  return prisma.$queryRaw<Array<{ gameStatsId: number; displayName: string }>>`
+    SELECT s.game_stats_id AS "gameStatsId", s.display_name AS "displayName"
+    FROM public.replay_player_snapshots AS s
+    JOIN aoe2war_public_v1.accepted_replay_projections AS p ON p.id = s.projection_id
+    WHERE s.player_key = ${`steam:${steamId}`}
+  `;
+}

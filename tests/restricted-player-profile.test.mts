@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { loadRestrictedViewerMemberships, loadRestrictedWatcherActivity } from "@/lib/restrictedPlayerProfile";
+import { loadRestrictedViewerMemberships, loadRestrictedWatcherActivity, loadRestrictedExactSteamSnapshots } from "@/lib/restrictedPlayerProfile";
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 test("V10 membership uses only the signed viewer digest and requested page IDs", async () => {
@@ -55,4 +55,23 @@ test("restricted profile reads V7 final evidence and excludes private relation r
   assert.match(ui, /verifySession\(\(await cookies\(\)\)/);
   assert.match(ui, /Non-final candidates and private diagnostic statistics are unavailable/);
   assert.match(ui, /Published all-time events/);
+});
+
+
+test("restricted exact Steam candidate query uses the admitted view and a bound exact player key", async () => {
+  const rows = [{ gameStatsId: 7, displayName: "Old name" }];
+  let calls = 0;
+  const db = { $queryRaw: async (strings: TemplateStringsArray, key: string) => {
+    calls++;
+    const query = strings.join("?");
+    assert.match(query, /JOIN aoe2war_public_v1\.accepted_replay_projections AS p ON p\.id = s\.projection_id/);
+    assert.match(query, /WHERE s\.player_key = \?/);
+    assert.doesNotMatch(query, /public\.replay_stat_projections/);
+    assert.equal(key, "steam:76561198000000000");
+    return rows;
+  }} as unknown as PrismaClient;
+  assert.deepEqual(await loadRestrictedExactSteamSnapshots(db, "76561198000000000"), rows);
+  assert.equal(calls, 1);
+  const source = readFileSync("lib/playerProfile.ts", "utf8");
+  assert.match(source, /const snapshots = isNonfinancialPublicReadProfile\(\)\s*\? await loadRestrictedExactSteamSnapshots\(prisma, steamId\)\s*:\s*await prisma\.replayPlayerSnapshot\.findMany/);
 });
