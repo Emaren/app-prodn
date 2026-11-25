@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7b9846e98cf02533ee40e44e7de5dbb823656ad57155ad5a11f1be0cc46d214d",
+      "sha256": "84898b4ca370c00e08e8712adfec803b8b616e34645e59844b35c97b2ebd0db4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-direct-image-writer-20261124",
-    "commit": "704711f2a36668cda3a333151eb2696957c0bbb3"
+    "commit": "f3c127dbb3dc16684d59de1db5a42d652f2e7a8f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
