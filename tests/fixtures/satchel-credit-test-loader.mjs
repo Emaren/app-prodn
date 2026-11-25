@@ -30,6 +30,13 @@ export async function load(url, context, nextLoad) {
       return withConfiguredLease(new pg.Client({host:fixture.socket,port:5432,user:a.readerRole,database:"postgres"}),a,input,action);
     }`;
   }
+  if (url.endsWith('/lib/warSatchelProspectiveEpoch.ts')) {
+    // The isolated SDK/PG fixture explicitly releases BOTH independent source
+    // holds. No database row or bridge-only override can release the real epoch.
+    const held = 'PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED=false as const';
+    if (source.split(held).length !== 2) throw Error('exact held epoch source missing');
+    source = source.replace(held, 'PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED=true as const');
+  }
   if (url.endsWith('/lib/warSatchelFinancialBridgeHold.ts')) {
     source = source.replace('SATCHEL_FINANCIAL_BRIDGE_READY = false as const', 'SATCHEL_FINANCIAL_BRIDGE_READY = true as const');
   }

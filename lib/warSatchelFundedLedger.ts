@@ -12,13 +12,14 @@ import { loadDurableSatchelClaimReturnExpectation } from "./warSatchelClaimRetur
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
 import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./warSatchelWithdrawalAuthorization.ts";
 import { randomUUID } from "node:crypto";
-import { satchelFiniteGameSlotAvailable, satchelWatcherSpendWindowIssue } from "./warSatchelWatcherSpendWindow.ts";
+import { satchelFiniteGameSlotAvailable, satchelWatcherSpendWindowIssue, type SatchelWatcherSpendMarket } from "./warSatchelWatcherSpendWindow.ts";
 import { verifyDurableSatchelAutoSpendMandate } from "./warSatchelAutoSpendConsent.ts";
 import { authenticateWarSatchelFinancialProof,financialProofFreshAt,type AuthenticatedWarSatchelFinancialProof } from "./warSatchelAuthenticatedFinancialProof.ts";
 import { createHash } from "node:crypto";
 import {withdrawalReservationDigest,withdrawalOwnerMandateDigest,verifyIndependentWithdrawalApproval,readWithdrawalReviewerKey,
  type WithdrawalOwnerMandate,type IndependentWithdrawalApproval,type DurableWithdrawalEconomics} from "./warSatchelWithdrawalReview.ts";
 import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
+import {satchelWatcherConsumerIdentityIssue,satchelWatcherConsumerTimeIssue} from "./warSatchelWatcherConsumerEvidence.ts";
 /**
  * War Satchel C4: database-atomic, source-idempotent financial posting.
  *
@@ -469,6 +470,9 @@ export async function reserveForWatcherExecution(
       select: {
         id: true, status: true, marketType: true, bookPhase: true,
         integrityStatus: true, propositionHash: true,
+        sourceRosterHash: true, sourceParseIteration: true,
+        teamResolutionStatus: true, teamConfidence: true,
+        leftRosterSnapshot: true, rightRosterSnapshot: true,
         scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
@@ -481,6 +485,11 @@ export async function reserveForWatcherExecution(
         market.propositionHash !== exec.propositionHash) {
       stop("canonical_watcher_market_not_live");
     }
+    const identityIssue=satchelWatcherConsumerIdentityIssue({
+      execution:exec,owner:exec.preset.user,market,
+    });
+    if(identityIssue)stop(identityIssue);
+    const spendWindows:SatchelWatcherSpendMarket[]=[market];
     const windowIssue = satchelWatcherSpendWindowIssue({ market,
       executionCreatedAt: exec.createdAt, signedAt: mandate.signedAt, now: new Date() });
     if (windowIssue) stop(windowIssue);
@@ -496,6 +505,7 @@ export async function reserveForWatcherExecution(
       });
       if (!desync || desync.bookPhase !== "funded" ||
           desync.status !== "live" || desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
+          desync.linkedSessionKey !== market.linkedSessionKey ||
           desync.propositionHash !== market.propositionHash ||
           desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
@@ -503,6 +513,7 @@ export async function reserveForWatcherExecution(
       const desyncIssue = satchelWatcherSpendWindowIssue({ market: desync,
         executionCreatedAt: exec.createdAt, signedAt: mandate.signedAt, now: new Date() });
       if (desyncIssue) stop(desyncIssue);
+      spendWindows.push(desync);
     }
     // A protected daily cap must be checked independently of the UI plan;
     // count the day's RESERVATION attempts, even if subsequently returned,
@@ -563,6 +574,10 @@ export async function reserveForWatcherExecution(
       data: { reservationId, status: "funded_reserved", attemptCount: 1 },
     });
     requireFreshBank(input.bank, Date.now());
+    const timeIssue=satchelWatcherConsumerTimeIssue({markets:spendWindows,
+      executionCreatedAt:exec.createdAt,signedAt:mandate.signedAt,
+      spendExpiresAt:mandate.spendExpiresAt,now:new Date()});
+    if(timeIssue)stop(timeIssue);
     return { status: "reserved" as const, reservationId };
   });
 }
@@ -733,23 +748,32 @@ export async function markSatchelSubmissionAttempt(
     if(permit.id!==a.snapshot.consentId || permit.originalMandate?.challengeText!==a.snapshot.challengeText)stop("wager_review_consent_changed_before_attempt");
     const market = await tx.betMarket.findUnique({
       where: { id: execution.winnerMarketId },
-      select: { status: true, integrityStatus: true, propositionHash: true,
+      select: { id: true, status: true, integrityStatus: true, propositionHash: true,
+        sourceRosterHash: true, sourceParseIteration: true,
+        teamResolutionStatus: true, teamConfidence: true,
+        leftRosterSnapshot: true, rightRosterSnapshot: true,
         marketType: true, bookPhase: true, scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
     });
-    if (!market || market.bookPhase !== "funded" || market.status !== "live" ||
+    if (!market || market.bookPhase !== "funded" || market.status !== "live" || market.marketType !== "winner" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== execution.propositionHash) {
       stop("watcher_proposition_not_live_before_broadcast");
     }
+    const identityIssue=satchelWatcherConsumerIdentityIssue({
+      execution,owner:execution.preset.user,market,
+    });
+    if(identityIssue)stop(identityIssue);
+    const spendWindows:SatchelWatcherSpendMarket[]=[market];
     const windowIssue = satchelWatcherSpendWindowIssue({ market,
       executionCreatedAt: execution.createdAt, signedAt: permit.signedAt!, now });
     if (windowIssue) stop(windowIssue);
     if (execution.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({ where: { id: execution.desyncMarketId } });
       if (!desync || desync.bookPhase !== "funded" ||
+          desync.marketType !== "desync" || desync.linkedSessionKey !== market.linkedSessionKey ||
           desync.parentMarketId !== execution.winnerMarketId ||
           desync.propositionHash !== execution.propositionHash || desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
@@ -757,6 +781,7 @@ export async function markSatchelSubmissionAttempt(
       const desyncIssue = satchelWatcherSpendWindowIssue({ market: desync,
         executionCreatedAt: execution.createdAt, signedAt: permit.signedAt!, now });
       if (desyncIssue) stop(desyncIssue);
+      spendWindows.push(desync);
     }
     const changed = await tx.satchelFundedReservation.updateMany({
       where: { id: reservation.id, status: "reserved" },
@@ -767,6 +792,16 @@ export async function markSatchelSubmissionAttempt(
       where: { id: input.executionId, reservationId: reservation.id },
       data: { status: "funded_submitting" },
     });
+    // All writes above can wait. An expired owner, game or review deadline
+    // must roll back this fence before any caller can invoke the signer.
+    const afterIo=new Date();
+    const timeIssue=satchelWatcherConsumerTimeIssue({markets:spendWindows,
+      executionCreatedAt:execution.createdAt,signedAt:permit.signedAt!,
+      spendExpiresAt:permit.spendExpiresAt,now:afterIo});
+    if(timeIssue)stop(timeIssue);
+    try{verifyIndependentWagerReservation(authorization.approval.approvalJson,
+      wagerReviewContext(a,input.reservation),reviewKey,afterIo.getTime());}
+    catch{stop("independent_wager_review_expired_during_transaction");}
     return Object.freeze({ status: "submission_attempt_durably_fenced" as const });
   });
 }

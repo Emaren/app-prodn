@@ -40,6 +40,7 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
   const originalRequire = createRequire(filename);
   mod.require = (specifier: string): unknown => {
     if (specifier === "@/hooks/use-keplr") return DISCONNECTED_KEPLR;
+    if (specifier === "@/lib/warSatchelFundingWallet") return loadProductionModule("lib/warSatchelFundingWallet.ts");
     if (specifier === "@/components/profile/WarSatchelFundingAction") {
       return loadProductionModule("components/profile/WarSatchelFundingAction.tsx");
     }

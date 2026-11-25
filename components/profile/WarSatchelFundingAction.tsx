@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {freshSatchelFundingSigner, isCurrentSatchelFundingQuote, type SatchelFundingQuote, type PreparedFundingIntent} from "@/lib/warSatchelFundingWallet";
 
 type Keplr = {
   enable(chainId: string): Promise<void>;
@@ -13,17 +14,7 @@ type Balance = {
   reservedUwolo: string;
   withdrawalPendingUwolo: string;
 };
-type FundingQuote = {
-  enabled: true;
-  chainId: "wolo-1";
-  denom: "uwolo";
-  ownerWalletAddress: string;
-  recipientAddress: string;
-  amountUwolo: string;
-  memo: string;
-  intentId: string;
-  expiresAtUtc: string;
-};
+type FundingQuote = SatchelFundingQuote;
 const ADDR = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const TX_HASH = /^[A-F0-9]{64}$/;
 
@@ -45,21 +36,9 @@ async function postJson(url: string, payload: unknown) {
   if (!response.ok) throw new Error(String(body.detail || "Satchel operation unavailable."));
   return body;
 }
-function quoteValid(data: unknown, walletAddress: string, amountWolo: number): data is FundingQuote {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-  const q = data as Record<string, unknown>;
-  const amount = BigInt(amountWolo) * BigInt(1000000);
-  return q.enabled === true && q.chainId === "wolo-1" && q.denom === "uwolo" &&
-    q.ownerWalletAddress === walletAddress &&
-    typeof q.recipientAddress === "string" && ADDR.test(q.recipientAddress) &&
-    q.recipientAddress !== walletAddress &&
-    q.amountUwolo === amount.toString() &&
-    typeof q.memo === "string" && /^aoe2war\/satchel\/v1\//.test(q.memo) &&
-    q.memo.length <= 240 &&
-    typeof q.intentId === "string" &&
-    typeof q.expiresAtUtc === "string" &&
-    Number.isFinite(Date.parse(q.expiresAtUtc)) &&
-    Date.parse(q.expiresAtUtc) > Date.now();
+function quoteValid(data: unknown, walletAddress: string, amountWolo: number,
+  prepared: PreparedFundingIntent): data is FundingQuote {
+  return isCurrentSatchelFundingQuote(data, walletAddress, amountWolo, prepared);
 }
 function wolo(raw: string) {
   if (!/^(0|[1-9][0-9]{0,18})$/.test(raw)) return "—";
@@ -162,10 +141,10 @@ export default function WarSatchelFundingAction({
       // substitute a recipient or pre-credit a user balance.
       const prepared = await postJson("/api/user/war-satchel/funding-intents",
         { amountWolo: String(amount) });
-      if (typeof prepared.id !== "string") throw Error("Deposit intent unavailable.");
+      if (typeof prepared.id !== "string" || typeof prepared.expiresAtUtc !== "string") throw Error("Deposit intent unavailable.");
       const quoteRaw = await postJson("/api/user/war-satchel/funding-quote",
         { intentId: prepared.id });
-      if (!quoteValid(quoteRaw, walletAddress, amount)) {
+      if (!quoteValid(quoteRaw, walletAddress, amount, {id:prepared.id,expiresAtUtc:prepared.expiresAtUtc})) {
         throw Error("Keplr transfer quote does not match your wallet or amount.");
       }
       const quote = quoteRaw;
@@ -183,7 +162,7 @@ export default function WarSatchelFundingAction({
         throw Error("Keplr extension is not installed or the Wolo chain is unavailable.");
       }
       await keplr.enable("wolo-1");
-      const signer = keplr.getOfflineSigner("wolo-1");
+      const signer = freshSatchelFundingSigner(keplr.getOfflineSigner("wolo-1"), walletAddress, quote.expiresAtUtc);
       const accounts = await signer.getAccounts();
       if (accounts.length !== 1 || accounts[0].address !== walletAddress) {
         throw Error("Keplr signer account changed. No transfer submitted.");
@@ -196,6 +175,10 @@ export default function WarSatchelFundingAction({
         "https://rpc-mainnet.aoe2war.com", signer,
       );
       try {
+        // Connection I/O cannot extend the owner-bound quote either.
+        if (Date.parse(quote.expiresAtUtc) <= Date.now()) {
+          throw Error("Prepared transfer expired. No transfer submitted.");
+        }
         // The wallet extension shows this transfer for explicit confirmation.
         // A returned success is NOT yet an account credit.
         // Mark uncertain BEFORE signing: even an exception can follow an

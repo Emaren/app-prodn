@@ -14,6 +14,10 @@ import { readIndependentSatchelBank } from "@/lib/warSatchelFundedLedger";
 import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 import { warSatchelVaultDistinctFromKnownWallets } from "@/lib/warSatchelVaultBoundary";
 
+import {requireDurableProspectiveFundingEpoch} from "@/lib/warSatchelDurableEpoch";
+import {authenticatedWarSatchelBankFreshAt} from "@/lib/warSatchelAuthenticatedBank";
+import {prospectiveEpochMainnetAuthorized} from "@/lib/warSatchelProspectiveEpoch";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const HEADERS = { "Cache-Control": "private, no-store" };
@@ -24,7 +28,7 @@ function disabled() {
     { status: 503, headers: HEADERS });
 }
 function isEnabled() {
-  return satchelFinancialBridgeReady() &&
+  return satchelFinancialBridgeReady() && prospectiveEpochMainnetAuthorized() &&
     process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED === "true" &&
     process.env.WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED === "true" &&
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest) {
       },
       select: {
         id: true, senderAddress: true, vaultAddress: true,
-        amountUwolo: true, memo: true, expiresAt: true,
+        amountUwolo: true, memo: true, expiresAt: true, createdAt: true,
       },
     });
     if (!intent || intent.amountUwolo <= BigInt(0) ||
@@ -107,6 +111,13 @@ export async function POST(request: NextRequest) {
         !warSatchelVaultDistinctFromKnownWallets(vault, excluded)) throw Error("uncertified vault");
     const chain = await readIndependentSatchelBank();
     if (chain.vaultAddress !== vault) throw Error("bank authority mismatch");
+    await prisma.$transaction(async tx => {
+      await requireDurableProspectiveFundingEpoch(tx, {vault, intentCreatedAt:intent.createdAt, bank:chain});
+      // Bank/DB reads may consume the remaining proof/intent validity. Never
+      // return live transfer instructions from an already expired quote.
+      if (!authenticatedWarSatchelBankFreshAt(chain) || intent.expiresAt.getTime() <= Date.now())
+        throw Error("quote authority expired during I/O");
+    }, {isolationLevel:"Serializable",maxWait:4000,timeout:7000});
 
     return NextResponse.json({
       enabled: true,
