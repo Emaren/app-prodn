@@ -8,12 +8,17 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "renaissance-campaign-integration-contract"
-reviewed_at: "2026-10-19"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Renaissance OS
+
+> **Source-only re-review, November 19, 2026:** Verified campaign/rubric source and 12 destinations, seven phases, current 161-template inventory via renaissance verify, and 5/5 targeted Renaissance Node tests. Older 132-template and 76-route counts are explicitly old planning baselines; no current quality score/release claimed.
+
 
 Renaissance OS introduces a twelve-destination visual engineering campaign with **fifteen conceptual instruments** grouped into twelve independent visual views. It is a read-only *integration overlay* on existing AoE2WAR source owners, not a new domain authority.
 

@@ -8,11 +8,16 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-11-25"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 # AoE2WAR Betting Constitution
+
+## 2026-11-25 UTC — held #898 technical source review (not ratification)
+
+Reviewed the actual `lib/betWagerSettlement.ts` planner in held source `a96c2720952cd16380ad3c649185d9890bf53a41`: `classifyResolvedMarketSettlement` separates a void refund from settled-side payout and blocks other states; `matchedMarketVolumeWolo` uses twice the smaller opposing funded pool; proportional matched exposure excludes display seed and preserves unmatched stake; `planResolvedWagerSettlements` uses only matched volume for the parameterized fee and returns exact principal with zero fee on void. This verifies the planner boundary, not a live fee configuration, balances, solvency, constitutional ratification or historical payout. All dated examples and independent financial HOLD below remain intact.
+
 
 ## October 22, 2026 — scope-preserving review
 

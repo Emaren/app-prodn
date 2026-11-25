@@ -8,12 +8,16 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "candidate-private-source-inventory"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance Tab D — private census forge and Test Forge queue
+
+## 2026-11-25 UTC — bounded technical source review (held #898)
+
+Exact held source review of `scripts/renaissance_tabd_forge.py`: checks Git HEAD and tracked cleanliness, validates expected SHA/BUILD_ID, rejects unsafe build stamp and reports score null, certified=false, production_attested=false. October 144/273 and mismatch figures remain dated, not a fresh census; no emitted build, transitive runtime closure, live financial writer isolation or public scoring was verified. Source inspected: `a96c2720952cd16380ad3c649185d9890bf53a41`. All prior historical text is retained; no release or financial permission.
 
 Status: draft; source evidence only; not a scorer, production sign-off or public API.
 

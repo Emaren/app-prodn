@@ -8,10 +8,12 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-13"
+reviewed_at: "2026-11-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
 
 # Marketplace Business V1
 
@@ -22,6 +24,29 @@ logic/audit truth.
 The original `app/market/page.tsx` is a protected presentation surface.
 Marketplace expansion is layered through imported components and dedicated
 routes rather than casually rewriting that page.
+
+## Current financial source-versus-production boundary — 2026-11-13 UTC
+
+Session A's [independent read-only financial-domain source findings](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+confirm that the **100 WOLO charter**, **1000 bps / 10% tax** and
+**100-WOLO invoice increments through 100,000** remain the current
+\`lib/marketplaceBusiness.ts\` **implementation constants**. The
+\`verifyMarketplaceBusinessPayment\` code checks wallet identity,
+recipient, amount, memo, transaction proof and reuse, but those checks
+are **not** an independent same-height finality or economic-ledger
+acceptance receipt. No present merchant payment, exclusive custody reserve,
+tax payment, liability closure, funded C05/C09 operation or live Marketplace
+charge has been admitted by this source review.
+
+The W1 financial gate record remains **2/9 closed (C04/C08)** and
+**seven OPEN**, with funding **DENIED**. Ordinary PRODUCT website and
+Factory source/build approval must **not** imply permission to move WOLO,
+alter financial SQL/grants or accept customer money. This annotation
+does not supersede the original October 13 historical contract review
+and is now renewed only for A's [2026-11-13 exact-blob source-contract
+review](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6850115271).
+The renewed date does **not** certify payment finality, merchant receipts,
+custody, reserves, live financial operations, C05/C09 or funding.
 
 ## Canonical implementation
 

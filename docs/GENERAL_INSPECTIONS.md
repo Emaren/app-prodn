@@ -8,12 +8,34 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-10-18"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # AoE2WAR General Inspections
+
+> **Source-only re-review, November 19, 2026:** Reconciled existing general inspection/Index/rubric/notice source, passing focused general inspections tests in 65/65 Node contract suite. All October scores and owner evidence remain historical, not certified anew. External AoE2WAR-docs governance paths are not app-prodn source.
+
+
+## October 26, 2026 — historical Index numbers retain their original date and source
+
+The website-only Kingdom Index candidate preserves PR #930's `HIST.` score
+fallback. Its `historicalReview` metadata now comes from the same immutable
+baseline record as `lastReviewScore`, including the original review date,
+source fingerprint and review references. A newer operator observation
+cannot replace those fields or lend its timestamp to an older estimate.
+Missing historical provenance stays unknown. The ledger's **REVIEW DATE**
+and detail drawer follow the displayed score's lineage; calendar-day reviews
+remain `DATE ONLY` rather than implying an observation at midnight UTC.
+
+Historical estimates and provisional source reviews remain unauthenticated.
+They do not populate the current `score`, grant criterion approvals or certify
+the deployed build. The existing signed, source/build-bound publisher and
+expiry/replay checks remain required for actual current certification. This
+change adds no score issuer, financial authority, migration or release permit.
 
 ## October 25, 2026 — Round Five release-health gate and producer lineage
 
@@ -475,27 +497,6 @@ observations; (5) only then repair under the correct domain owner, recollect
 fresh evidence, and compare deltas. A source-only PR cannot independently
 claim that the live reported 69/59 has changed.
 
-
-## October 18 — high-confidence commit-history security census for oversized PRs
-
-GitGuardian skipped the War Satchel integration draft because of its
-large PR size. The existing tracked-file scan already checks the current
-checkout. The CI release/documentation lane now additionally checks
-**added text in each reviewed commit**, including merge resolutions,
-using the repository's existing high-confidence credential patterns.
-The scanner requires an exact Git base SHA, bounded commit count/patch
-size, and available Git ancestry; ambiguous analysis fails the job.
-Reports show only commit, path and finding class—never credential bytes.
-Deleted credentials in intermediate revisions are therefore still visible
-as audit findings. Tests cover added versus removed lines and sensitive
-paths. An unchanged current checkout cannot erase earlier findings.
-
-**Security evidence limitation:** this is a targeted first-party
-high-confidence/history scan, NOT a replacement for full GitGuardian
-coverage, entropy/credential-verification detection, binary scans,
-independent key provenance or a security review. A green result is
-neither a finance release permit nor proof of vault isolation. A real
-secret exposure requires credential rotation and dedicated investigation.
 
 ## October 18, 2026 — archival score lineage remains immutable under live agent updates
 
@@ -977,3 +978,32 @@ deployed-source identity certification.
 The application read model remains observational and read-only; financial
 operations, Wolo signing, payouts and settlement releases require their
 separate protected authorities.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/GENERAL_INSPECTIONS.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 464–484:
+
+>
+> ## October 18 — high-confidence commit-history security census for oversized PRs
+>
+> GitGuardian skipped the War Satchel integration draft because of its
+> large PR size. The existing tracked-file scan already checks the current
+> checkout. The CI release/documentation lane now additionally checks
+> **added text in each reviewed commit**, including merge resolutions,
+> using the repository's existing high-confidence credential patterns.
+> The scanner requires an exact Git base SHA, bounded commit count/patch
+> size, and available Git ancestry; ambiguous analysis fails the job.
+> Reports show only commit, path and finding class—never credential bytes.
+> Deleted credentials in intermediate revisions are therefore still visible
+> as audit findings. Tests cover added versus removed lines and sensitive
+> paths. An unchanged current checkout cannot erase earlier findings.
+>
+> **Security evidence limitation:** this is a targeted first-party
+> high-confidence/history scan, NOT a replacement for full GitGuardian
+> coverage, entropy/credential-verification detection, binary scans,
+> independent key provenance or a security review. A green result is
+> neither a finance release permit nor proof of vault isolation. A real
+> secret exposure requires credential rotation and dedicated investigation.

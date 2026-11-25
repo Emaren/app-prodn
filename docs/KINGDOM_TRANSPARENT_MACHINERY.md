@@ -8,12 +8,17 @@ systems: ["app-prodn","wolochain","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "visual-only-read-side-projection-contract"
-reviewed_at: "2026-10-19"
+reviewed_at: "2026-11-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Transparent Kingdom Machine Instruments
+
+> **Source-only re-review, November 19, 2026:** Verified six route pages, source component/capability files, 90-second visible polling, focused source/lifecycle tests in 65/65 Node contract suite. This is no live reader, financial attestation or Chrome performance acceptance.
+
 
 Six new visual-first source-bound instrumentation **pages**, not six new authorities. Source: `components/kingdom-instruments/KingdomInstruments.tsx` and its distinct per-view CSS. All six are publicly navigable and registered in the Kingdom Index and Speed OS public template cohort. They reuse existing read-only API projections, use no-store requests with bounded timeouts, poll at most once per 90 seconds when visible and distinguish unavailable from zero.
 

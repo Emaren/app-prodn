@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-10-23"
+reviewed_at: "2026-11-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 source transfer: imported the dated review from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce` after exact Git-blob equality at held `a96c2720952cd16380ad3c649185d9890bf53a41` for `lib/wargraph/runtime.ts`, `lib/wargraph/settlementWorker.ts`. The original review applies to those unchanged source anchors only. No newer main runtime, user acceptance, operational or financial authority is inferred for this held branch.
 
 # AoE2WAR WarGraph V1
 
@@ -248,3 +250,7 @@ Before and after normal AoE2WAR deployment:
 If WarGraph encounters uncertain participant, Watcher, timing, roster, frozen
 state or result truth, it must fail closed rather than punish a warrior or
 fabricate territorial/battle truth.
+
+## 2026-11-23 substantive WarGraph source and history review
+
+Read the full founding-seat, movement, no-battle/void, watcher-battle, deadline, settlement and economic contract against unchanged `lib/wargraph/runtime.ts` blob **`be1f77aafd4f0d552fadb1f114d046a01de9bd5a`** and `lib/wargraph/settlementWorker.ts` **`984e9857493a588b648950b38e1db791139c7366`**, source PR #1486 head `5b83f088...`. Runtime `WARGRAPH_RUNTIME_DISABLED` remains an isolated execution guard; settlement adapter uses bounded leased/versioned CAS transitions and a durable serializable domain transaction. The August 25 founding board constitution, prior migration SHA, October source review and historical proofs above are immutable dated evidence, not fresh current battle verification, live game admission or deployed migration check. WarGraph may record internal pending entitlement but WoloChain transfer finality must come from separate chain authority. No automatic payout, admin punitive result, signer unlock, funded market, migration, C01–C09 closure or current player/battle outcome was authorized or claimed by this review. Current 3032 website source differs from old historical commits; source-level contract equivalence is not a fresh end-to-end public WarGraph acceptance.

@@ -15,6 +15,13 @@ const HEIGHT=/^[1-9][0-9]{0,18}$/;
 const WOLO_ADDRESS=/^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const SPKI_PREFIX="302a300506032b6570032100";
 export const PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED=false as const;
+/** A separate source interlock; an approved-looking database row or the
+ * bridge's future release cannot silently authorize a prospective epoch. */
+export function prospectiveEpochMainnetAuthorized():boolean{return PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED;}
+export function requireProspectiveEpochMainnetAuthorization():void{
+ if(!PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED)throw Error("WAR_SATCHEL_EPOCH_ADMISSION_REFUSED:live_financial_epoch_hold");
+}
+
 export const PROSPECTIVE_EPOCH_REQUIRED_ROLES=[
   "owner","chain_custody","finance","withdrawal","recovery"
 ] as const;

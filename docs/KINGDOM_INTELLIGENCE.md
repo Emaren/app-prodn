@@ -8,12 +8,18 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "self-knowledge-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-11-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Kingdom Intelligence
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Checked source entrypoints `/kingdom-intelligence` and `/admin/aoe2war-os` against web integration commit `4731218b08d21214040c6e789bb8dbf42999e48d`; HEL1 publicly serves R25 on 3032. Operator access, data freshness, independent host provenance and source/runtime consistency still require their own physical receipts. This document describes the **self-knowledge contract**, not a claim that every observer or dependent service is current and healthy. No new read privilege or administrator authorization was granted.
+
 
 ## October 18, 2026 — require matching production source for combined health
 

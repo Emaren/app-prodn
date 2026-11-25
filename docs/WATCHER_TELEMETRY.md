@@ -8,12 +8,24 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Watcher Telemetry
+
+**2026-11-10 UTC source-document review:** This file preserves historical
+Watcher v1.6.3/v1.6.4 release receipts and telemetry controls. The
+current App source in lib/watcherRelease.ts declares **version 1.6.5**
+(previousVersion **1.6.4**). Therefore statements below about the
+historical 2026-10-02 and 2026-10-10 release are snapshots of those
+dates, **not** current release-version claims. This review inspected
+the referenced App source and the existing public GitHub v1.6.4 release
+metadata. It does not claim a present-day deployed watcher binary
+verification, new signing receipt, WebPKI status, or live 3032 acceptance.
 
 ## Production release identity — 2026-10-10
 

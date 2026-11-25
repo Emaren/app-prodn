@@ -8,12 +8,16 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "auditors"]
 source_of_truth: "git"
 authority: "candidate-browser-diagnostics"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance 88 Public Route Evidence Factory
+
+## 2026-11-25 UTC — bounded technical source review (held #898)
+
+Exact held source review: planner requires 88 unique public routes, preserves unknown criteria and candidate-only null scores; receipt assembler verifies source/build/manifest, rejects certification/point award, leaves absent routes UNMEASURED. The current workflow runs all 88 routes on PR (cohorts=1, samples=1), three samples on scheduled/manual runs; the earlier 1/8 pilot paragraph is historical. Browser accepts only loopback 3137, blocks external and mutating browser requests, and mixes an audited local GET allowlist with synthetic 503. No fresh Chrome run, deployed schedule, quality score or performance certification was observed. Source inspected: `a96c2720952cd16380ad3c649185d9890bf53a41`. All prior historical text is retained; no release or financial permission.
 
 *Candidate diagnostics only — this factory does not award a quality score.*
 

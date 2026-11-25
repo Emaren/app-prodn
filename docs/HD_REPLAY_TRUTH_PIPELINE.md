@@ -8,12 +8,19 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-21"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. Different or absent held anchors (do not infer parity): `app/api/replay/upload/route.ts`. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # HD Replay Truth Pipeline and Operator Runbook
+
+## 2026-11-21 UTC — bounded WE3 replay-authority source review
+
+Read-only source scope: inspected `app/api/replay/upload/route.ts` and reviewed the distinct archived, parsed, statistics-ready, result-trusted and betting-eligible lifecycle contracts below. Parsed game presentation must continue to preserve UNKNOWN winner or watcher early-end states. This is not a new full-corpus audit, result adjudication, market settlement, source retirement, FINANCIAL release or migration permit. Frozen historical proof figures remain tied to their original timestamps.
+
 
 ## Review scope — 2026-10-21 UTC
 

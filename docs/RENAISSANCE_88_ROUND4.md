@@ -8,12 +8,16 @@ systems: ["app-prodn"]
 audience: ["engineers", "auditors", "operators"]
 source_of_truth: "git"
 authority: "candidate-fixture-observation"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Round Four: Disposable Browser Dependencies and A11y Triage
+
+## 2026-11-25 UTC — bounded technical source review (held #898)
+
+Exact held source review: fixture script requires explicit opt-in and exact isolated loopback 55437 URL, rejects existing cluster/port, configures read-only role and negative INSERT, verifies repeated initial and final data-only dump digests. Workflow retains snapshot/verify/stop; browser blocks non-GET/external and models mixed local/503 dependencies. The October header-summary queue statement is a dated reason for its exclusion: the current held route has no direct queueBetMarketEnsure/queueLobbyMaintenance reference; no transitive GET nonmutation claim follows. No new fixture, browser, DB or accessibility execution performed. Source inspected: `a96c2720952cd16380ad3c649185d9890bf53a41`. All prior historical text is retained; no release or financial permission.
 
 *Historical Tab D provenance: #899; these are candidate observations, not production certification.*
 

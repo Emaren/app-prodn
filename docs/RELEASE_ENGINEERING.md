@@ -8,12 +8,54 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # AoE2WAR Release Engineering
+
+## 2026-11-21 UTC — bounded WE3 release-source review (NO DEPLOY PERMIT)
+
+Read-only source scope: inspected `scripts/docs_v2_check.py`, `scripts/aoe2_release_gate.py`, rollback/WOLO boundary contracts and merged WE2 protected ingress main `74a6c5c37ae68f187a76278f5b846dd31ec90fd1`. GitHub source/CI never substitutes for an actual WE2 Factory T7–T10, authenticated browser acceptance or HEL1 rollback witness. The last physically observed public BUILD_ID was `RHE-s_XmtI5heC0JuZP7r`; this review performs no root installation, new permit, database migration, custody activation or certified release transaction.
+
+
+## November 2, 2026 — R25 A05 failed-cutover continuation
+
+The existing F root engine and Mac launcher support a distinct continuation of
+accepted A04 evidence. The failed nonce `3cadeb4aac1f217783effc0c25f49fac`
+remains consumed. Its intent and original Nginx preimage are immutable; neither
+the original approval nor the genuine G BEFORE is reissued.
+
+`--root-cutover-plan` is read-only. It binds a fresh nonce to the exact source
+commit, three executable SHA-256 values, original approval and BEFORE digests,
+consumed transaction, both live process identities, protected runtime snapshot,
+and six-selector Nginx preimage/result. A plan does not authorize mutation.
+
+The alternative to native typed consent is an actual, unedited Emaren GitHub
+comment on Master Register #1108 headed `R25_F_OWNER_TRANSACTION_GRANT`.
+It explicitly discloses AI-delegated owner-only nonfinancial authority, permits
+one exact transaction and its protective rollback, and expires within 600
+seconds. Mac and root independently fetch the actual comment, exact-head
+three-job CI and all three committed executable files using existing GitHub
+authentication. Root rechecks the grant at the locked mutation seam. This
+does not claim an independent human review or confer financial authority.
+
+After reload, fresh verified TLS connections distinguish loopback origin
+(`aoe2war.com` Host and SNI) from public Cloudflare HTTPS. Bounded convergence
+requires two stable observations of the exact version and sealed BUILD_ID
+manifest bytes on both paths, with all six selectors and protected processes
+checked throughout. Observations preserve transport, response provenance and
+timings. A known previous version may converge within the deadline; mixed
+selectors, unknown versions or incorrect static bytes fail closed. Failure
+records and automatic rollback outcomes are durable. Expiry blocks forward
+mutation and never blocks restoration of the recorded original preimage.
+
+The Mac continuation reuses the immutable A04 BEFORE and invokes one genuine
+G AFTER against the new journal. Public cutover evidence alone does not close
+A06: real authenticated and guest responsive browser evidence remains required.
 
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 
@@ -159,6 +201,73 @@ consumer; current or ambiguous stages remain preserved.
     identity are re-proven and may not change. An existing deterministic stage
     or lost transport after privileged mutation begins is preserved as
     uncertain transaction evidence rather than auto-cleaned or blindly retried.
+
+## Production root SSH authority and signer compatibility (October 28)
+
+A verified operator-plane access test on the owner Mac returned `REMOTE_UID=0`
+using `ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@hel1 'id -u'`.
+This is existing **key-authenticated HEL1 root access**. Release operations must
+check this route before asking for `tony`'s interactive server sudo password.
+Mac Touch ID cannot unlock Linux sudo. Never introduce NOPASSWD, log passwords,
+or copy private signing keys to HEL1.
+
+The Oct 27 owner-v4 `owner-public.pem` was actually an RSA-3072 public key
+(625-byte PEM), while the merged `aoe2_release_retire_stage.py` controller
+requires an Ed25519 signature of exactly 64 bytes. Repeating the old encrypted
+RSA key passphrase could never satisfy the contract. A new encrypted Mac-only
+owner-v5 Ed25519 signing key passed a **real** 64-byte local sign/verify test:
+public SPKI SHA256 `3730382540cbb93672fa03b9c4f236a895500c30e22ccca8b884946b9308001c`;
+public PEM SHA256 `a60623079218c934295502350f0cbedcbcf9e42559f0d07469b0d703f59cb13b`.
+The encrypted old RSA private key remains preserved.
+
+**Existing HEL1 shared release lock is not a root-private trust directory.**
+An independent owner-root read-only scan on Oct 28 established
+`/mnt/HC_Volume_105319120/aoe2war/os-control` owned by `tony:tony`
+mode `0750`, its `locks` child owned by `tony:tony` mode `0755`,
+and `locks/release.lock` owned by `tony:tony` mode `0664`, empty.
+The initial owner-v5 installer incorrectly demanded root ownership of that
+shared lock directory and failed **before** creating a rotation transaction.
+The old public SPKI pin remained `3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd`;
+the controller installed checksum was
+`44a897e07d6999a15042885cfe8f0773c4645771a33011c700ef1c58293e2be4`;
+no v5 transaction directory, intent or completion receipt existed.
+
+The enrollment transaction now recognizes only this **exact observed
+tony-owned lock shape**, obtains the existing release flock, archives the
+old PUBLIC trust, and tightens **only** the original lock file from
+`0664` to `0644` under the exclusive flock, preserving its inode,
+owner and directory permissions. This narrow change is necessary because
+the *installed* stage retirement controller refuses a group-writable
+release.lock. Any ownership, path, symlink or mode drift is a HOLD.
+The owner must type `ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK`
+at the Mac terminal, explicitly approving both the public-key enrollment and
+exact 0664→0644 existing lock-file permission change.
+
+No broad `chown`/`chmod` of shared release paths, and the root-only
+`/etc/aoe2war/website-owner-v4` trust anchors and
+`/var/lib/aoe2war-owner-rotations` audits retain their strict
+root-owned protections. An interrupted transaction may leave an intent
+or tightened mode without completed rotation; **inspect root evidence
+rather than retrying**.
+
+The canonical `python3 scripts/aoe2_owner_v5_enroll_rootssh.py --apply`
+operator checks a clean local `main`, exact Mac v5 public fingerprint,
+the installed HEL1 controller SHA256, existing old RSA public trust, and
+the canonical release lease. It uses the existing pinned root SSH identity,
+transfers its source in memory, and enrolls only the PUBLIC key at the stable
+controller-read `/etc/aoe2war/website-owner-v4` file paths; the v4 directory
+name is retained solely for binary compatibility. It archives the old public
+trust and pins into a root-private immutable audit and creates a separate
+`OWNER_V5_ENROLLED_PREVIEW_PASS` receipt **only after** a fresh installed
+controller `--preview` succeeds. One authorization phrase is required. A
+partial/unknown outcome must be investigated from the root audit; never replay.
+
+**Distinct release phases must stay distinct**: verified root SSH does not
+automatically authorize website activation; public-key enrollment does not
+park the stale Oct 27 stage; stage parking requires its own local v5 signed
+`PARK_ONLY` permit; staging/release needs the canonical app controller,
+migration preflight and separate activation/public BUILD_ID receipts. Wolo
+8092/8093 are only observed, and funded settlement remains held.
 
 ## Root control assets and mounted build scratch
 
@@ -1402,12 +1511,20 @@ promotion with Wolo/runtime continuity, and committed web download metadata
 matching the hosted hashes. The native ZIP is retained for integrity but Mac
 unsigned manual installations do not claim signed self-update support.
 
-## October 21, 2026 — Do not confuse one-shot signer acceptance with custody availability
 
-The WoloChain private service currently exposes `custody_capability: "UNAVAILABLE"` even if a source-level/test-only execution permit enables `accepting: true`. It deliberately does not assert independent custody reserves or release certification.
+## Historical held-source appendix — NOT operating instructions
 
-HD `lib/warSatchelDedicatedSignerClient.ts` now requires **positive, exact `custody_capability: "AVAILABLE"` on both its initial and pre-submit signed/private-health checks**. Missing, malformed, ambiguous, changing or `UNAVAILABLE` values refuse the money-moving HTTP POST. Test fixtures may model the future positive handshake but **do not attest a real vault**.
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/RELEASE_ENGINEERING.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
 
-This is a fail-closed integration prerequisite: a Wolo service source upgrade may publish AVAILABLE only after independently witnessed exclusive custody, bank funds/reserves and obligations, trusted commit proof, protected rollback, build-pinned operator permit, and actual held-to-live deployment authorization. Neither `ok: true`, `accepting: true`, a test signature nor a JavaScript environment flag substitutes for that evidence.
+Original body lines 1390–1399:
 
-Do not enable the app financial bridge or merge this source as a claim of actual funded production support. Codex owns the separately protected Wolo capability issuer, native SDK transport and LIVE market-admission gate. This code and its regression tests keep the client closed until that actual positive state exists; unrelated public read behaviour is unchanged.
+>
+> ## October 21, 2026 — Do not confuse one-shot signer acceptance with custody availability
+>
+> The WoloChain private service currently exposes `custody_capability: "UNAVAILABLE"` even if a source-level/test-only execution permit enables `accepting: true`. It deliberately does not assert independent custody reserves or release certification.
+>
+> HD `lib/warSatchelDedicatedSignerClient.ts` now requires **positive, exact `custody_capability: "AVAILABLE"` on both its initial and pre-submit signed/private-health checks**. Missing, malformed, ambiguous, changing or `UNAVAILABLE` values refuse the money-moving HTTP POST. Test fixtures may model the future positive handshake but **do not attest a real vault**.
+>
+> This is a fail-closed integration prerequisite: a Wolo service source upgrade may publish AVAILABLE only after independently witnessed exclusive custody, bank funds/reserves and obligations, trusted commit proof, protected rollback, build-pinned operator permit, and actual held-to-live deployment authorization. Neither `ok: true`, `accepting: true`, a test signature nor a JavaScript environment flag substitutes for that evidence.
+>
+> Do not enable the app financial bridge or merge this source as a claim of actual funded production support. Codex owns the separately protected Wolo capability issuer, native SDK transport and LIVE market-admission gate. This code and its regression tests keep the client closed until that actual positive state exists; unrelated public read behaviour is unchanged.

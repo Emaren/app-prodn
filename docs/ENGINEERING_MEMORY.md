@@ -8,42 +8,118 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-20"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # AoE2WAR Engineering Memory and Learned Invariants
 
-## October 22 — financial permits bind the running build
+## November 20, 2026 — source-versus-live reconciliation; no release by documentation
 
-A permit matching a newly rotated root configuration does not identify the
-process using it. Compile the clean source and unique build generation into
-that process; never reread a replaced source/build sidecar as runtime identity.
-Absent raw-worker packaging stays HELD. Signed policy uses database time and
-fresh reads under cross-process leases. Commit HOLD before waiting; do not
-release a lease by racing an uncancelled financial callback against a timer.
-Connection loss after admission is UNKNOWN, not proof of no broadcast. Policy
-lease absence still cannot certify external signers, remote in-flight requests
-or complete liabilities. Preserve the original payment journals and all holds.
+This is a bounded technical review of the entrypoint and release-sensitive
+invariants, not a new factual certification of every historical incident
+in the 3,645-line append-only engineering memory. The lead November 5 A05
+paragraphs below are HISTORICAL: their statement that original 3030 was
+then authoritative must never be read as current public routing.
 
+Current verified public 3032 serves accepted Library website source
+5339a981acbf15ea8d3c4393cb1fc75bc300ea45 and BUILD_ID
+sn6eybJdBu7mluOQByc4M; the separate original 3030 remains rollback.
+Integrated Community Lobby and Chat PR #1422 source candidate
+a78964f4bbc32515243f56f1c0a1fb623047af72, independently verified
+Linux BUILD_ID -lmy-xPi1N9FECHgVYtMa, is NOT deployed by these
+observations. Source CI and artifact verification are not Factory permits.
 
-## October 21 — preserve proof authority through waits and release epochs
+On November 20, both existing Emaren admin Incognito and Scribe ordinary
+Chrome sessions returned authentic /api/auth/session HTTP 200, without
+extracting login material. Public archive total was 6,917 real battles,
+but /api/lobby/recent-matches?limit=2 returned HTTP 200 and ZERO items;
+lobby /api/lobby/chat?limit=2 returned HTTP 500. Library Games returned
+HTTP 200 with 7,154 accepted records and complete provenance.
+These are time-of-check observations, never permanent target counts.
 
-A valid historical bank proof is not current assets when an authenticated
-witness already proves a newer head. Require both heads at the state commit.
-Retain the original bank trust-root deadline: a deposit head can remain fresh
-while bank authority expires during an aggregate/row wait. Check before writes
-and commit, allowing the entire transaction to roll back. The real SDK/PG
-counterexample failed before and passes after; never replace it with a plain
-bank object or a reset local freshness clock.
+The eight-surface config/player-surface-contract.json and its readonly
+tests enforce nonempty authoritative truth and correct empty/error
+semantics rather than green HTTP 200 alone. Integrated PR #1422 preserves
+Chat #1418, restricted Library queries and the no-raw-guest-reactions
+reader. The qualified Linux artifact does not imply public activation.
+Neither Social SQL source nor a dormant Social writer is CHAT_DB_READY;
+a separate lobby writer needs LOBBY_CHAT_DB_READY before genuine writes.
 
-Offline funded wagers require an explicit distinct wager-review public key;
-withdrawal keys cannot substitute. Original ADR-36 signatures bind a reviewed
-release epoch. Held-era grants cannot become live through flags, and revocation
-must remain available to the session owner without a connected wallet. The
-continuous twelve-ticket acceptance fixture proves consumer/SDK conservation,
-not independent reviewer, game, custody or global solvency certification.
+Durable lesson: independently reconcile Git source, separately signed
+root/database authority, active source/build headers, authoritative
+read models, and what actual people see. Historical notes, passing
+builds and metadata renewals never grant financial or Social authority.
+
+## November 5, 2026 — mixed proxy does not fix new SSR reads
+
+The A05 mixed-proxy design (five frontend selectors to modern 3032,
+one API selector to legacy 3030) passed source-only routing invariants,
+but does not solve the new frontend's server-rendered Prisma queries:
+the candidate still receives actual 42501 denials on trophies, lobby
+guest reactions, ticker messages and more. GET 200 is not proof the
+React Server Component stream contains valid content. Do not promote a
+mixed frontend based on proxy routing alone. Original public 3030
+remains authoritative until a qualified replacement is accepted.
+
+New v12 candidate read-only source: two postgres-owned security-barrier
+views in aoe2war_public_v12. The ticker view only exposes enabled,
+unexpired public announcement fields, never disabled drafts or admin
+identity. The header view exposes exactly an open community-request
+count and a public workshop-live boolean; not request bodies or
+private stream playback URLs. Both read paths switch only under
+nonfinancial-production-v1 and keep legacy behavior unchanged.
+The actual HEL1 restricted database role aoe2war_web_prod successfully
+queried both views in a rollback-only transaction on November 5:
+one header row, bigint and boolean types; catalog definition SHA256
+0c10a889d9435ba19c25894d4d19e19d7e742a7877091c98a51587d101cd7575.
+No v12 schema was committed by that trial. Installation requires
+source/CI-pinned SQL, authenticated one-use root transaction,
+source-bound ACL/negative privilege review, a matching new Next
+artifact, native C/G/F and authenticated browser acceptance. This
+is partial A05 source remediation only; it does not close A05/A06,
+grant raw access to financial tables, or authorize chain custody.
+
+## November 5, 2026 — V8 heap crash after a real public F/G switch
+
+A05's reviewed six-selector Nginx cutover and independent G AFTER both
+succeeded against the November 4 candidate, but native browser acceptance
+exposed PostgreSQL 42501 read denials across 25 table families. At
+00:48:57 UTC November 5, the production Node process aborted with
+"Reached heap limit Allocation failed - JavaScript heap out of memory"
+after V8 old-space exceeded about 1.18 GiB. Its systemd memory peak
+(~1.51 GiB) was *below* the effective 2.4 GiB cgroup limit: cgroup
+headroom does not imply V8 heap headroom. Restart=no left port 3032 down
+while Nginx still selected it. The one-use native F rollback restored
+old 3030 (PID 2625090) with SHA-verified Nginx preimage, preserving
+preview 3031 and WOLO/financial services. A05/A06 remain OPEN.
+
+The root-only 3032 recovery proposal changes only the candidate unit
+to an explicit 2 GiB V8 old-space ceiling, 2.7 GiB MemoryHigh, 3.2 GiB
+MemoryMax, Restart=on-failure with eight-second delay and a maximum of
+three starts per five minutes. A separate persistent systemd.control
+MemoryMax=2400M drop-in must be acknowledged and requalified; editing
+the main service fragment alone would silently retain the old cap.
+Even isolated candidate restarts invalidate prior native C PID/start
+ticks, so the recovery regenerates a fresh rolled-back auth probe,
+read-only catalog/kernel/Steam witnesses, and exactly-bound admission
+and profile receipts. Only a one-use source/CI-verified, authenticated
+owner grant can apply after genuine read-only PLAN; any failure restores
+candidate-only files and memory override, never public Nginx or chain
+finance. A successful 3032 restart is not A05 live acceptance: limited
+PostgreSQL projections, new-release authenticated browsers, Steam
+callback, load/stability and public automatic recovery still require
+independent physical evidence.
+
+A historical eight-public-media-mount invariant previously tested the
+current C generator, so the independently hardened heap unit looked like
+an unapproved *historical* media change. Keep that invariant bound to the
+archived source's exact SHA and historical output identity, and separately
+test the new candidate's complete unit delta. Never weaken an older
+release's protection simply because the modern unit legitimately evolves.
 
 ## October 21, 2026 — do not downgrade new financial file families
 
@@ -3606,3 +3682,47 @@ The clean canonical Wolo source checkout `40a01cc8` contains C4 and C5,
 but this source merge is **not evidence of VPS binary promotion**. The
 current VPS settlement implementation remains on its own protected
 source/build authority pending explicit financial certification.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/ENGINEERING_MEMORY.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 4–4:
+
+> ## October 22 — financial permits bind the running build
+
+Original body lines 6–14:
+
+> A permit matching a newly rotated root configuration does not identify the
+> process using it. Compile the clean source and unique build generation into
+> that process; never reread a replaced source/build sidecar as runtime identity.
+> Absent raw-worker packaging stays HELD. Signed policy uses database time and
+> fresh reads under cross-process leases. Commit HOLD before waiting; do not
+> release a lease by racing an uncancelled financial callback against a timer.
+> Connection loss after admission is UNKNOWN, not proof of no broadcast. Policy
+> lease absence still cannot certify external signers, remote in-flight requests
+> or complete liabilities. Preserve the original payment journals and all holds.
+
+Original body lines 17–17:
+
+> ## October 21 — preserve proof authority through waits and release epochs
+
+Original body lines 19–25:
+
+> A valid historical bank proof is not current assets when an authenticated
+> witness already proves a newer head. Require both heads at the state commit.
+> Retain the original bank trust-root deadline: a deposit head can remain fresh
+> while bank authority expires during an aggregate/row wait. Check before writes
+> and commit, allowing the entire transaction to roll back. The real SDK/PG
+> counterexample failed before and passes after; never replace it with a plain
+> bank object or a reset local freshness clock.
+
+Original body lines 27–32:
+
+> Offline funded wagers require an explicit distinct wager-review public key;
+> withdrawal keys cannot substitute. Original ADR-36 signatures bind a reviewed
+> release epoch. Held-era grants cannot become live through flags, and revocation
+> must remain available to the session owner without a connected wallet. The
+> continuous twelve-ticket acceptance fixture proves consumer/SDK conservation,
+> not independent reviewer, game, custody or global solvency certification.
