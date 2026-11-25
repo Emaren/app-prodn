@@ -8,12 +8,19 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-11-21"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
+> Held #898 source transfer: imported the dated review from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce` after exact Git-blob equality at held `a96c2720952cd16380ad3c649185d9890bf53a41` for `lib/clanHallEvents.ts`, `lib/clanHallFeatures.ts`. The original review applies to those unchanged source anchors only. No newer main runtime, user acceptance, operational or financial authority is inferred for this held branch.
+
 # Clan Halls
+
+## 2026-11-21 UTC — bounded WE3 Hall source review
+
+Read-only source scope: inspected `lib/clanHallFeatures.ts`, `lib/clanHallEvents.ts` and private Hall audience boundaries. Earlier genuine Emaren and Scribe Chrome acceptance established only the specific audience-scoped AoE2WAR Hall path observed, not every Hall or media feature. This renewal does not change permissions, Hall membership, database roles, or production runtime.
+
 
 Clan Halls are persistent house rooms built on the `Clan`, `ClanMember`,
 `ClanMessage`, `ClanMessageAttachment`, and `ClanMessageReaction` models.

@@ -8,12 +8,16 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "admin-journey-read-projection"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Living Kingdom Admin Observatory
+
+## 2026-11-25 UTC — bounded technical source review (held #898)
+
+Exact held source review of both admin GET routes and `lib/adminLivingKingdom/read.ts`: each calls requireAdmin before loading data and uses private/no-store on every response; selection uses COHORT_SIZE+1 and PER_USER_LIMIT+1, history HISTORY_PAGE+1, and presence uses publicProjectionForUid. These are source contracts, not a new user/Chrome acceptance, database read, cohort census or privacy penetration test. Existing unmeasured browser and scroll history boundaries remain. Source inspected: `a96c2720952cd16380ad3c649185d9890bf53a41`. All prior historical text is retained; no release or financial permission.
 
 *Source review trail: issue/PR #888; this is admin-only, not public Index certification.*
 

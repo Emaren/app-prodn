@@ -8,12 +8,26 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-10-12"
+reviewed_at: "2026-11-12"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # AoE2WAR Performance OS
+
+## November 11, 2026 — bounded source-contract rereview
+
+This renewal inspects the still-tracked Performance OS document, the exact
+source command implementation in scripts/aoe2_speed_edge.py for the immutable
+featured-avatar plan/verify/apply/rollback split, and the tracked
+88-route cohort file in docs/audits/performance-route-cohort-v2.txt.
+It preserves their review/rollback guard language and the historical
+October avatar/LCP performance observations **as historical receipts**.
+No new live Cloudflare rule, CDN HIT, browser LCP, release speed or production
+physical performance certification is claimed by this source review.
+The existing Source OS and protected HEL1 rollback gates remain independent.
 
 ## October 13, 2026 — featured-avatar live-rule fingerprint (read-only)
 
@@ -35,6 +49,17 @@ a matching rule still does not guarantee a `HIT` if another rule, CDN
 configuration, or response property bypasses cache. Preserve the failed
 response receipt and same-POP evidence. Never fake HIT or relax identity,
 Accept, URL, version, or cookie guards.
+
+## November 12, 2026 — source-only documentation review
+
+The source-controlled V2 speed cohort now contains **120 distinct route
+representatives**, including the new /kingdom-traders PAPER-only public
+gateway. This benchmark inventory is **not** the separate historical 88-route
+Kingdom Index/Renaissance candidate cohort; neither population is a production
+certification. Performance policies remain guardrails, and historical
+observations retain their original dated receipts. This review does not assert
+new live LCP metrics, edge-cache changes, browser acceptance, a HEL1 release,
+or any FINANCIAL authorization.
 
 ## Purpose
 
@@ -75,7 +100,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the current 88-route V2 public cohort in
+benchmarks use the source-derived 120-route V2 public cohort (reviewed November 12, 2026) in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
@@ -1436,3 +1461,12 @@ to mentally invert a negative latency delta.
 
 The site-wide speed campaign is therefore auditable route by route: there is no
 single flattering average that can hide a page regression.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/PERFORMANCE_OS.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 64–64:
+
+> benchmarks use the current 88-route V2 public cohort in

@@ -8,12 +8,18 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Commissioner Replay Result Review
+
+## Source-contract review — 2026-11-04 (AI engineering review)
+
+Reviewed append-only result/adjudication and terminal-action diagnostic boundaries against the committed replay adjudication and watcher regressions. This is source-contract maintenance, not a new authorized human verdict, an independent finance review, or evidence that any market was settled.
 
 ## Purpose and product posture
 

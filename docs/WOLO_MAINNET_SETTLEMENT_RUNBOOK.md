@@ -8,12 +8,88 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-14"
+reviewed_at: "2026-11-14"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # WOLO Mainnet Settlement App Runbook
+
+## November 14, 2026 — read-only settlement runbook review; live actions DENIED
+
+Independent read-only inspection of this runbook's historical source and
+operator sections was cross-checked against the latest W1 containment receipt
+and a new HEL1 observation at **2026-11-14 00:32:11 UTC**. The two legacy
+reconciliation/staking timers **and their paired services**, plus the two
+original Wolo settlement services, remained masked; there were **zero**
+listeners on 8092–8095. The live website remained active with zero restarts,
+public /api/bets returned HTTP 503, and consensus advanced on wolo-1.
+These are dated observations only, not a durable statement about all possible
+writers, liabilities or financial custody.
+
+**Current financial verdict: FUNDING DENIED.** The original W1 containment
+closed only the four additional automatic timer/service paths; C01, C02, C03,
+C05, C06, C07 and C09 remain OPEN. The July–October descriptions, September
+reward-resumption history, cutover environment example below, and Deploy
+and backfill command examples are **historical or conditional procedures,
+NOT current production instructions**. Do not run their settlement, signer,
+Prisma, backfill, reconciliation or timer-enable operations merely because
+this document's reviewed_at metadata is current. Every such action needs
+its own separately signed, independently accepted FINANCIAL admission. The
+legacy 00:10 UTC staking-timer warning dated earlier November 13 remains
+superseded by the signed later November 13 quarantine and fresh masked
+readback; do not interpret the earlier entry as currently enabled.
+
+Independent review method, exact prior document SHA256 and physical
+evidence: [Chain #239 documentation review](https://github.com/Emaren/wolochain/issues/239#issuecomment-6868579014).
+This metadata review has no custody, SQL writer, reserve or funding authority.
+
+## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
+
+The **earlier 2026-11-13 observation** below that the legacy
+staking rewards timer was enabled is **superseded** by the
+[owner-signed W1 physical containment receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+At 09:53:35 UTC, the bet-stake reconciliation and staking rewards
+**timers AND services** were persistently masked via systemd control-plane
+links to \`/dev/null\`; services were inactive (PID 0), timers reported
+**masked/failed(resources)** with no finite scheduled expiry, all four
+manual start attempts were denied, and daemon-reload preserved the denial.
+The historical service definitions and evidence remain preserved.
+This is a **dated physical observation**, not an automatically refreshed
+live-health guarantee; recheck a fresh W1-authoritative receipt before
+claiming current containment.
+
+This closes the **two automatic financial timer execution paths only**.
+It does **not** revoke other legacy HTTP/SQL financial writer authority,
+close C03 or any other seven open W1 gates, admit reserves/custody, or
+permit funding (still **DENIED**). Re-enabling any unit requires a
+different owner-signed and independently approved financial-resume action.
+PRODUCT/Factory release operators cannot supply that authority.
+
+## Current live legacy reward timer authority warning — 2026-11-13 UTC
+
+The disabled timer / \`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED\` statements
+farther below describe **historical repair checkpoints, not the current
+effective HEL1 runtime**. Session A's [current read-only W1 audit](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+observed \`aoe2hdbets-staking-rewards.timer\` **enabled and active**
+(daily 00:10 UTC), targeting original **3030** via authenticated POST
+\`/api/staking/rewards/run\`. The physically deployed
+\`lib/stakingExecution.ts\` sets
+\`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED=false\`; the HTTP route
+may invoke distribution, staking payout and treasury payout logic with
+HD database write authority. A recent no-payable-rewards result or a
+successful timer exit **does not prove the next execution cannot write**.
+
+C04's masked original Wolo settlement units and closed 8092–8095
+listeners do **not** fence these original 3030/HD effects. W1 owns
+any suspension, future resumption, financial SQL/ledger correction or
+payout authorization; W2 release engineering cannot grant that authority
+by website CI. Funding remains DENIED and financial gate closure
+remains separate. The historic transaction facts and old operating
+procedures below are retained for provenance; their current
+preconditions must be independently re-verified before use.
 
 ## October 16, 2026 — legacy claim name collisions must not select a random recipient
 
@@ -933,41 +1009,49 @@ Never hard-code a fixed-supply display to conceal a missing address. The
 recipient, funded by two confirmed 100 WOLO transfers. It is separate from the
 already-listed Emaren #2 player wallet, which independently holds 200 WOLO.
 
-## War Satchel withdrawal operator adapter — source hold remains active
 
-The private, off-by-default `scripts/war-satchel-withdrawal-operator.mts`
-entrypoint connects three existing, independently guarded application functions.
-It is **not** a production activation, shared key, payout-retry mechanism, or
-replacement for the WoloChain 8094 exclusive signer.
+## Historical held-source appendix — NOT operating instructions
 
-- `--inspect WITHDRAWAL_UUID`: owner-bound durable status, attempt/review
-  existence, and amount; no signing, ledger mutation or chain transfer.
-  When the compiled source hold is active, prints
-  `bridge_unverified_hold` **without querying an uninstalled schema**.
-- `--record-review /absolute/private/review.json`: only for a root-run
-  authorized operator using a root:root 0600, single-link regular JSON
-  file with exactly `withdrawalId` and the externally generated
-  `approval`. Requires the separately certified reviewer key and signer-
-  independent signature verification against durable owner Keplr consent and
-  reserved money. No signing/broadcast on this path.
-- `--execute WITHDRAWAL_UUID`: exactly one selected *durable* withdrawal.
-  Requires the source-level bridge, financial operator approval, custody
-  controls, live signer and the reviewed durable approval. After the first
-  database-committed `UNKNOWN` fence, all subsequent calls reconcile only.
-  Uncertain outcome exits 3 and **does not retry payment broadcast**.
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
 
-All modes are exact-argument and fail closed. The operator command does not
-schedule itself or publish a public API. The real-money bridge flag in
-`lib/warSatchelFinancialBridgeHold.ts` remains a compile-time false. **Never
-flip it or issue any operator approval based solely on passing CI.** A
-production decision requires a proven exclusive vault and withdrawals,
-source-pinned Comet financial proofs, complete HD/DE writer isolation, accepted
-tx and claim #889 reconciliation, reserve/solvency proof, fresh backup, live
-rollback rehearsal, 11-migration *production-equivalent* rehearsal and
-explicit operator sign-off. With the source hold in place every mutating
-operator invocation refuses before reading the review file or database.
+Original body lines 921–959:
 
-The 11-migration isolated PostgreSQL 16 shadow CI proof demonstrates SQL
-installation and rollback properties, **not** authorization to run Prisma
-migrations against the live HD database. Do not use an isolated green test
-to bypass the protected `./bin/aoe2war finish` control plane.
+>
+> ## War Satchel withdrawal operator adapter — source hold remains active
+>
+> The private, off-by-default `scripts/war-satchel-withdrawal-operator.mts`
+> entrypoint connects three existing, independently guarded application functions.
+> It is **not** a production activation, shared key, payout-retry mechanism, or
+> replacement for the WoloChain 8094 exclusive signer.
+>
+> - `--inspect WITHDRAWAL_UUID`: owner-bound durable status, attempt/review
+>   existence, and amount; no signing, ledger mutation or chain transfer.
+>   When the compiled source hold is active, prints
+>   `bridge_unverified_hold` **without querying an uninstalled schema**.
+> - `--record-review /absolute/private/review.json`: only for a root-run
+>   authorized operator using a root:root 0600, single-link regular JSON
+>   file with exactly `withdrawalId` and the externally generated
+>   `approval`. Requires the separately certified reviewer key and signer-
+>   independent signature verification against durable owner Keplr consent and
+>   reserved money. No signing/broadcast on this path.
+> - `--execute WITHDRAWAL_UUID`: exactly one selected *durable* withdrawal.
+>   Requires the source-level bridge, financial operator approval, custody
+>   controls, live signer and the reviewed durable approval. After the first
+>   database-committed `UNKNOWN` fence, all subsequent calls reconcile only.
+>   Uncertain outcome exits 3 and **does not retry payment broadcast**.
+>
+> All modes are exact-argument and fail closed. The operator command does not
+> schedule itself or publish a public API. The real-money bridge flag in
+> `lib/warSatchelFinancialBridgeHold.ts` remains a compile-time false. **Never
+> flip it or issue any operator approval based solely on passing CI.** A
+> production decision requires a proven exclusive vault and withdrawals,
+> source-pinned Comet financial proofs, complete HD/DE writer isolation, accepted
+> tx and claim #889 reconciliation, reserve/solvency proof, fresh backup, live
+> rollback rehearsal, 11-migration *production-equivalent* rehearsal and
+> explicit operator sign-off. With the source hold in place every mutating
+> operator invocation refuses before reading the review file or database.
+>
+> The 11-migration isolated PostgreSQL 16 shadow CI proof demonstrates SQL
+> installation and rollback properties, **not** authorization to run Prisma
+> migrations against the live HD database. Do not use an isolated green test
+> to bypass the protected `./bin/aoe2war finish` control plane.

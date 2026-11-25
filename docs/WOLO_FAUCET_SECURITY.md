@@ -8,10 +8,12 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "security-contract"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-11-02"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
+
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
 
 # WOLO Faucet Security
 
@@ -75,11 +77,16 @@ The hardened faucet adds layered controls:
 5. A pre-broadcast reservation binds both account and destination.
 6. Claims are serialized through an application lock.
 7. Uncertain broadcasts remain fail-closed for the reserved account and address.
-8. Only confirmed payouts count toward global payout ceilings.
-9. Default circuit-breaker ceilings are 30 confirmed claims/hour and
-   100 confirmed claims/day.
+8. Only ledger records with a nonempty transaction hash count toward global
+   payout ceilings. The policy calls these records "confirmed", but the route
+   obtains the hash from synchronous broadcast acceptance; it does not prove
+   inclusion or final chain settlement.
+9. Default circuit-breaker ceilings are 30 hashed claims/hour and
+   100 hashed claims/day.
 10. Once tripped, the breaker remains closed until explicit operator review.
-11. Malformed security ledgers fail closed.
+11. Unreadable or malformed ledger JSON fails closed. The claim-ledger reader
+    validates the top-level record, not every nested claim field; this must
+    not be described as complete ledger schema validation.
 12. Ledger writes use atomic replacement.
 
 ## Circuit-breaker recovery
@@ -108,6 +115,39 @@ Never hard-fork WoloChain or rewrite chain history merely to recover ordinary
 faucet losses. Any chain-level intervention requires separate explicit
 governance.
 
+## November 2, 2026 source-bound security review
+
+This review was performed as an owner-delegated, AI-assisted source audit; it
+is **not** an independent human security approval and does not authorize any
+faucet transfer, hot-wallet action or production activation.
+
+The reviewed exact repository route `app/api/wolo/faucet/claim/route.ts` has
+SHA256 `f44aba8da83fbbefa08b208996b61de4c2fd64a358935d9c84d014bb81a2f2af`.
+The source at this security PR and the checked-out application production
+repository had identical bytes at review time. Source inspection independently
+confirmed these boundaries in the actual handler:
+
+- `getSessionUid(request)` supplies the account identity; a missing session
+  returns HTTP 401, and the Prisma user lookup requires a linked `steamId`.
+- The handler reads both account and recipient-address claim ledgers, passes
+  them to `evaluateFaucetClaimPolicy`, and checks the durable circuit breaker.
+- It records an account reservation before calling `sendFaucetTransfer`; a
+  broadcast with an unknown outcome is not treated as permission to retry.
+- A one-use application lock uses exclusive `wx` file creation, and ledger
+  replacement uses rename. The policy distinguishes confirmed transactions
+  from unconfirmed reservations when calculating global claim ceilings.
+- Recovery still requires operator examination of the chain transactions,
+  hot wallet and breaker evidence. This review does **not** certify current
+  account ledger contents, an open breaker, wallet funds or bank solvency.
+
+Verification: the source-identical full application tree executed
+`node --test tests/wolo-faucet-sybil-hardening.test.mts tests/wolo-faucet-policy.test.mts`
+with **17/17 PASS** on November 2, 2026. The security-remediation PR's own
+GitHub checks also passed, but those CI jobs do not replace review of the
+runtime authority and do not imply a live financial payout was exercised.
+The retained August 18 Sybil incident data does not establish a defensive
+block at a hypothetical 654th claim; that historical UNKNOWN remains UNKNOWN.
+
 ## Security invariants
 
 The regression suite must continue proving:
@@ -122,3 +162,36 @@ The regression suite must continue proving:
 - an active breaker blocks claims;
 - account-and-destination reservation occurs before chain broadcast;
 - internal failures are not exposed to clients.
+
+## October 31, 2026 app source review
+
+Reviewed the frozen website source
+`0cee3c836c4b0760478280c145e02e81e470ce0e`: the claim route,
+`lib/woloFaucetPolicy.ts`, and the existing policy and Sybil-hardening tests.
+The route reserves the authenticated account and destination before broadcast,
+serializes claims, and retains an uncertain reservation for its cooldown.
+Its `--broadcast-mode sync` result is not independent chain confirmation.
+The corrections above preserve that distinction without changing payout code.
+Historical raid figures remain dated incident evidence, not newly audited
+chain totals.
+
+This review grants no permission to reset a breaker, claim funds, change
+custody, or enable the faucet on the isolated website. R25's GET/HEAD ingress,
+SELECT-only PostgreSQL role, and UID egress wall must continue blocking that
+financial path. Runtime configuration and chain settlement remain separately
+verified truths owned by their respective operators.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/WOLO_FAUCET_SECURITY.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 64–66:
+
+> 8. Only confirmed payouts count toward global payout ceilings.
+> 9. Default circuit-breaker ceilings are 30 confirmed claims/hour and
+>    100 confirmed claims/day.
+
+Original body lines 68–68:
+
+> 11. Malformed security ledgers fail closed.

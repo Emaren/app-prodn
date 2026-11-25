@@ -8,12 +8,23 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Watcher 1.6.4 Download Artwork
+
+**2026-11-10 UTC source-document review:** Both retained versioned WebP
+assets were rechecked at their recorded sizes (289,088 and 321,518 bytes).
+The three downloaded-artwork source tests passed, and the independent
+GitHub v1.6.4 release record still lists 12 artifacts. The current website
+source separately identifies Watcher 1.6.5 as its current release and
+1.6.4 as previous. This page is historical artwork/readability evidence,
+not a claim that 1.6.4 is the current website release, a live-host browser
+acceptance, or a binary signing/redeployment authorization.
 
 Scope: `/download` extreme presentation only, October 10, 2026
 release artwork refresh. Do not change the watcher release manifest,

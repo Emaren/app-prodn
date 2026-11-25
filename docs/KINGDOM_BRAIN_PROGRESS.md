@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "cross-surface-integration-contract"
-reviewed_at: "2026-10-19"
+reviewed_at: "2026-10-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
 
 # Kingdom Brain, Progress and Patrol Contract
 
@@ -27,7 +29,7 @@ sensitivity: "internal"
 ## Public read-only contract
 
 - `/kingdom-brain` reads only `/api/kingdom-index`, `/api/kingdom-agents`, and `/api/kingdom-patrol`. It must distinguish policy coverage, source-dated signals, and independently verified operational health.
-- `/kingdom-progress` reads existing sanitized `/api/kingdom-intelligence` only to show source observation recency. No project completion percentage, AI hours, commits, deployment status or milestone acceptance is inferred from that source. A future authenticated progress-evidence adapter is separately required.
+- `/kingdom-progress` reads sanitized `/api/kingdom-intelligence` for independent Intelligence recency and read-only `/api/kingdom-progress` for bounded **source-only milestone evidence**. The server accepts at most eight new explicitly owner-published `Q01`–`Q29` priorities via the `AOE2WAR_PUBLIC_PRIORITY_V1` JSON island in Central #984, never the raw private queue. Original five capsules remain on source failure; absent accepted source receipts remain `UNKNOWN`, not 0% or 100%. Only exact-SHA matched successful allowlisted GitHub Actions may verify **source** gates; no runtime, financial, deployed BUILD_ID or agent activity is inferred. Source contribution recency requires a validated commit SHA/time, not an issue edit or fetch timestamp. Completion shape checks and the `lastGood` fallback are **process-local**, not immutable durable history; Q15 remains a separate prerequisite for permanent completion receipts.
 - Both pages use bounded foreground-only polling and network deadlines, no new background collection workers, no financial mutations, no unrestricted logs and no authority to certify or release anything.
 - A future route-wide census must count file templates (public, private utility, sensitive dynamic, admin), distinct benchmark URLs and API handlers separately, all generated from source and versioned build proofs.
 - No existing page's visual design is changed by these new pages. The new views are high-density, visual-first instruments; descriptions exist for accessibility and direct authority drilldowns rather than explanatory prose walls.
@@ -49,7 +51,7 @@ Release-build dependency closure, criterion-level independent evidence, current 
 1. Integrate the source registries, new visual surfaces and pure policy-only patrol coverage under CI on a draft PR.
 2. Audit live production/source counts with `./bin/aoe2war speed inventory`, reconcile with the existing protected Index census.
 3. Attach real receipts for route-level source checks, deployments, security, browser performance, sensor status, and agent inspections. Avoid duplicate heavy file scans on public GETs.
-4. Add a separate evidence-backed project-milestone adapter; only then may progress pills fill automatically.
+4. Verify the now-implemented bounded, public-safe Q12 source-only milestone adapter against real independent CI receipts; do not treat an in-process cache as durable evidence or claim that any source gate certifies production.
 5. Evaluate future `/kingdom-recovery`, `/kingdom-sensors`, `/kingdom-tests`, `/kingdom-systems`, and Replay Laboratory against existing AoE2WAR OS, General Inspections, VPSSentry, Kingdom Intelligence, and Parser Observatory. New pages require unique evidence authority and useful visual contracts; do not invent thin aliases.
 6. Keep the War Satchel/Auto Bets financial worktree and WoloChain HOLD untouched; build/deploy these visual routes through ordinary protected app controller only.
 
@@ -178,3 +180,16 @@ The other 23 editions were unchanged on that source SHA. The protected workflow 
 **Agent runtime authority clarification:** `lib/kingdomIntelligencePublic.ts` emits explicit `agentRuntimeAuthority.status=UNVERIFIED`, `verified=false` until a *separate authenticated active controller source SHA plus actual Next BUILD_ID* can be joined through the authorized Central release/inspection reader. A bridge report with `source.exact=true`, `certification.status=CERTIFIED` and P0/P1=0 is still a **source report**: P0/P1 preserve genuine zero, but `systemAgents[].activeProcess`, positive progress and `ACTIVE/RUNNING` must not appear independently runtime-verified. The public read-side masks positive agent process states as UNKNOWN, preserves safe provenance-labeled negative status observations, and Workshop reports process counts as UNKNOWN/null rather than zero in the absence of independently verified active agent state. No new Doctor, hidden poller, privileged API mutation or financial operation.
 
 **Finite unresolved live blockers:** (1) source-frozen generated manifest reseal, (2) 88-route Index hash reseal, (3) controlled DocsV2 refresh, (4) owner-authenticated active release SHA/real build evidence, (5) Central-owned `lib/kingdomAgentsPublic.ts` joined positive-state gating, and (6) actual exact-head real Chrome and deployed-runtime receipts. No internal `CERTIFIED`, `exact` or pure `MATCH_REPORTED` self-assertion clears any of those.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/KINGDOM_BRAIN_PROGRESS.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 16–16:
+
+> - `/kingdom-progress` reads existing sanitized `/api/kingdom-intelligence` only to show source observation recency. No project completion percentage, AI hours, commits, deployment status or milestone acceptance is inferred from that source. A future authenticated progress-evidence adapter is separately required.
+
+Original body lines 38–38:
+
+> 4. Add a separate evidence-backed project-milestone adapter; only then may progress pills fill automatically.

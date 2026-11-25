@@ -8,12 +8,17 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-11-19"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # AoE2WAR Workshop Architecture
+
+> **Source-only re-review, November 19, 2026:** Verified public Workshop source page, public/admin route existence and publication boundary source/test assertions in 65/65 focused Node suite. August host entries are historical, no fresh production database counts or writes certified.
+
 
 ## Purpose
 

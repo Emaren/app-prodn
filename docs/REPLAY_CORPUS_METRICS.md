@@ -8,12 +8,21 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "runtime-evidence"
 authority: "metric-contract"
-reviewed_at: "2026-10-09"
+reviewed_at: "2026-11-09"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Replay Corpus and Public Metric Contract
+
+Review note (2026-11-09): reviewed this grain/authority contract against the
+current library activity, census and games route source. The July 28 and
+October 9 numerical snapshots below were NOT resampled and are NOT current
+statistics. Never use these dated counts for financial or new user identity
+authorization.
+
 
 Review note (2026-09-22): the grain definitions, public-label rules, and
 projection invariants were re-reviewed against the current implementation and

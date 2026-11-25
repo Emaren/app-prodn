@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "research-presentation-contract"
-reviewed_at: "2026-10-15"
+reviewed_at: "2026-11-15"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 source transfer: imported the dated review from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce` after exact Git-blob equality at held `a96c2720952cd16380ad3c649185d9890bf53a41` for `lib/phoenixRecoveryDashboard.ts`, `lib/phoenixRecoveryDashboardCache.ts`, `data/phoenix-recovery.snapshot.json`, `lib/phoenixResearchChronicle.ts`, `components/replay-engine/PhoenixResearchChronicle.tsx`. The original review applies to those unchanged source anchors only. No newer main runtime, user acceptance, operational or financial authority is inferred for this held branch.
 
 # Phoenix Recovery Dashboard
 
@@ -161,3 +163,27 @@ The actual component was inspected at desktop and 390 px mobile widths with
 the live DB disconnected. The sealed panel remained available, unknown live
 coverage stayed unavailable, the audit's zero remained visible, and source
 and opportunity disclosures opened. Document width remained 390 px on mobile.
+
+
+## Product review · November 15, 2026
+
+Rechecked the immutable app projection against current source at
+`f436d6f3c1a04308e33b17db4a69c25a2d925fcf`.
+`data/phoenix-recovery.snapshot.json` still has SHA-256
+`c1341ad92edfafb99227d3475e02fc81eb4ec90d7c0fb27af6cc9e3d24405363`,
+identical to its checked-in sidecar. The chronicle source still holds
+**13 bounded unique experiment records** and a separately bounded
+**25-ID exact-original audit**. Its public text does not turn those into
+38 games or cumulative campaign counts. `lib/phoenixRecoveryDashboard.ts`
+and `lib/phoenixRecoveryDashboardCache.ts` still enforce a strict bounded
+public schema and hashed checked-in cache. Owning Phoenix and
+Hall/Kingdom Knowledge Router test selection passed **39/39** at this
+review. The separately cited `api-prodn` PR #46 was checked on GitHub
+and remains **open/draft/unmerged** as of this review.
+
+The October 15 counts, native research outcomes, app checkout and
+performance figures above remain **dated historical snapshots**.
+This review did not rerun the original replay experiments, query a
+private replay corpus, claim a newer research result, inspect the
+deployed API runtime or authorize any financial promotion. A source
+review and passing local tests do **not** establish production activation.

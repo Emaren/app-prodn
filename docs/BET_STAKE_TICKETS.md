@@ -8,11 +8,102 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-16"
+reviewed_at: "2026-11-16"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. Exact matching source anchors: `app/api/bets/stake-reconciliation/route.ts`, `app/api/bets/tickets/route.ts`, `lib/betStakeAutoRecovery.ts`, `lib/betStakeFunding.ts`, `lib/betStakeMemo.ts`. Different or absent held anchors (do not infer parity): `lib/betStakeTickets.ts`. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
 # Manual Bet Stake Tickets
+
+## November 16, 2026 — WE1 independent source and quarantine review
+
+**DOCUMENTARY REVIEW ACCEPTED. FINANCIAL FUNDING REMAINS DENIED.** This
+review keeps both historically true 2026-11-13 observations below: the
+earlier live reconciliation timer warning and the later signed **09:53:35
+UTC** [W1 mask-and-denial receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+The later action blocked both bet-stake reconciliation and staking
+rewards **timers and services**, denied four manual starts, and kept
+original source/rollback evidence. It closed two scheduled producers,
+**not** the broader C03 HTTP/SQL financial-writer fence.
+
+At **2026-11-16 06:17 UTC**, an independent read-only HEL1 check found
+those four units plus the two Wolo settlement services masked and
+inactive (services MainPID 0). The reconciler service reported
+`NeedDaemonReload=yes`; that live metadata needs separate W1 review,
+not an opportunistic reload or financial-resume action. Public
+`/api/bets` on accepted 3032 returned HTTP 503. Accordingly,
+source-compatible legacy or ticket endpoints described below are
+**not** evidence of an enabled, funded public betting operation.
+
+The present contract was independently compared with exact canonical-main
+Git source blobs: `lib/betStakeTickets.ts`
+`4235b80cc801454c02d0cefeb241e326960bcdbb` (ticket lifecycle,
+opt-in switch and locks), `lib/betStakeFunding.ts`
+`be798c44e8f77555a6a70bcd2b71d68c89918441` (shared advisory
+funding exclusion), `lib/betStakeMemo.ts`
+`5d8d05a64d4a5c717f3a066c000f14c385267553` (exact v1 memo),
+`lib/betStakeAutoRecovery.ts`
+`28d78c67fd46500d7760018bbdfc5438a9c715e7` (bounded
+signed-but-unrecorded recovery; apply is not read-only),
+`app/api/bets/tickets/route.ts`
+`286d4d2ef78a684488582bfcdd46ab635377782a`
+(public `source: "manual"`), and
+`app/api/bets/stake-reconciliation/route.ts`
+`86103959ed9a53edde960fd5653ccea337661d27`
+(separate authenticated plan/apply).
+
+**W1 gate state remains C01, C02, C03, C05, C06, C07 and C09 OPEN;
+C04/C08 CLOSED; funding DENIED.** Historical zero-candidate runs and
+source-level idempotency never certify future lack of financial writes.
+No custody/reserves approval, escrow funding, legacy 3030 HTTP/SQL
+writer closure, backup/restore, canary, grant, financial service action,
+or signed authorization is asserted by this documentation review.
+WE2/WE3 may integrate the reviewed document source without receiving
+financial authority.
+
+## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
+
+The **earlier 2026-11-13 observation** below that the legacy
+bet-stake reconciliation timer was enabled is **superseded** by the
+[owner-signed W1 physical containment receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+At 09:53:35 UTC, the bet-stake reconciliation and staking rewards
+**timers AND services** were persistently masked via systemd control-plane
+links to \`/dev/null\`; services were inactive (PID 0), timers reported
+**masked/failed(resources)** with no finite scheduled expiry, all four
+manual start attempts were denied, and daemon-reload preserved the denial.
+The historical service definitions and evidence remain preserved.
+This is a **dated physical observation**, not an automatically refreshed
+live-health guarantee; recheck a fresh W1-authoritative receipt before
+claiming current containment.
+
+This closes the **two automatic financial timer execution paths only**.
+It does **not** revoke other legacy HTTP/SQL financial writer authority,
+close C03 or any other seven open W1 gates, admit reserves/custody, or
+permit funding (still **DENIED**). Re-enabling any unit requires a
+different owner-signed and independently approved financial-resume action.
+PRODUCT/Factory release operators cannot supply that authority.
+
+## Current legacy timer write-capability warning — 2026-11-13 UTC
+
+Session A's [read-only live HEL1/HD authority review](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+confirms \`aoe2hdbets-bet-stake-reconcile.timer\` remains **enabled
+and active** approximately every five minutes, executing \`--apply\`
+against the original **3030** authenticated POST endpoint
+\`/api/bets/stake-reconciliation\`. This is **not** a metrics-only job:
+the current source invokes \`placePooledBetWager\` and
+\`commitBetStakeTicket\`, and the live original 3030 process uses
+a PostgreSQL role with HD bet/staking table write authority.
+A zero-candidate previous run, an idempotency design and exit status
+zero **do not prove future financial mutation is impossible**.
+
+C04 masks different Wolo settlement units; those masks do not
+quarantine this timer's 3030-to-HD writer path. W1, not PRODUCT C/B,
+owns any suspension decision and financial reconciliation/ledger or
+sequence acceptance. Keep the existing bounded source behavior below
+as its implementation contract, but do not call TIMER_RUNNING or
+LAST_EXIT_0 a financial-operation permit. Financial funding remains
+DENIED while seven gates remain OPEN.
 
 ## October 16, 2026 — bounded source contract review
 

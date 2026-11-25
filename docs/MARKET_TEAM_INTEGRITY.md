@@ -8,12 +8,18 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Team Market Integrity
+
+## Source-contract review — 2026-11-04 (AI engineering review)
+
+Reviewed the immutable proposition/roster and financial correction boundaries against the existing reviewer SQL migrations, explicit VOID confirmation script, and financial-authority confirmation constant. This maintenance note creates no authority to issue bets, refunds, withdrawals or custody transactions. Historical counts remain historical.
 
 Review note (2026-08-28): the immutable proposition, final-roster,
 void/refund, settlement-proof, and watcher-identity promotion boundaries were

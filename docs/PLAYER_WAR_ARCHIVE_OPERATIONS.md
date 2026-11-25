@@ -8,10 +8,12 @@ systems: ["app-prodn"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-13"
+reviewed_at: "2026-11-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
 
 # Player War Archive Operations
 
@@ -24,6 +26,21 @@ This runbook is the canonical operator path for answering questions such as:
 
 It exists to prevent schema-based database guessing, shadow-database confusion,
 and partial verification.
+
+## Current archive observation boundary — 2026-11-13 UTC
+
+The documented default private byte directory is only a fallback:
+`PROFILE_DOCUMENT_UPLOAD_DIR` can override it. B's
+[read-only HEL1 observation](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6842562063) found ENOENT
+when the nonprivileged UID1000 checked the default directory; this
+**does not prove that no private documents exist** or that the production
+service uses the default path. The direct `postgres` SQL inspection below
+is a **privileged, explicitly approved read-only operator procedure**, not
+permission to grant raw `managed_media_assets` table access to the 3032
+website role (which currently fails that direct read with PostgreSQL
+42501). No player-specific SQL, file read, file creation or private-byte
+transfer was performed for this observation. Retain both private-byte
+isolation and metadata-only access boundaries.
 
 ## Production authority
 

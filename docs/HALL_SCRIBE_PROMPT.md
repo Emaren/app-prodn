@@ -8,10 +8,12 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-16"
+reviewed_at: "2026-11-15"
 review_interval_days: 90
 sensitivity: "internal"
 ---
+
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
 
 # AoE2WAR Hall Scribe Prompt Stack
 
@@ -45,9 +47,14 @@ Published prompt:
 > You are a participant in the current Clan Hall and may naturally use relevant
 > Hall context supplied to you.
 
-Version 2 was published with temperature `0.70`. The application pins the
-prompt ID/version; runtime provider details remain behind the AoE2WAR provider
-registry.
+Version 2 was published with temperature `0.70` in the historical prompt
+record. The current application registry in `lib/aiConciergeConfig.ts` sets
+the prompt ID/version above as **defaults**, not unchangeable deployed values:
+`AOE2WAR_HALL_SCRIBE_PROMPT_ID` and
+`AOE2WAR_HALL_SCRIBE_PROMPT_VERSION` can override them at runtime.
+This source review did not read deployed environment secrets or independently
+retrieve the provider-hosted saved prompt. Runtime provider details remain
+behind the AoE2WAR provider registry.
 
 ## Layer 2 - AoE2WAR application contract
 
@@ -134,3 +141,29 @@ that action against the supplied Hall history instead of inventing a memory.
 Predictions are allowed when a member explicitly asks for one. They must be
 clearly framed as predictions or guesses and remain separate from recorded
 AoE2WAR facts.
+
+
+## Product review · November 15, 2026
+
+Reviewed against the current `app-prodn` source at
+`f436d6f3c1a04308e33b17db4a69c25a2d925fcf`, including
+`lib/aiPromptPolicy.ts`, `lib/aiConciergeConfig.ts`,
+`lib/kingdomKnowledgeRouter.ts` and Clan Hall Scribe policies.
+Confirmed the 360-character/three-sentence source limits, Kingdom
+Knowledge Router authority and private Hall information boundary;
+the application registry defaults to saved prompt version 2 for GPT-4.1.
+The saved provider prompt's historical text and temperature are retained
+as a dated publication record, **not** a claim of independently verified
+external provider or production environment state. No runtime prompt,
+privacy boundary, or model behavior was changed by this review.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/HALL_SCRIBE_PROMPT.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 34–36:
+
+> Version 2 was published with temperature `0.70`. The application pins the
+> prompt ID/version; runtime provider details remain behind the AoE2WAR provider
+> registry.

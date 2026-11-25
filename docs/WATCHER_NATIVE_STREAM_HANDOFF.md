@@ -8,10 +8,12 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "stream-ingest-contract"
-reviewed_at: "2026-10-23"
+reviewed_at: "2026-11-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> Held #898 source transfer: imported the dated review from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce` after exact Git-blob equality at held `a96c2720952cd16380ad3c649185d9890bf53a41` for `app/api/streams/start/route.ts`, `app/api/streams/[streamId]/chunks/route.ts`. The original review applies to those unchanged source anchors only. No newer main runtime, user acceptance, operational or financial authority is inferred for this held branch.
 
 # Watcher Native Stream Handoff
 
@@ -109,3 +111,7 @@ The additive `GameWatchRetainedDemo` migration belongs to the protected
 release lane. Any deployment exposing these routes must prove that migration is
 applied before activation; this document does not infer live migration state.
 Retention never changes replay or financial authority.
+
+## 2026-11-23 substantive Watcher stream contract re-review
+
+Re-read the whole start/chunk/heartbeat/end protocol, watcher-key ownership, idempotent sequence, 8MiB per-chunk limit, 512MiB/4,000-chunk defaults, 503 retry semantics, WebM content type and retained-demo cleanup boundary against unchanged tracked `app/api/streams/start/route.ts` blob **`cc417a9b5ad0243e5f4594deb6b575223ba01319`** and `app/api/streams/[streamId]/chunks/route.ts` **`7f8a81d2a378a9b72370e310c98e9340fc22fe2a`**, PR #1486 head `5b83f088...`. These route implementations still resolve `resolveStreamRequestActor` before serving Watcher mutations and enforce the 8MiB raw chunk limit. The prior retained demonstration, authoritative replay finality, storage durability and external Watcher key state were **not** newly exercised on November 23; neither current migration state, a complete end-to-end native WebM upload, rollback, public playback performance nor disk retention integrity is certified here. A Watcher media heartbeat has no competitive result, identity claim, payout or financial authority. Deployed live source/BUILD at 17:14 UTC is `890d9dcc22d0` / `0NEGtfP0ieSzETh1JHGhE`; this inspection grants no new upload production release or replay finality.

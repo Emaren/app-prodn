@@ -8,41 +8,39 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-11-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # app-prodn Deploy
+
+## November 22, 2026 — WE3 source/host-scoped protected-release review
+
+**Review scope (not historical rollback recertification):** Rechecked existing
+protected release entrypoints in scripts/aoe2_release.py and
+scripts/aoe2_release_ship.py, live read-only systemd state, and existing
+loopback listeners. Both aoe2hdbets-web-prod.service and legacy
+aoe2hdbets-web.service were active when observed on November 22. Listeners at
+3032, 3030 and reserved 3033 boundary were visible. This observation is
+not approval to restart, switch release targets or retire rollback services.
+
+Storage OS BAE Basic / Advanced / Extreme and the five-page Storage Atlas
+remain distinct, separately permitted releases: BAE FIRST. Atlas follows
+only with a fresh exact source admission, protected Factory T7–T10 and
+genuine owner/ordinary-account browser acceptance. A draft PR or successful
+Linux build grants no migration, release activation, deletion, archive
+or financial authority. Historical commands below are dated references;
+use current source-qualified controllers and receipts, never an isolated
+old shell example or blanket pull-and-restart command.
+
 
 ## October 22, 2026 — targeted release-safety review
 
 Rechecked the ordinary protected release path, exact Git source identity, isolated staging, runtime/public version parity, fast and durable rollback, and Wolo 8092/8093 observer boundary against the current `scripts/aoe2_release.py` / `scripts/aoe2_release_ship.py` controls. This review does **not** grant any additional one-time exception or authorize settlement, signer, custody, schema migration or restart outside the release controller. The Traffic Observatory country presentation correction must use a new reviewed, artifact-bound website activation and separately coordinated Traffic API rollout. Dated historical deployment examples remain evidence of their own time, not current runtime truth.
 
-## October 22 UTC — source reviewed, financial release still HARD HOLD
-
-This runbook was source-reviewed against the active release engine,
-`docs/RELEASE_ENGINEERING.md`, Betting Constitution matching rules, current
-GitHub integration ancestry, and the October 21 read-only WoloChain issue #5
-operator receipts. **This is documentation/source review, not a live VPS
-inspection, fresh bank-reserve attestation, payout reconciliation or deployment
-approval.** Production parity must be freshly established by `aoe2war status`
-and protected release receipts before any authorized change.
-
-The new HD War Satchel and Mecha Auto Bets are **not enabled for funded
-production execution**. The Wolo legacy primary/founder settlement lanes
-(8092/8093) must not be stopped/restarted/replaced to facilitate a web release
-while shared financial writers, accepted 100-WOLO escrow, founder claim #889,
-global liabilities, quiesced backup and witnessed rollback remain unresolved.
-No expiry of this review document or source CI success authorizes a deposit,
-withdrawal, signer, financial bridge, timer, migration or old in-flight retry.
-
-Older one-off setup commands below record previous operator procedures.
-They are **not** a new instruction to run live financial activation steps. In
-particular, never reuse historic testnet keyring/home/CLI examples as wolo-1
-signing configuration and never copy custody mnemonics into a new web
-environment. DE is out of the current feature scope; verify only shared WOLO
-non-interference where an actual joint service is implicated.
 
 ## Production truth
 
@@ -51,9 +49,11 @@ For a fresh operator or AI-assisted session, begin with
 
 - VPS repo path: `/var/www/AoE2HDBets/app-prodn`
 - HD production database: `aoe2hd_db`
-- service: `aoe2hdbets-web.service`
-- public domain: `https://aoe2war.com`
-- bind: `127.0.0.1:3030`
+- 2026-11-22 observed active production: aoe2hdbets-web-prod.service, loopback 3032
+- 2026-11-22 observed separate legacy service: aoe2hdbets-web.service, loopback 3030; preserve rollback
+- public domain: https://aoe2war.com
+- 3033 is the reserved emergency boundary and must remain preserved
+- historical 3030 configuration below is not the authority for current production switching
 - service user: `tony`
 - preferred SSH alias from MBP: `hel1`
 
@@ -1310,17 +1310,13 @@ That points at Unicode header generation and should send you to the attachment r
 
 ## When schema changes exist
 
-For new Prisma tables or columns, **the protected additive DATABASE/FINANCIAL
-release transaction owns the order**, not a manual migration/build/restart
-shortcut. Seal and validate the exact migration frontier, capture a fresh
-restorable pre-migration archive and checksum, stage and prove the candidate,
-apply only specifically approved non-destructive migrations, and verify
-receipts and service/build/source parity before activation. Any financial
-maintenance-fence migration remains HELD until its exact source and operator
-permits are independently approved.
+If the web change depends on new Prisma tables or columns:
 
-Never run `npx prisma migrate deploy` separately to get around that governed
-transaction, and never restart blindly before schema and rollback proof.
+- apply the web Prisma migration first
+- then build
+- then restart
+
+Do not restart blindly before the schema is in place.
 
 ## Related runtime truth
 
@@ -1331,20 +1327,20 @@ transaction, and never restart blindly before schema and rollback proof.
 - dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](deploy/aoe2-access-logging-phase1.md)
 
 
-## Staking unstake signer — historic testnet configuration is NOT mainnet authority
+## Staking unstake signer
 
-`/api/staking/unstake` must use its own staking custody rail; it must never
-borrow the betting payout/founder signing account. The previous testnet sample
-(`/var/lib/wolochaind-testnet`, `/var/www/WoloChain/build/wolochaind`,
-`keyring backend: test`) is **archival only** and must never be treated as
-a reviewed `wolo-1` mainnet signing, seed, fee or deployment procedure.
+`/api/staking/unstake` must use the staking custody rail.
 
-Before any real transaction, independently verify the actual wolo-1 signer
-identity, service privileges, balances, original owner entitlement, trusted
-chain proof, fee/headroom and operator permit from current protected runtime
-configuration. Source comments, testnet examples and an unlocked web account
-cannot replace financial controls. No unstake or legacy payout is authorized
-as part of this held Satchel/Mecha release.
+Preferred live setup:
+
+- key name: `staking`
+- home: `/var/lib/wolochaind-testnet`
+- CLI: `/var/www/WoloChain/build/wolochaind`
+- keyring backend: `test`
+- fee: `5000uwolo`
+
+Do not route staking unstake through the generic betting payout service. That path has different settlement headroom semantics and can block valid staking returns.
+
 
 ## Evidence-preserving finish mode
 
@@ -1357,3 +1353,78 @@ aoe2war finish --preserve-context-history
 This does **not** bypass the release lane. It still captures and verifies fresh context, runs the normal gate/deploy/certification/audit/Doctor sequence, and leaves Wolo observe-only. It disables only context-archive pruning for that finish transaction. Independent cache-only storage retention and certified rollback retention remain governed by their existing policies.
 
 The dry-run reports `evidence_retention` and `automatic_mutation_boundaries`, including whether context pruning and cache retention are expected. Use `--preserve-context-history` when historical context itself is part of the evidence being protected; do not use it as a substitute for Storage OS or Recovery OS.
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/DEPLOY.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 8–31:
+
+> ## October 22 UTC — source reviewed, financial release still HARD HOLD
+>
+> This runbook was source-reviewed against the active release engine,
+> `docs/RELEASE_ENGINEERING.md`, Betting Constitution matching rules, current
+> GitHub integration ancestry, and the October 21 read-only WoloChain issue #5
+> operator receipts. **This is documentation/source review, not a live VPS
+> inspection, fresh bank-reserve attestation, payout reconciliation or deployment
+> approval.** Production parity must be freshly established by `aoe2war status`
+> and protected release receipts before any authorized change.
+>
+> The new HD War Satchel and Mecha Auto Bets are **not enabled for funded
+> production execution**. The Wolo legacy primary/founder settlement lanes
+> (8092/8093) must not be stopped/restarted/replaced to facilitate a web release
+> while shared financial writers, accepted 100-WOLO escrow, founder claim #889,
+> global liabilities, quiesced backup and witnessed rollback remain unresolved.
+> No expiry of this review document or source CI success authorizes a deposit,
+> withdrawal, signer, financial bridge, timer, migration or old in-flight retry.
+>
+> Older one-off setup commands below record previous operator procedures.
+> They are **not** a new instruction to run live financial activation steps. In
+> particular, never reuse historic testnet keyring/home/CLI examples as wolo-1
+> signing configuration and never copy custody mnemonics into a new web
+> environment. DE is out of the current feature scope; verify only shared WOLO
+> non-interference where an actual joint service is implicated.
+
+Original body lines 40–42:
+
+> - service: `aoe2hdbets-web.service`
+> - public domain: `https://aoe2war.com`
+> - bind: `127.0.0.1:3030`
+
+Original body lines 1299–1306:
+
+> For new Prisma tables or columns, **the protected additive DATABASE/FINANCIAL
+> release transaction owns the order**, not a manual migration/build/restart
+> shortcut. Seal and validate the exact migration frontier, capture a fresh
+> restorable pre-migration archive and checksum, stage and prove the candidate,
+> apply only specifically approved non-destructive migrations, and verify
+> receipts and service/build/source parity before activation. Any financial
+> maintenance-fence migration remains HELD until its exact source and operator
+> permits are independently approved.
+
+Original body lines 1308–1309:
+
+> Never run `npx prisma migrate deploy` separately to get around that governed
+> transaction, and never restart blindly before schema and rollback proof.
+
+Original body lines 1320–1320:
+
+> ## Staking unstake signer — historic testnet configuration is NOT mainnet authority
+
+Original body lines 1322–1326:
+
+> `/api/staking/unstake` must use its own staking custody rail; it must never
+> borrow the betting payout/founder signing account. The previous testnet sample
+> (`/var/lib/wolochaind-testnet`, `/var/www/WoloChain/build/wolochaind`,
+> `keyring backend: test`) is **archival only** and must never be treated as
+> a reviewed `wolo-1` mainnet signing, seed, fee or deployment procedure.
+
+Original body lines 1328–1333:
+
+> Before any real transaction, independently verify the actual wolo-1 signer
+> identity, service privileges, balances, original owner entitlement, trusted
+> chain proof, fee/headroom and operator permit from current protected runtime
+> configuration. Source comments, testnet examples and an unlocked web account
+> cannot replace financial controls. No unstake or legacy payout is authorized
+> as part of this held Satchel/Mecha release.

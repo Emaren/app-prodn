@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "implementation-contract"
-reviewed_at: "2026-10-23"
+reviewed_at: "2026-11-23"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
+
+> Held #898 source transfer: imported the dated review from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce` after exact Git-blob equality at held `a96c2720952cd16380ad3c649185d9890bf53a41` for `lib/playerIdentityDiscovery.ts`. The original review applies to those unchanged source anchors only. No newer main runtime, user acceptance, operational or financial authority is inferred for this held branch.
 
 # Player Identity Wave 2 — Deterministic Discovery V2
 
@@ -184,3 +186,7 @@ npm run identity:discover -- \
 ```
 
 Apply mode first writes the reviewed apply-intent receipt, then re-reads the bounded source inside the serializable transaction. After a successful commit it writes a companion `.applied.json` receipt. It fails closed if the source hashes change, any identity table is non-empty, any dependency cannot be resolved, any active claim or link appears, or any resolution/publication row is created.
+
+## 2026-11-23 substantive identity discovery contract review
+
+Re-read the complete Wave 2 historical July 28 census, planned-versus-applied receipt hashes, active-link zero boundary, serializable advisory-lock/hashes contract and proposed-only claim examples against unchanged tracked `lib/playerIdentityDiscovery.ts` blob **`b4c343adb20d1c599f4f4a7d244a224536dbc96d`** at app PR #1486 source `5b83f088...` (also unchanged from the cited October main `8f2f3b45`). `assertProposedOnlyIdentityPlan` and the explicitly no-publication apply summary still guard this implementation; a mode-`apply` command writes real proposed rows and is **not** authorized merely by reviewing this reference. The values 2,220/13,839/2,216 and July receipt SHA identities above remain **historical source/application evidence**, not a November 23 live identity-table census or independent account acceptance. The original line saying “deployed and populated” describes its dated first-run production receipt, not a fresh current host read. No active claim/link, re-apply, identity cutover, user association, migration, release or database transaction was performed in this review. Production current app/BUILD are separately observed as `890d9dcc22d0` / `0NEGtfP0ieSzETh1JHGhE` at 17:14:56 UTC, not the July source/build quoted above.

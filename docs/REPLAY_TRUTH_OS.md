@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
+
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. No direct source-blob parity established by this document transfer. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
 
 # AoE2WAR Replay Truth OS
 
@@ -20,6 +22,11 @@ read-only operator control plane.
 
 Its north star is zero unexplained unknown replay truth. It does not weaken
 evidence rules merely to reduce an unknown counter.
+
+## 2026-11-07 operational document review (Session B, nonfinancial)
+
+October 6–7 replay receipts, known controls and unknown-result cohorts are historical records, not new November outcomes. The public HD replay-engine visualization is diagnostic only; animation, candidate partitions and counts never establish complete EOF, a certified winner or a WOLO payment. Source/release claims must be requalified at exact current API/Watcher and App heads before operating on new results. This review did not execute replays, promote DB truth or authorize financial operations; it was AI-assisted, not independent historical-referee acceptance.
+
 
 ## Public HD Replay Engine (visual read-only machine)
 

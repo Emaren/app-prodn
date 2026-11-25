@@ -8,12 +8,18 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-07"
+reviewed_at: "2026-11-06"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
+> Held #898 documentation provenance: the original substantive lines below are retained in this already-reviewed document imported from App main `9eca0d03fb8d7238a42e1f9363214b68907656ce`. The donor review dates, source observations and historical receipts keep their original scope; they are not a new review of held `a96c2720952cd16380ad3c649185d9890bf53a41` runtime, a current host census or an operating permit. Exact matching source anchors: `components/page-heroes/PageHeroRotator.tsx`. Different or absent held anchors (do not infer parity): `lib/pageHeroes.ts`. Any current operation or held-source behavior not established by its cited evidence requires separate exact-source qualification. No financial or deployment authority.
+
 # Page Hero CMS
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Checked `lib/pageHeroes.ts`, `components/page-heroes/PageHeroRotator.tsx`, and the `/game-stats` consumer against web integration commit `4731218b08d21214040c6e789bb8dbf42999e48d`. Reuse of Hero schema and view-specific selection remain source-level product contracts; **this check does not establish public production image availability, asset completeness, or editor acceptance**. No CMS migration, image import or live content write was performed.
+
 
 ## Contract
 

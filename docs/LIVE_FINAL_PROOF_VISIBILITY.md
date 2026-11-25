@@ -8,14 +8,35 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-11-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
+> Held #898 provenance: the primary body below is the actual reviewed App main document at `9eca0d03fb8d7238a42e1f9363214b68907656ce`, retaining its genuine dated review. It describes that review scope, not current held-source/runtime parity. The previous held document at `a96c2720952cd16380ad3c649185d9890bf53a41` is retained in Git; its removed or replaced lines are preserved in the historical appendix below. Earlier operational instructions, listeners, source IDs and numerical observations do not authorize any current mutation. Use the current owner ledger and exact protected admission, never this historical text, for financial, deployment or recovery decisions.
+
 # Live Final-Proof Visibility
 
-Implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.
+Historical implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.
+
+## November 20, 2026 — bounded source and finality review
+
+Current PRODUCT source was rechecked against lib/liveSessionSnapshot.ts
+(the 15-minute linger constant and parse-source separation of active
+watcher_live versus final watcher_final pending parse), lib/bets.ts
+(proof deadline transition and persistence), and the
+tests/bets-realtime-finality-regression.test.mts source contracts.
+Unresolved finality placeholders must not increment genuine liveCount,
+reopen betting or gain settlement authority through timestamp refresh.
+
+The documented original implementation baseline is historical, not
+the live website HEAD. Observed public website source is the accepted
+Library 5339a981acbf15ea8d3c4393cb1fc75bc300ea45, BUILD_ID
+sn6eybJdBu7mluOQByc4M, whereas combined Lobby/Chat candidate
+a78964f4bbc32515243f56f1c0a1fb623047af72 is not publicly live.
+This document covers source contract semantics only. It does not
+certify active financial writers, release root custody, funding,
+betting-market reactivation or settlement. Those remain separately gated.
 
 ## Problem
 
@@ -95,3 +116,12 @@ HD Replay Truth Pipeline. It does not turn Watcher transport success into
 settlement truth. The automatic row remains `affectsBets = false`; a linked
 market stays on the separate operator financial-authority rail.
 <!-- AOE2WAR:TERMINAL_RESULT_EXIT_FROM_PENDING_V3:END -->
+
+
+## Historical held-source appendix — NOT operating instructions
+
+Original source: [exact prior document](https://github.com/Emaren/app-prodn/blob/a96c2720952cd16380ad3c649185d9890bf53a41/docs/LIVE_FINAL_PROOF_VISIBILITY.md). The following displaced lines preserve earlier source obligations and evidence; they do not supersede the reviewed primary document, certify current behavior, or permit a command to be run.
+
+Original body lines 4–4:
+
+> Implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.

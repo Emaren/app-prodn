@@ -8,12 +8,16 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "candidate-browser-and-criterion-worklist-not-certification"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance 88 — Repeatable page qualification protocol
+
+## 2026-11-25 UTC — bounded technical source review (held #898)
+
+Exact held source review of `scripts/renaissance_page_qualification.mjs`: validates 20 criteria /100 points and 88 route/profile entries, requires source/build/manifest/plan identities and per-route digests, refuses scores/certification in input, and keeps measured_score null and deployed_release_verified false. Old 88-navigation result remains its dated receipt, not a requalified score. No browser, build or scorer action performed. Source inspected: `a96c2720952cd16380ad3c649185d9890bf53a41`. All prior historical text is retained; no release or financial permission.
 
 The **88/88 candidate navigation smoke result** is backed by [the exact-head Chrome run](https://github.com/Emaren/app-prodn/actions/runs/40219717049), at source `6846438f9ef9b695cc2f45597ca9e26379a1c0df`. That result means navigation smoke in disposable PostgreSQL/browser conditions; it does **not** mean 88 engineering scores of 100, independent release authority, production security or financial activation.
 

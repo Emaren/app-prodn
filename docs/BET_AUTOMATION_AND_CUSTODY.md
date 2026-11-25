@@ -8,12 +8,17 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## Held #898 recovery — 2026-11-25 UTC source review (NONAUTHORIZING)
+
+Exact implementation `a96c2720952cd16380ad3c649185d9890bf53a41`: `requireDurableProspectiveDepositEpoch` and `requireDurableProspectiveFundingEpoch` now call the independent false epoch interlock before reading the approved-row store. The quote route requires both source flags and repeats authenticated bank/intent freshness after transactional I/O. Wallet quote binding compares the prepared intent ID and expiry; the guarded signer checks account and unchanged Direct/Amino document after signing, without treating a signature as custody approval. The Watcher ledger rebinds owner/roster/side at reservation and submission and rechecks market/mandate/reviewer expiry after transaction waits. Prior native 9/9 isolated regression receipt is #898/7148710275; no new real wallet or database action in this review. The ninth migration remains byte-identical (SHA256 21d271617e91324de72586fc43a3224fdba1a7f80aa2d42c9520a75d475bb830); no schema/migration change in the recovery. Both immutable source flags remain false. Prior dated source and physical evidence below is retained, not recertified. No funds, signer, custody, migration, gate or live release authority follows.
+
 
 ## October 25 — epoch-bound committed credit recovery (HELD source)
 
