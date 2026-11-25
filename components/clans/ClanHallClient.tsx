@@ -647,10 +647,7 @@ export default function ClanHallClient({
     snapshot.clan.slug,
     "optimisticMessages",
   );
-  const hallScribeEnabled = clanHallFeatureEnabled(
-    snapshot.clan.slug,
-    "hallScribe",
-  );
+  const hallScribeEnabled = snapshot.access.hallScribeRepliesAvailable === true;
   const hallScribeProfile = resolveClanHallScribeProfile(
     snapshot.clan.slug,
     snapshot.clan.name,
@@ -1143,10 +1140,12 @@ export default function ClanHallClient({
     draft: string,
     draftAudience: ClanAudience,
     pendingId: string | null,
-    requestScribe: boolean,
+    requestedScribe: boolean,
     attachmentFiles: File[] = [],
     remoteMediaUrls: string[] = [],
   ) {
+    // A stale optimistic retry must obey the current server-admitted capability.
+    const requestScribe = requestedScribe && hallScribeEnabled;
     setPosting(true);
     setError(null);
     setNotice(null);

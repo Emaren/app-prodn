@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 import { PRODUCTION_WEB_ORIGIN } from "@/lib/productionAuth";
 
-// Nonfinancial text only. Never pass database credentials, SQL, or client sender IDs.
+// Restricted nonfinancial operations. Never pass database credentials, SQL, or client sender IDs.
 export const SOCIAL_WRITER_SOCKET = "/run/aoe2war-social-writer/social.sock";
 export type SocialScope = "clan" | "direct" | "lobby";
 const MAX_BYTES = 4096;
@@ -56,9 +56,18 @@ export async function callSocialWriter(
   signedSession: string,
   input: Record<string,unknown>,
 ): Promise<{status:number;body:Record<string,unknown>}> {
+  return callSocialSocket(scope==="clan"?"/v1/clan/text":scope==="direct"?"/v1/direct/text":"/v1/lobby/text",signedSession,input,MAX_BYTES,TIMEOUT);
+}
+export async function callSocialImageWriter(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/image",signedSession,input,13_400_000,8_000);
+}
+export async function callSocialDeliveryWriter(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/delivered",signedSession,input,MAX_BYTES,TIMEOUT);
+}
+async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");
-  if (!signedSession || signedSession.length > 4096 || size > MAX_BYTES || size < 2)
+  if (!signedSession || signedSession.length > 4096 || size > limit || size < 2)
     return {status:400,body:{detail:"INVALID_SOCIAL_TEXT_REQUEST"}};
   return new Promise(resolve=>{
     let done=false;
@@ -67,8 +76,8 @@ export async function callSocialWriter(
     };
     const req=http.request({
       socketPath:SOCIAL_WRITER_SOCKET,
-      path:scope==="clan"?"/v1/clan/text":scope==="direct"?"/v1/direct/text":"/v1/lobby/text",
-      method:"POST",timeout:TIMEOUT,
+      path:endpoint,
+      method:"POST",timeout,
       headers:{
         "Content-Type":"application/json",
         "Content-Length":size,

@@ -293,3 +293,46 @@ test("championship custody mirrors never masquerade as human Direct Chat honors"
   assert.match(trophyService, /createdByUserId: null/);
   assert.match(trophyService, /label: \{ startsWith: "Belt: " \}/);
 });
+
+
+test("restricted inbox live events do not attempt legacy delivery writes or emit read-only receipt loops", () => {
+  const stream = readFileSync(new URL("../app/api/contact-emaren/events/route.ts", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../app/api/contact-emaren/route.ts", import.meta.url), "utf8");
+  assert.match(stream, /if \(!usesNonfinancialProductionAuth\(\) && !isLiveProductionReadOnlyPreview\(\)\) \{[\s\S]*?prisma\.directMessage\.updateMany/);
+  assert.match(route, /if \(!usesNonfinancialProductionAuth\(\) && !summaryOnly && payload\.activeTargetUid\)/);
+  for (const path of ["ContactEmarenWorkspace.tsx", "HeaderInboxControl.tsx"]) {
+    const source = readFileSync(new URL("../components/contact/" + path, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /if \(payload\.type === "connected"\) return/);
+  }
+  assert.match(route, /multipart\/form-data[\s\S]*?readBoundedDirectImage\(request\)[\s\S]*?callSocialImageWriter\(token,image\)/);
+});
+
+
+test("direct chat foreground reconciliation covers missed process-local events without overlapping fallback requests", () => {
+  const workspace = readFileSync(new URL("../components/contact/ContactEmarenWorkspace.tsx", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../components/contact/HeaderInboxControl.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /setInterval\(\(\) => reconcile\(true\), selectedTargetUid \? 5_000 : 60_000\)/);
+  assert.match(workspace, /if \(!panelAbortRef\.current\) void refreshPanel/);
+  assert.match(header, /document\.visibilityState !== "visible" \|\| panelAbortRef\.current/);
+  assert.match(header, /setInterval\(\(\) => reconcile\(true\), 5_000\)/);
+  for (const source of [workspace, header]) {
+    assert.match(source, /addEventListener\("visibilitychange", reconnect\)/);
+    assert.match(source, /removeEventListener\("visibilitychange", reconnect\)/);
+    assert.match(source, /addEventListener\("online", reconnect\)/);
+    assert.match(source, /removeEventListener\("online", reconnect\)/);
+    assert.match(source, /refreshActive \|\|=/);
+    assert.match(source, /const (?:active|affectsOpenThread) = refreshActive;\s*refreshActive = false;/);
+  }
+});
+
+test("restricted image URL is a literal private no-store route and legacy loader cannot serve its bytes",()=>{
+ const reader=readFileSync(new URL("../lib/directMessageAttachmentResponse.ts",import.meta.url),"utf8");
+ const inbox=readFileSync(new URL("../lib/contactInbox.ts",import.meta.url),"utf8");
+ const legacy=readFileSync(new URL("../lib/directMessageAttachments.ts",import.meta.url),"utf8");
+ assert.match(inbox,/\/api\/contact-emaren\?attachmentMessageId=/);
+ const route=readFileSync(new URL("../app/api/contact-emaren/route.ts",import.meta.url),"utf8");
+ assert.match(route,/searchParams\.has\("attachmentMessageId"\)[\s\S]*?return readPrivateDirectAttachment\(request\)/);
+ assert.match(reader,/participants\.some[\s\S]*?readRestrictedImage\(process\.env\.SOCIAL_DIRECT_IMAGE_READ_ROOT/);
+ assert.match(reader,/"Cache-Control": "private, no-store"/);
+ assert.match(legacy,/if \(isRestrictedImageReference\(storedAttachment\)\) return null/);
+});

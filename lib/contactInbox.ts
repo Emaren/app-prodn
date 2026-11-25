@@ -25,7 +25,8 @@ import {
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
-import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { usesNonfinancialProductionAuth, NONFINANCIAL_PRODUCTION_PROFILE } from "@/lib/productionAuth";
+import {directInboxMarker, DIRECT_SYNC_WINDOW} from "@/lib/directInboxSync";
 import { CHAMPIONSHIP_BELT_MIRROR_NOTES } from "@/lib/trophies/beltHonorMirror";
 
 export type InboxCounterpart = {
@@ -114,6 +115,7 @@ export type InboxTextMessage = {
   createdAt: string;
   sender: InboxSender;
   receipt: InboxReadReceipt | null;
+  deliveryPending?: boolean;
   body: string;
   attachment: InboxMessageAttachment | null;
   reactions: InboxMessageReaction[];
@@ -162,6 +164,7 @@ export type InboxPayload = {
    */
   activeChallenge: ScheduledMatchTile | null;
   messages: InboxMessage[];
+  syncMarker?: string;
   messagePage: {
     hasMore: boolean;
     beforeMessageId: number | null;
@@ -308,7 +311,7 @@ function buildMessageAttachment(message: {
     kind: message.attachmentKind,
     name: message.attachmentName ?? null,
     mimeType: message.attachmentMimeType ?? null,
-    url: `/api/contact-emaren/attachments/${message.id}`,
+    url: `/api/contact-emaren?attachmentMessageId=${message.id}`,
     durationSeconds:
       typeof message.attachmentDurationSeconds === "number"
         ? message.attachmentDurationSeconds
@@ -1433,9 +1436,12 @@ async function loadConversationMessages(
     },
   });
 
-  if (!conversation) {
+  if (!conversation || (usesNonfinancialProductionAuth() &&
+    (conversation.participants.length!==2 || !conversation.participants.some(p=>p.userId===viewerUserId) ||
+     !conversation.participants.some(p=>p.userId===targetUserId)))) {
     return {
       conversation: null,
+      syncMarker: undefined,
       messages: [] as InboxMessage[],
       counterpart: null as InboxCounterpart | null,
       counterpartLastReadAt: null as string | null,
@@ -1621,7 +1627,9 @@ async function loadConversationMessages(
         : { badges: [], gifts: [], giftedWolo: 0 };
 
     const isOutgoing = sender?.id === viewerUserId;
-    const readAt = isOutgoing && counterpartParticipant?.lastReadAt && counterpartParticipant.lastReadAt >= message.createdAt
+    // Restricted read acknowledgments are not admitted. Do not turn a legacy
+    // timestamp (also advanced by sends) into a new claim of human reading.
+    const readAt = !usesNonfinancialProductionAuth() && isOutgoing && counterpartParticipant?.lastReadAt && counterpartParticipant.lastReadAt >= message.createdAt
       ? counterpartParticipant.lastReadAt.toISOString()
       : null;
     const replayIdMatch = message.body?.match(/\/game-stats\/(\d+)/);
@@ -1664,6 +1672,7 @@ async function loadConversationMessages(
         durationSeconds: replay.duration ?? replay.game_duration ?? null,
         playedAt: (replay.played_on ?? replay.timestamp)?.toISOString() ?? null,
       } : null,
+      ...(usesNonfinancialProductionAuth() && !isOutgoing && sender?.id===targetUserId && !message.deliveredAt ? {deliveryPending:true} : {}),
       receipt: isOutgoing ? {
         status: readAt ? "read" : message.deliveredAt ? "delivered" : "sent",
         deliveredAt: message.deliveredAt?.toISOString() ?? null,
@@ -1704,6 +1713,10 @@ async function loadConversationMessages(
   return {
     conversation,
     messages: combinedMessages,
+    syncMarker: process.env.AOE2WAR_RUNTIME_PROFILE===NONFINANCIAL_PRODUCTION_PROFILE &&
+      !options?.beforeMessageId && limit===DIRECT_SYNC_WINDOW &&
+      resolveThreadKind(counterpartParticipant?.user.uid??"")==="direct"
+      ? directInboxMarker(conversation.id,orderedMessages) : undefined,
     counterpart: counterpartParticipant
       ? ({
           uid: counterpartParticipant.user.uid,
@@ -2074,6 +2087,7 @@ export async function loadInboxPayload(
     activeChallenges,
     activeChallenge,
     messages: activeConversation.messages,
+    syncMarker: options?.challengeId ? undefined : activeConversation.syncMarker,
     messagePage: activeConversation.messagePage,
     draft: activeConversation.draft,
     pinnedMessages: activeConversation.pinnedMessages,

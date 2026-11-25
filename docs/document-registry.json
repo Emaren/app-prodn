@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dda8a9d5256bf3892d702e246537143975851dc7ba62885fd05822de8d290c6e",
+      "sha256": "fd71291261234fcf08498172a62dcf7e5581f68de832f79a47a65d84aa317864",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-matchups-profile-repair-20261124",
-    "commit": "90cb086e912e16ce9b24cc937db8c1f8fa39ca73"
+    "branch": "session-c/we3-direct-image-writer-20261124",
+    "commit": "c750d458e983a90870c8a66f813064f7eb6c57ae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

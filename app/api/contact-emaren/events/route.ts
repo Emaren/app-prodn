@@ -4,6 +4,7 @@ import { publishDirectMessageEvent, subscribeToDirectMessageEvents } from "@/lib
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,15 +24,15 @@ export async function GET(request: NextRequest) {
     return new Response("Viewer not found", { status: 404 });
   }
 
-  const memberships = await prisma.directConversationParticipant.findMany({
-    where: { userId: viewer.id },
-    select: { conversationId: true },
-  });
-  const conversationIds = memberships.map((membership) => membership.conversationId);
-  if (
-    !isLiveProductionReadOnlyPreview() &&
-    conversationIds.length > 0
-  ) {
+  // A restricted production stream must not mutate delivery receipts on connect.
+  // The signed-session text writer publishes committed message IDs separately.
+  if (!usesNonfinancialProductionAuth() && !isLiveProductionReadOnlyPreview()) {
+    const memberships = await prisma.directConversationParticipant.findMany({
+      where: { userId: viewer.id },
+      select: { conversationId: true },
+    });
+    const conversationIds = memberships.map((membership) => membership.conversationId);
+    if (conversationIds.length > 0) {
     const pendingSenders = await prisma.directMessage.findMany({
       where: {
         conversationId: { in: conversationIds },
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
     });
     for (const row of pendingSenders) {
       publishDirectMessageEvent(row.sender.uid, { type: "receipt", targetUid: viewer.uid });
+    }
     }
   }
 

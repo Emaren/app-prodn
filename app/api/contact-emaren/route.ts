@@ -24,11 +24,14 @@ import { recordUserActivity } from "@/lib/userExperience";
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
-import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { usesNonfinancialProductionAuth, NONFINANCIAL_PRODUCTION_PROFILE } from "@/lib/productionAuth";
+import {readDirectInboxSyncMarker} from "@/lib/directInboxSync";
 import {
-  callSocialWriter, readBoundedSocialJson, signedSocialCookie,
+  callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
+import { readBoundedDirectImage } from "@/lib/directImageIngress";
+import { readPrivateDirectAttachment } from "@/lib/directMessageAttachmentResponse";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
 import { normalizeReactionEmoji } from "@/lib/reactionEmoji";
@@ -181,6 +184,9 @@ async function resolveLobbyShareRoom(
 }
 
 export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.has("attachmentMessageId")) {
+    return readPrivateDirectAttachment(request);
+  }
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {
@@ -188,6 +194,18 @@ export async function GET(request: NextRequest) {
     }
 
     const prisma = getPrisma();
+    if(request.nextUrl.searchParams.has("sync")){
+      const p=request.nextUrl.searchParams;
+      const targets=p.getAll("user");
+      const noStore={"Cache-Control":"private, no-store"};
+      if(process.env.AOE2WAR_RUNTIME_PROFILE!==NONFINANCIAL_PRODUCTION_PROFILE ||
+         p.getAll("sync").length!==1 || p.get("sync")!=="1" || targets.length!==1 ||
+         [...p.keys()].some(key=>key!=="sync"&&key!=="user"))
+        return NextResponse.json({detail:"Sync unavailable"},{status:400,headers:noStore});
+      const syncMarker=await readDirectInboxSyncMarker(prisma,sessionUid,targets[0]);
+      if(!syncMarker)return NextResponse.json({detail:"Sync unavailable"},{status:404,headers:noStore});
+      return NextResponse.json({syncMarker},{headers:noStore});
+    }
     const summaryOnly = request.nextUrl.searchParams.get("summary") === "1";
     const targetUid = request.nextUrl.searchParams.get("user");
     const beforeMessageId = Number(request.nextUrl.searchParams.get("before")) || null;
@@ -202,7 +220,7 @@ export async function GET(request: NextRequest) {
       beforeMessageId,
       challengeId,
     });
-    if (!summaryOnly && payload.activeTargetUid) {
+    if (!usesNonfinancialProductionAuth() && !summaryOnly && payload.activeTargetUid) {
       publishDirectMessageEvent(payload.activeTargetUid, {
         type: "receipt",
         targetUid: sessionUid,
@@ -219,7 +237,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Isolated R25 web role has no general-purpose SQL DML/sequence authority.
   // The separate, independently reviewed UID/PG-role social writer verifies
-  // the existing signed Steam session again and permits only text-only sends.
+  // the existing signed Steam session again; images use a distinct bounded operation.
   if (usesNonfinancialProductionAuth()) {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
@@ -227,12 +245,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Same-origin request required." }, { status: 403 });
     const token = signedSocialCookie(request);
     if (!token) return NextResponse.json({ detail: "Signed session required." }, { status: 401 });
-    let action: unknown;
-    try { action = await readBoundedSocialJson(request); }
-    catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
-    if (!action || typeof action !== "object" || Array.isArray(action))
-      return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
-    const result = await callSocialWriter("direct", token, action as Record<string,unknown>);
+    let result: {status:number;body:Record<string,unknown>};
+    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "multipart/form-data") {
+      let image;
+      try { image=await readBoundedDirectImage(request); }
+      catch(error) {
+        const oversized=error instanceof Error && error.message==="IMAGE_TOO_LARGE";
+        return NextResponse.json({detail:oversized?"Image is too large.":"Only bounded PNG, JPEG or WebP images are supported."},{status:oversized?413:400});
+      }
+      if (isChallengeInboxNoticeBody(String(image.body))) return NextResponse.json({detail:"Reserved message formatting."},{status:400});
+      result=await callSocialImageWriter(token,image);
+    } else {
+      let action: unknown;
+      try { action = await readBoundedSocialJson(request); }
+      catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
+      if (!action || typeof action !== "object" || Array.isArray(action))
+        return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
+      const fields=action as Record<string,unknown>;
+      if(fields.action==="ack_delivery"){
+        if(Object.keys(fields).length!==3 || typeof fields.targetUid!=="string" ||
+           !/^[A-Za-z0-9_.:-]{1,100}$/.test(fields.targetUid) ||
+           !Array.isArray(fields.messageIds) || fields.messageIds.length<1 || fields.messageIds.length>50 ||
+           !fields.messageIds.every(id=>Number.isSafeInteger(id)&&id>0&&id<=2147483647) ||
+           new Set(fields.messageIds).size!==fields.messageIds.length)
+          return NextResponse.json({detail:"INVALID_DIRECT_DELIVERY_REQUEST"},{status:400,headers:{"Cache-Control":"no-store"}});
+        const ack=await callSocialDeliveryWriter(token,{targetUid:fields.targetUid,messageIds:fields.messageIds});
+        if(ack.status===200 && ack.body.ok===true && typeof ack.body.updatedCount==="number" && ack.body.updatedCount>0)
+          publishDirectMessageEvent(fields.targetUid,{type:"receipt",targetUid:sessionUid});
+        return NextResponse.json(ack.body,{status:ack.status,headers:{"Cache-Control":"no-store"}});
+      }
+      result=await callSocialWriter("direct", token, fields);
+    }
     if (result.status !== 201) return NextResponse.json(result.body, { status: result.status });
     const targetUid = result.body.targetUid;
     const messageId = result.body.messageId;
