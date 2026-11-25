@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-steam-v17-exact-c01-inert-delta-20261109"
 title: "Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "source-only reviewed App release with physical production acceptance required"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: source-only reviewed App release with physical production acceptance required. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 Source of the genuine fail-closed V14 Steam HOLD is proven, not assumed. V14 passed at 17:24:49 UTC; at 17:25:02 UTC Chain Session A installed two inactive C01 executable drop-ins (Satchel and reviewer). V14 held at 17:25:27 UTC because its source-pinned C03/C04 protected fingerprint remained pre-C01 064a16dde48c64a3001621902b4ae7a028ec4975183fd4c24b8a16338c1a226c, while live systemd returned 6bef38a7bbd89f4041e832eeebfa7c2213fa627633299b8d0ad45135b3018999.
 

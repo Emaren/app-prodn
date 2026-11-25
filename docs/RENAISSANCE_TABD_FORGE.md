@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "candidate-private-source-inventory"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance Tab D — private census forge and Test Forge queue
+
+> **November 25, 2026 — documentation disposition (source only).** Current forge source retains exact-source inspection, explicit fast-mode dependency uncertainty and no certified scores. Original October inventory and mismatch counts are dated observations, not current source/build parity. No new emitted manifest, live census or production proof is asserted.
+
 
 Status: draft; source evidence only; not a scorer, production sign-off or public API.
 

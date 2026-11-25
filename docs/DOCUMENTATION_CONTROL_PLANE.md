@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-matchups-profile-repair-20261124` at `3de7482e0f89c6ca43b1d8cd87ccafac8d9916e7`
+Implementation baseline: `session-c/we3-matchups-profile-repair-20261124` at `839d30d0ce3601976391098dc4639c9b2b1a681b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -35,17 +35,17 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 5
 - `generated`: 1
-- `historical`: 13
+- `historical`: 28
 - `reference`: 85
-- `runbook`: 50
+- `runbook`: 35
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 93
-- `draft`: 50
+- `draft`: 35
 - `generated`: 1
-- `historical`: 13
+- `historical`: 28
 - `superseded`: 3
 
 ## Documents
@@ -140,7 +140,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
 | [Session B — AI System Persona Steam Badge Truth, 2026-11-08](SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md) | `reference` | `active` | `system-persona-identity-and-authenticated-human-badges` |
-| [C03 emergency-only finance-inert 3033 fallback](SESSION_B_C03_EMERGENCY_FAILCLOSED_3033_V1.md) | `runbook` | `draft` | `session-b-emergency-only-no-c03-funding-or-authenticated-rollback` |
+| [C03 emergency-only finance-inert 3033 fallback](SESSION_B_C03_EMERGENCY_FAILCLOSED_3033_V1.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B Managed Media Fallback Recovery — Source and Native Avatar HOLD](SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md) | `runbook` | `draft` | `source-only-media-cache-no-db-owner-or-physical-release` |
 | [Session B Pending WOLO Public Presentation — Source-only Nonfinancial Release](SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md) | `runbook` | `draft` | `source-only-ui-truth-no-custody-or-payment-finality` |
 | [Session B Public Gift Consent — Private Pending WOLO Aggregate Source HOLD](SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md) | `runbook` | `draft` | `source-only-public-consent-no-production-db-ddl-or-financial-release` |
@@ -188,24 +188,24 @@ This page is generated from the validated front matter in this repository. Cross
 | [Single-Owner PRODUCT Release Authority](release/PRODUCT_SINGLE_OWNER_RELEASE_AUTHORITY_20261117.md) | `runbook` | `active` | `nonfinancial-owner-release-governance` |
 | [WE3 independent PRODUCT source: two ChatGPT sessions without shared Git writes](release/PRODUCT_WE3_PARALLEL_WORK_ENVIRONMENTS_20261114.md) | `runbook` | `active` | `restricted PRODUCT source operations only; no FINANCIAL or release-root authority` |
 | [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
-| [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
+| [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |
-| [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |
-| [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `runbook` | `draft` | `source-only exact-identity fail-closed App release; no funding` |
-| [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `runbook` | `draft` | `App-only public read projection; finance execution denied` |
-| [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `runbook` | `draft` | `root-only one-use candidate admission, finance-quarantined` |
-| [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
-| [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
-| [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
-| [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
+| [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `historical` | `historical` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
 | [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
 | [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
-| [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |
-| [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
-| [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |
-| [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
-| [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
+| [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
+| [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
 | [Protected Storage OS ingress admission for deployed Explorer](release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md) | `runbook` | `draft` | `nonfinancial-source-review-only` |
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
