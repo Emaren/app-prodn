@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-direct-image-writer-20261124` at `f3c127dbb3dc16684d59de1db5a42d652f2e7a8f`
+Implementation baseline: `session-c/we3-direct-image-writer-20261124` at `b716f7eb9d0d4bb69fb9d145953a49307507e771`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
