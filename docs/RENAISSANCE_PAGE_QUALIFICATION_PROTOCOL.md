@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "candidate-browser-and-criterion-worklist-not-certification"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance 88 — Repeatable page qualification protocol
+
+> **November 25, 2026 — documentation disposition (source only).** Current qualification CLI validates the 88-route candidate-coverage schema, rejects score/certification claims, retains specialty obligations and emits unadmitted worklists. Historical Chrome evidence remains tied to its original source. No current page score or release approval is asserted.
+
 
 The **88/88 candidate navigation smoke result** is backed by [the exact-head Chrome run](https://github.com/Emaren/app-prodn/actions/runs/40219717049), at source `6846438f9ef9b695cc2f45597ca9e26379a1c0df`. That result means navigation smoke in disposable PostgreSQL/browser conditions; it does **not** mean 88 engineering scores of 100, independent release authority, production security or financial activation.
 
