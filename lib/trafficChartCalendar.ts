@@ -3,6 +3,7 @@
 const DAY_MS = 86_400_000;
 
 export type TrafficChartPoint = {
+  metricVersion?: "v3-utc-day-slice";
   date: string;
   values: Record<string, number | null>;
 };
@@ -79,6 +80,7 @@ export function trafficCertifiedRuns(
   const segments: number[][] = [];
   let current: number[] = [];
   let prior: number | null = null;
+  let priorVersion: TrafficChartPoint["metricVersion"];
   points.forEach((point, index) => {
     const day = trafficUtcDay(point.date);
     const value = point.values[seriesKey];
@@ -87,14 +89,16 @@ export function trafficCertifiedRuns(
       if (current.length) segments.push(current);
       current = [];
       prior = null;
+      priorVersion = undefined;
       return;
     }
-    if (prior !== null && day !== prior + 1) {
+    if (prior !== null && (day !== prior + 1 || priorVersion !== point.metricVersion)) {
       if (current.length) segments.push(current);
       current = [];
     }
     current.push(index);
     prior = day;
+    priorVersion = point.metricVersion;
   });
   if (current.length) segments.push(current);
   return segments;

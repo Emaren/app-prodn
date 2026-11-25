@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-c04-steam-v14-recvq-20261109"
 title: "Steam V14 C04 identity-only receive queue normalization"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
-source_of_truth: "git"
-authority: "steam-source-bound-readonly-c04-masks-not-financial-release"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Steam V14 C04 identity-only receive queue normalization
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: steam-source-bound-readonly-c04-masks-not-financial-release. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 Scope: the pre-existing Steam timer C04 immutable original guard admits exactly two previously masked/closed financial listeners (8092 and 8093). This is NOT C03 writer authorization, a C04 quarantine change or a funded C09 permit.
 

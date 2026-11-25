@@ -81,3 +81,9 @@ test("statistics chart is untouched; canonical traffic source binds UTC geometry
   assert.match(traffic,/<PremiumTimeSeriesChart[\s\S]*variant="traffic"/);
   assert.doesNotMatch(traffic,/ProvisionalDailyTraffic/);
 });
+
+test("a metric-definition change breaks the line even across consecutive UTC dates", () => {
+  const points = [item("2026-11-24"), {...item("2026-11-25"), metricVersion:"v3-utc-day-slice" as const}, {...item("2026-11-26"), metricVersion:"v3-utc-day-slice" as const}];
+  assert.deepEqual(trafficCertifiedRuns(points,"totalTraffic"), [[0],[1,2]]);
+  assert.equal(trafficMissingCalendarDays(points),0);
+});

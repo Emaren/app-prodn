@@ -107,6 +107,9 @@ test("player history is cached separately from current Watcher and presence stat
   const watcherState = source(
     "lib/currentWatcherAccountState.ts",
   );
+  const watcherRefreshGate = source(
+    "lib/currentWatcherAccountStateRefreshGate.ts",
+  );
 
   assert.match(
     directory,
@@ -146,15 +149,27 @@ test("player history is cached separately from current Watcher and presence stat
   );
   assert.match(
     watcherState,
-    /startCurrentWatcherAccountStateRefresh/,
+    /createCurrentWatcherAccountStateRefreshGate/,
   );
   assert.match(
     watcherState,
-    /void startCurrentWatcherAccountStateRefresh/,
+    /watcherRefreshGate\.read/,
   );
   assert.match(
     watcherState,
-    /return cached\.value/,
+    /watcherRefreshGate\.invalidate/,
+  );
+  assert.match(
+    watcherRefreshGate,
+    /void refresh\(load\)\.catch\(onBackgroundError\)/,
+  );
+  assert.match(
+    watcherRefreshGate,
+    /return Promise\.resolve\(value\)/,
+  );
+  assert.match(
+    watcherRefreshGate,
+    /return Promise\.reject\(lastError/,
   );
 
   assert.match(

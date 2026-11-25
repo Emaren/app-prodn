@@ -1,4 +1,14 @@
+const V3_METRIC_VERSION = "v3-utc-day-slice" as const;
+const LEGACY_METRIC_VERSION = "legacy-canonical-session" as const;
+
+export type TrafficMetricTransition = {
+  firstDate: string;
+  fromVersion: typeof LEGACY_METRIC_VERSION;
+  toVersion: typeof V3_METRIC_VERSION;
+};
+
 export type PublicTrafficPoint = {
+  metricVersion?: typeof V3_METRIC_VERSION;
   date: string;
   values: {
     totalTraffic: number;
@@ -14,9 +24,11 @@ export type PublicTrafficPayload = {
   archiveCalculatedAt: string | null;
   semantics: Record<string, unknown> | null;
   points: PublicTrafficPoint[];
+  metricTransition?: TrafficMetricTransition;
 };
 
 type CanonicalTrafficPayload = {
+  metric_transition?: unknown;
   coverage_started_at?: string | null;
   coverage_ended_at?: string | null;
   archive_calculated_at?: string | null;
@@ -24,6 +36,7 @@ type CanonicalTrafficPayload = {
   points?: Array<{
     date?: string;
     calculatedAt?: string | null;
+    metricVersion?: unknown;
     values?: {
       totalTraffic?: number;
       suspectedHuman?: number;
@@ -75,6 +88,34 @@ export function normalizePublicTrafficPayload(
   payload: CanonicalTrafficPayload,
   todayUtc = new Date().toISOString().slice(0, 10),
 ): PublicTrafficPayload {
+  // The upstream cert ledger supplies the first actual V3 day. Reject
+  // orphan, mixed or unknown metric versions, never infer a transition.
+  const tagged = (Array.isArray(payload.points) ? payload.points : [])
+    .filter(point => point?.metricVersion !== undefined);
+  const raw = payload.metric_transition;
+  let metricTransition: TrafficMetricTransition | undefined;
+  if (raw !== undefined || tagged.length) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      throw new Error("Canonical Traffic metric transition missing or invalid.");
+    }
+    const t = raw as Record<string, unknown>;
+    const first = t.first_date;
+    if (typeof first !== "string" || first < "2026-11-23" ||
+        !isPublishedCompleteDay(first, todayUtc + "T00:00:00Z", todayUtc) ||
+        t.from_version !== LEGACY_METRIC_VERSION ||
+        t.to_version !== V3_METRIC_VERSION ||
+        typeof t.description !== "string" || !t.description.trim() ||
+        !tagged.length ||
+        tagged.some(point => point.metricVersion !== V3_METRIC_VERSION ||
+          typeof point.date !== "string" || point.date < first) ||
+        !tagged.some(point => point.date === first) ||
+        (payload.points ?? []).some(point => typeof point?.date === "string" &&
+          point.date >= first && point.metricVersion !== V3_METRIC_VERSION)) {
+      throw new Error("Canonical Traffic metric transition mismatch.");
+    }
+    metricTransition = { firstDate: first, fromVersion: LEGACY_METRIC_VERSION, toVersion: V3_METRIC_VERSION };
+  }
+
   // Without timestamps, the archive's FINAL row can be a partial day
   // captured at the morning forge. This remains unsafe even weeks later
   // when a failed timer has stopped publishing subsequent days.
@@ -116,6 +157,7 @@ export function normalizePublicTrafficPayload(
 
           return {
             date: point.date as string,
+            ...(point.metricVersion === V3_METRIC_VERSION ? { metricVersion: V3_METRIC_VERSION } : {}),
             values: {
               totalTraffic,
               suspectedHuman,
@@ -132,8 +174,16 @@ export function normalizePublicTrafficPayload(
     }
   }
 
+  const firstDate = metricTransition?.firstDate;
+  if (firstDate &&
+      (points.filter(point => point.metricVersion === V3_METRIC_VERSION).length !== tagged.length ||
+       !points.some(point => point.date === firstDate &&
+         point.metricVersion === V3_METRIC_VERSION))) {
+    throw new Error("Canonical Traffic metric transition contains unpublished days.");
+  }
   return {
     ok: true,
+    ...(metricTransition ? { metricTransition } : {}),
     startDate: payload.coverage_started_at || null,
     coverageEndedAt: payload.coverage_ended_at || null,
     archiveCalculatedAt: normalizeArchiveCalculationUtc(payload.archive_calculated_at),

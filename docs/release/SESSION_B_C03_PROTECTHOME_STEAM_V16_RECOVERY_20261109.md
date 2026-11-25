@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-c03-protecthome-steam-v16-recovery-20261109"
 title: "C03 restricted Steam V16 ProtectHome source evidence and second rollback"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "source-only exact-identity fail-closed App release; no funding"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # C03 restricted Steam V16 ProtectHome source evidence and second rollback
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: source-only exact-identity fail-closed App release; no funding. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 The physical App #1271 cold cutover on November 9 at 17:22:59 UTC started the staged repaired R25 source dd00367a, but the scheduled V15 Steam oneshot returned HOLD:NONIDENTIFYING_PERMISSIONERROR. Original V14 was restored and rebound to restored web PID194854. Exact negative promotion receipt: d986e5c338ed8bf362a5668b8183a69566ee811a927707ebffca2621e8ee97fe. Root-only C03 v2 rollback returned zero. The 3030 finance-writable legacy process, masked payout units, 8092-8095 socket quarantine and Wolo validator PID1009 were preserved.
 

@@ -23,6 +23,7 @@ export type ObservatorySeries = {
 };
 
 export type ObservatoryPoint = {
+  metricVersion?: "v3-utc-day-slice";
   date: string;
   values: Record<string, number | null>;
 };

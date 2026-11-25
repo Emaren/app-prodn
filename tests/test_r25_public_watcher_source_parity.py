@@ -14,7 +14,7 @@ CONSTANTS={
  "CURRENT_ACCOUNT_OBSERVATION_V1_PARSER.passVersion":"10",
 }
 class PublicWatcherSQLContract(unittest.TestCase):
-    def test_exact_original_parser_query_is_embedded_in_security_barrier_view(self):
+    def test_reviewed_semantic_delta_and_security_barrier(self):
         tick=chr(96)
         legacy=SOURCE.split(
             "    >(Prisma.sql"+tick,1)[1].split(tick+");",1)[0].strip()
@@ -23,20 +23,39 @@ class PublicWatcherSQLContract(unittest.TestCase):
             self.assertEqual(legacy.count(needle),1,key)
             legacy=legacy.replace(needle,"'"+value+"'")
         self.assertNotIn("$"+"{",legacy)
-        view=SQL.split(
-            "CREATE OR REPLACE VIEW aoe2war_public_v3.current_watcher_account_states\n"
-            "WITH (security_barrier=true) AS\n",1)[1].split(
-                ";\nREVOKE ALL ON aoe2war_public_v3.current_watcher_account_states",1)[0].strip()
+        marker=("CREATE OR REPLACE VIEW aoe2war_public_v3.current_watcher_account_states\n"
+                "WITH (security_barrier=true) AS\n")
+        self.assertEqual(SQL.count(marker),1)
+        view=SQL.split(marker,1)[1].split(";\nDO $view_acl$",1)[0].strip()
+        old="FROM replay_parse_attempts a"
+        self.assertEqual(legacy.count(old),1)
+        legacy=legacy.replace(old,"FROM public.replay_parse_attempts a",1)
         self.assertEqual(view,legacy)
+        self.assertIn("SET LOCAL search_path = pg_catalog, public;",SQL)
+        self.assertEqual(re.findall(r'AS "([^"]+)"',view),
+            ["steamId","latestObservedName","nameObservedAt","steamRmRating",
+             "steamRmObservedAt","steamDmRating","steamDmObservedAt"])
+        self.assertIn("ORDER BY account_ids.steam_id",view)
+
     def test_seven_columns_only_and_no_private_table_select(self):
         self.assertIn('FROM aoe2war_public_v3.current_watcher_account_states',SOURCE)
         self.assertIn('isNonfinancialPublicReadProfile()',SOURCE)
         self.assertIn('PUBLIC_WATCHER_RAW_EVIDENCE_AUTHORITY_DRIFT',SQL)
-        grants=re.findall(r'^GRANT SELECT ON (\S+) TO aoe2war_web_prod;$',SQL,re.M)
-        self.assertEqual(grants,['aoe2war_public_v3.current_watcher_account_states'])
-        self.assertNotRegex(SQL,r'GRANT (?:ALL|INSERT|UPDATE|DELETE)')
-        self.assertNotRegex(SQL,r'GRANT SELECT ON public\.')
-        assert "ORDER BY account_ids.steam_id" in SQL
+        self.assertEqual(re.findall(r'^\s*GRANT (.+?);$',SQL,re.M),
+            ["USAGE ON SCHEMA aoe2war_public_v3 TO aoe2war_web_prod",
+             "SELECT ON aoe2war_public_v3.current_watcher_account_states TO aoe2war_web_prod"])
+        for privilege,target,grant in (
+            ("has_schema_privilege","aoe2war_public_v3","USAGE ON SCHEMA aoe2war_public_v3"),
+            ("has_table_privilege","aoe2war_public_v3.current_watcher_account_states","SELECT ON aoe2war_public_v3.current_watcher_account_states")):
+            perm=grant.split()[0]
+            self.assertIn(f"IF NOT pg_catalog.{privilege}('aoe2war_web_prod','{target}','{perm}') THEN\n   GRANT {grant} TO aoe2war_web_prod;\n END IF;",SQL)
+        self.assertNotRegex(SQL,r"(?im)^\s*REVOKE\b")
+        self.assertIn("PUBLIC_WATCHER_PUBLIC_ACL_DRIFT",SQL)
+        self.assertIn("has_any_column_privilege('aoe2war_web_prod','public.replay_parse_attempts','SELECT,INSERT,UPDATE,REFERENCES')",SQL)
+        for target in ("public.replay_parse_attempts","aoe2war_public_v3.current_watcher_account_states"):
+            self.assertIn(f"has_table_privilege('aoe2war_web_prod','{target}','INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')",SQL)
+        self.assertIn("has_schema_privilege('aoe2war_web_prod','aoe2war_public_v3','CREATE')",SQL)
+
     def test_legacy_frozen_parser_contract_stays_unchanged(self):
         for key,value in CONSTANTS.items():
             keyname=key.split(".")[-1]
