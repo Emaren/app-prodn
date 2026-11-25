@@ -56,7 +56,7 @@ import { useClanChatViewPreference } from "@/components/clans/clanChatViewPrefer
 import { usePublicPresence } from "@/components/presence/PublicPresenceProvider";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { ClanInviteDoor, ClanInvitePrompt } from "@/components/clans/ClanInviteDoor";
-import { clanHallFeatureEnabled, clanHallScribeRepliesEnabled } from "@/lib/clanHallFeatures";
+import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
 import { resolveClanHallScribeProfile } from "@/lib/clanHallScribeProfiles";
 import { formatClanRole } from "@/lib/clanRoles";
 import type { ClanChatViewMode } from "@/lib/clanChatViews";
@@ -579,11 +579,9 @@ function mergeClanHallSnapshot(
 export default function ClanHallClient({
   initialSnapshot,
   initialView,
-  restrictedProductionChat,
 }: {
   initialSnapshot: ClanHallSnapshot;
   initialView: ClanViewMode;
-  restrictedProductionChat: boolean;
 }) {
   const { uid, loading, loginWithSteam } = useUserAuth();
   const {
@@ -649,10 +647,7 @@ export default function ClanHallClient({
     snapshot.clan.slug,
     "optimisticMessages",
   );
-  const hallScribeEnabled = clanHallScribeRepliesEnabled(
-    snapshot.clan.slug,
-    restrictedProductionChat,
-  );
+  const hallScribeEnabled = snapshot.access.hallScribeRepliesAvailable === true;
   const hallScribeProfile = resolveClanHallScribeProfile(
     snapshot.clan.slug,
     snapshot.clan.name,

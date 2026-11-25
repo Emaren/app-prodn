@@ -10,11 +10,12 @@ test("restricted production advertises human text only without changing baseline
   assert.equal(clanHallScribeRepliesEnabled("unknown", true), false);
 });
 
-test("server supplies actual runtime capability; client does not infer it from build environment", () => {
-  const page = readFileSync("app/clans/[slug]/page.tsx", "utf8");
+test("both server snapshot paths disclose actual capability and client fails closed when absent", () => {
+  const snapshots = readFileSync("lib/clans.ts", "utf8");
   const client = readFileSync("components/clans/ClanHallClient.tsx", "utf8");
-  assert.match(page, /restrictedProductionChat=\{usesNonfinancialProductionAuth\(\)\}/);
-  assert.match(client, /clanHallScribeRepliesEnabled\(\s*snapshot\.clan\.slug,\s*restrictedProductionChat,/);
+  const field = "hallScribeRepliesAvailable: clanHallScribeRepliesEnabled(clan.slug, usesNonfinancialProductionAuth())";
+  assert.equal(snapshots.split(field).length - 1, 2);
+  assert.match(client, /snapshot\.access\.hallScribeRepliesAvailable === true/);
   assert.match(client, /\{hallScribeEnabled \? \(/);
 });
 
