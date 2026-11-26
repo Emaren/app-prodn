@@ -175,6 +175,20 @@ test("fresh publication cannot freshen expired source evidence",()=>{
   const summary=releaseOsFeed();summary.releaseOs.generatedAt="2026-11-11T23:00:00.000Z";
   assert.equal(readFactoryPublicStatus(summary,releaseOsNow).value.pipelineStage.stages.build,"stale");
 });
+test("live runtime health remains distinct from failed or missing T10 acceptance",()=>{
+  const value=releaseOsFeed();
+  let parsed=readFactoryPublicStatus(value,releaseOsNow).value;
+  assert.equal(parsed.liveRelease.status,"pass");
+  assert.equal(parsed.pipelineStage.stages.rollback,"unknown");
+  value.releaseOs.stages.push({event:"T10",state:"fail",at:value.generatedAt,durationMs:10,proofSha256:"b".repeat(64)});
+  parsed=readFactoryPublicStatus(value,releaseOsNow).value;
+  assert.equal(parsed.liveRelease.status,"pass");
+  assert.equal(parsed.pipelineStage.stages.rollback,"fail");
+  assert.equal(parsed.releaseOs?.finalAcceptedMs,null);
+  const ui=read("app/factory/FactoryConsole.tsx");
+  for(const label of ["RUNTIME HEALTH","TARGET HEALTH","T10 ACCEPTANCE"]) assert.ok(ui.includes(label));
+  assert.ok(ui.includes('factoryStageEvidence(feed.value.releaseOs, "rollback").state'));
+});
 test("rollback acceptance requires T8 T9 and T10 proof independently",()=>{
   const value=releaseOsFeed();
   value.releaseOs.stages=["T8","T9"].map(event=>({

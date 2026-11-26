@@ -50,12 +50,13 @@ function SignalDot({ signal, small = false }: { signal: FactorySignal; small?: b
 }
 
 function ReleaseCard({
-  mode, label, release, edge,
+  mode, label, release, edge, acceptance,
 }: {
   mode: "live" | "candidate" | "rollback";
   label: string;
   release: FactoryRelease;
   edge: EdgeSignal;
+  acceptance?: FactorySignal;
 }) {
   const isEdge = mode === "live" && edge.reachable === true && !release.id;
   const observed = isEdge ? edge.source : null;
@@ -70,10 +71,16 @@ function ReleaseCard({
         {shortId(release.id || observed)}
       </div>
       <div className={css.releaseFoot}>
-        <span>{isEdge ? "EDGE HEADER OBSERVED" : signalWord[release.status]}</span>
+        <span>{isEdge ? "EDGE HEADER OBSERVED" : mode === "live"
+          ? `RUNTIME HEALTH ${signalWord[release.status]}` : mode === "rollback"
+            ? `TARGET HEALTH ${signalWord[release.status]}` : signalWord[release.status]}</span>
         <span>{release.verifiedAt ? localTime(release.verifiedAt) :
           isEdge ? localTime(edge.observedAt) : "NO RECEIPT"}</span>
       </div>
+      {mode === "live" && <div className={css.releaseFoot} data-signal={acceptance ?? "unknown"}>
+        <span><SignalDot small signal={acceptance ?? "unknown"} /> T10 ACCEPTANCE</span>
+        <span>{signalWord[acceptance ?? "unknown"]}</span>
+      </div>}
     </div>
   );
 }
@@ -443,7 +450,8 @@ export default function FactoryConsole() {
         <div className={css.heroGrid}>
           <CoreDiagram status={feed} />
           <div className={css.releaseStack} aria-label="Release identities">
-            <ReleaseCard mode="live" label="LIVE RELEASE" release={feed.value.liveRelease} edge={edge} />
+            <ReleaseCard mode="live" label="LIVE RELEASE" release={feed.value.liveRelease} edge={edge}
+              acceptance={factoryStageEvidence(feed.value.releaseOs, "rollback").state} />
             <ReleaseCard mode="candidate" label="NEXT CANDIDATE" release={feed.value.candidateRelease} edge={edge} />
             <ReleaseCard mode="rollback" label="ROLLBACK TARGET" release={feed.value.previousRelease} edge={edge} />
           </div>

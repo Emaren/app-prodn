@@ -15,6 +15,22 @@ sensitivity: "internal"
 
 # app-prodn Deploy
 
+
+## Factory acceptance truth — November 26, 2026 (source correction)
+
+A live runtime/HTTP health PASS is not T10 acceptance. The public status
+publisher retains the existing operational identity contract; the Factory
+console labels runtime and rollback-target health separately from acceptance.
+A final acceptance duration requires a valid root seal and positive T8, T9
+and T10 evidence. Missing, held, failed or stale acceptance must never be
+represented as a newly accepted production release. Retention and publication
+authority continue to require their native signed evidence, not a green UI.
+
+Regression coverage includes missing or failed T10 and missing rollback
+proof. This source correction is not a production receipt. Do not install the
+publisher or activate a new website artifact without exact-source review,
+protected admission and the applicable real acceptance sequence.
+
 ## November 22, 2026 — WE3 source/host-scoped protected-release review
 
 **Review scope (not historical rollback recertification):** Rechecked existing
