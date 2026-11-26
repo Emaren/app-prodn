@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/r25-chat-media-exact-20261124` at `7b84eb85eadd01592905d974800a1390babb29a1`
+Implementation baseline: `we2/r25-chat-media-exact-20261124` at `da207ad615c99ebf6c7ead1d6b3438c1fe9d3b64`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
