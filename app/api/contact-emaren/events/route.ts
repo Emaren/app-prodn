@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const prisma=getPrisma();
     const viewer=await prisma.user.findUnique({where:{uid:sessionUid},select:{id:true,uid:true}});
     if(!viewer)return new Response("Viewer not found",{status:404});
-    if (!isLiveProductionReadOnlyPreview()) {
+    if (!usesNonfinancialProductionAuth() && !isLiveProductionReadOnlyPreview()) {
       const memberships = await prisma.directConversationParticipant.findMany({
         where: { userId: viewer.id },
         select: { conversationId: true },
