@@ -634,6 +634,8 @@ export default function ClanHallClient({
 
   const endpoint = `/api/clans/${encodeURIComponent(snapshot.clan.slug)}`;
   const restrictedHall = snapshot.access.restrictedMemberHall === true;
+  const restrictedImageAvailable = snapshot.access.restrictedImageAvailable === true;
+  const clanImageKeys = useRef(new WeakMap<File,string>());
   const historyEndpoint = restrictedHall ? `/api/social/clan-hall?slug=${encodeURIComponent(snapshot.clan.slug)}` : endpoint;
   const historySeparator = restrictedHall ? "&" : "?";
   const presenceEndpoint = `${endpoint}/presence`;
@@ -1030,7 +1032,10 @@ export default function ClanHallClient({
   }
 
   function addComposerFiles(files: File[]) {
-    if(restrictedHall){setError("Clan Hall image posting is not yet admitted.");return;}
+    if(restrictedHall){
+      if(!restrictedImageAvailable){setError("Clan Hall image posting is not yet admitted.");return;}
+      if(posting||files.length!==1||composerAttachments.length||!["image/png","image/jpeg","image/webp"].includes(files[0].type)||files[0].size<1||files[0].size>10_000_000){setError("Choose one PNG, JPEG or WebP up to 10 MB.");return;}
+    }
     if (posting || files.length === 0) return;
 
     const nextFiles = files.slice(0, MAX_CLAN_MEDIA_FILES);
@@ -1154,7 +1159,7 @@ export default function ClanHallClient({
     remoteMediaUrls: string[] = [],
   ) {
     // A stale optimistic retry must obey the current server-admitted capability.
-    if(restrictedHall&&(attachmentFiles.length||remoteMediaUrls.length)){setError("Clan Hall image posting is not yet admitted.");return;}
+    if(restrictedHall&&(attachmentFiles.length||remoteMediaUrls.length)&&(!restrictedImageAvailable||attachmentFiles.length!==1||remoteMediaUrls.length!==0||draft.trim()||draftAudience!=="clan")){setError("Choose one admitted local image, without caption.");return;}
     const requestScribe = requestedScribe && hallScribeEnabled;
     setPosting(true);
     setError(null);
@@ -1171,7 +1176,9 @@ export default function ClanHallClient({
     }
 
     try {
-      const response = attachmentFiles.length > 0 || remoteMediaUrls.length > 0
+      const response = restrictedHall && attachmentFiles.length===1
+        ? await (()=>{const file=attachmentFiles[0];let key=clanImageKeys.current.get(file);if(!key){key=crypto.randomUUID().replaceAll("-","");clanImageKeys.current.set(file,key);}const form=new FormData();form.set("slug",snapshot.clan.slug);form.set("requestKey",key);form.set("attachment",file);return fetch("/api/social/clan-image",{method:"POST",body:form});})()
+        : attachmentFiles.length > 0 || remoteMediaUrls.length > 0
         ? await (() => {
             const formData = new FormData();
             formData.set("message", draft);
@@ -1200,7 +1207,9 @@ export default function ClanHallClient({
         setMessage("");
         if (pendingId) setPendingMessages((current) =>
           current.filter((entry) => entry.id !== pendingId));
+        if(attachmentFiles.length)clearComposerAttachments();
         setNotice("Message saved. Hall readback is unavailable; check history before retrying.");
+        void refresh();
         return;
       }
       if (!response.ok || !payload || !("clan" in payload)) {
@@ -1952,8 +1961,8 @@ export default function ClanHallClient({
                 <input
                   ref={mediaInputRef}
                   type="file"
-                  accept={CLAN_MEDIA_ACCEPT}
-                  multiple
+                  accept={restrictedHall?"image/png,image/jpeg,image/webp":CLAN_MEDIA_ACCEPT}
+                  multiple={!restrictedHall}
                   className="hidden"
                   onChange={(event) => {
                     addComposerFiles(Array.from(event.target.files || []));
@@ -1992,7 +2001,7 @@ export default function ClanHallClient({
                   <button
                     type="button"
                     onClick={() => mediaInputRef.current?.click()}
-                    disabled={restrictedHall || posting || composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES}
+                    disabled={posting || (restrictedHall?(!restrictedImageAvailable||composerAttachments.length>=1):composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES)}
                     className="clan-chat-attach grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-35"
                     aria-label="Attach Clan Hall media"
                     title="Attach media"
