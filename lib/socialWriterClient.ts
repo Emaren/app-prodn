@@ -70,6 +70,8 @@ export async function callSocialDirectReader(signedSession:string,input:Record<s
 export async function callSocialClanReader(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/clan/read",signedSession,input,MAX_BYTES,4_000,2*1024*1024);
 }
+export async function callSocialClanImageWriter(signedSession:string,input:Record<string,unknown>){return callSocialSocket("/v1/clan/image",signedSession,input,13_400_000,8_000);}
+export async function callSocialClanImageReader(signedSession:string,input:Record<string,unknown>){return callSocialSocket("/v1/clan/image-read",signedSession,input,MAX_BYTES,4_000);}
 async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number,replyLimit=8192):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");
