@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9c80de5d91ec6dc655f593c51a620a7f915d145254f4d5ee6b01eccda18c93c0",
+      "sha256": "2fb64f21bf712eb86c985bb4e3c0e2eb8d854a9ba2f39efb2c926f98cc4df09d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1649,7 +1649,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "785389a414baf982e5b33de8608342a5537b0c4b7746e6635e7043804c595927",
+      "sha256": "876015364251f91b2e9068bf24f2cd3436bd78e64cee1e3f9c9de4d2a355112c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/factory-zip-proof-20261120",
-    "commit": "db855e8db4fc12f254072f5e9c4c002ed023f867"
+    "commit": "8e54e952c74d02a26b4fc02978c31a24dc4bbbb0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
