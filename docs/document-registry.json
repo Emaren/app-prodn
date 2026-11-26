@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ded22eb108b5bc7281ad855e1d32faa9e99ae13d334c06b0e85e4e97364d6b7a",
+      "sha256": "a12706795635cea00083cb9a34d38bc0cfd0c1d22ff822407e86ce110ab29927",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3643,6 +3643,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-clan-hall-regression",
+      "id": "aoe2war.app-prodn.clan-hall-restricted-regression",
+      "owner": "aoe2war-web",
+      "path": "tests/clan-hall-fixture/README.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-26",
+      "sensitivity": "internal",
+      "sha256": "865640bf40517f82bee35243bf6a205ab9e4bb73667aa19e6a90e18fbd53b5f2",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war",
+        "app-prodn"
+      ],
+      "title": "Restricted Clan Hall combined regression and native release gates",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-restricted-direct-chat-regression",
       "id": "aoe2war.app-prodn.restricted-direct-reader-fixture",
       "owner": "aoe2war-web",
@@ -3663,8 +3686,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-direct-inbox-reader-20261126",
-    "commit": "63d2e57e8b4ed401729de8b7bdec7e2daa7a1d26"
+    "branch": "session-c/we3-clan-hall-reader-20261126",
+    "commit": "1e64637af1ada01577a530d06e10ba79811054f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
