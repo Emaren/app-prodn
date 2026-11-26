@@ -19,7 +19,10 @@ export async function readRestrictedClanHall(token:string|null|undefined,actor:s
  if(!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(slug))throw new ClanReadError(400);
  const r=await callSocialClanReader(token,{slug,before,focus});
  if(r.status!==200)throw new ClanReadError([400,401,404].includes(r.status)?r.status:503);
- return mapClanHall(r.body,{actor,slug,before,focus});
+ const snapshot=mapClanHall(r.body,{actor,slug,before,focus});
+ const root=process.env.SOCIAL_CLAN_IMAGE_READ_ROOT;
+ snapshot.access.restrictedImageAvailable=Boolean(root&&root!==process.env.SOCIAL_DIRECT_IMAGE_READ_ROOT);
+ return snapshot;
 }
 export async function restrictedClanResponse(request:NextRequest,actor:string|null,pathSlug?:string){
  try{
