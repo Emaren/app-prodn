@@ -27,3 +27,11 @@ test("private search and image metadata branch before legacy SQL and both URLs s
  const events=read("app/api/contact-emaren/events/route.ts");
  assert(events.indexOf('await restrictedDirectRead(request,{op:"summary"})')<events.indexOf("const prisma=getPrisma()"));
 });
+
+import ts from "typescript";
+test("all changed restricted HTTP routes parse as TypeScript",()=>{
+ for(const path of ["app/api/contact-emaren/route.ts","app/api/contact-emaren/events/route.ts","app/api/contact-emaren/search/route.ts","app/api/contact-emaren/attachments/[messageId]/route.ts","lib/directMessageAttachmentResponse.ts","lib/restrictedDirectInbox.ts"]){
+  const r=ts.transpileModule(read(path),{fileName:path,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}});
+  assert.deepEqual((r.diagnostics??[]).filter(d=>d.category===ts.DiagnosticCategory.Error).map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")),[],path);
+ }
+});
