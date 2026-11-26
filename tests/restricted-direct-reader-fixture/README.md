@@ -3,7 +3,7 @@ id: "aoe2war.app-prodn.restricted-direct-reader-fixture"
 title: "Restricted Direct Chat release regression contract"
 type: "runbook"
 status: "draft"
-owner: "product"
+owner: "aoe2war-web"
 systems: ["aoe2war", "app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
