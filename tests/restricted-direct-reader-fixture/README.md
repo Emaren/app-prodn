@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.restricted-direct-reader-fixture"
+title: "Restricted Direct Chat release regression contract"
+type: "runbook"
+status: "draft"
+owner: "product"
+systems: ["aoe2war", "app-prodn"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "source-only-restricted-direct-chat-regression"
+reviewed_at: "2026-11-26"
+review_interval_days: 14
+sensitivity: "internal"
+---
+
 # Restricted Direct Chat release regression contract
 
 This source fixture is not production admission, a browser witness, or authorization to run SQL against HEL1.
