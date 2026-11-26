@@ -8,12 +8,17 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Release Engineering
+
+## 2026-11-21 UTC — bounded WE3 release-source review (NO DEPLOY PERMIT)
+
+Read-only source scope: inspected `scripts/docs_v2_check.py`, `scripts/aoe2_release_gate.py`, rollback/WOLO boundary contracts and merged WE2 protected ingress main `74a6c5c37ae68f187a76278f5b846dd31ec90fd1`. GitHub source/CI never substitutes for an actual WE2 Factory T7–T10, authenticated browser acceptance or HEL1 rollback witness. The last physically observed public BUILD_ID was `RHE-s_XmtI5heC0JuZP7r`; this review performs no root installation, new permit, database migration, custody activation or certified release transaction.
+
 
 ## November 2, 2026 — R25 A05 failed-cutover continuation
 

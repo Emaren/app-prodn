@@ -99,6 +99,47 @@ EXACT_REVIEWED_KINGDOM_MENU_BASE = "81640c7d834c252fb1680190b3f431bd4beb3e58"
 EXACT_REVIEWED_KINGDOM_MENU_SCRIPT = "scripts/r25_public_kingdom_menu_chrome.cjs"
 EXACT_REVIEWED_KINGDOM_MENU_SHA256 = "c75151d78d67f0c83ac6b79d568e252630fe3f154a2f7df1d1a049edaeaface2"
 
+# C/WE1 one-object Prisma DOCUMENT review. Never permits schema/migrations/SQL.
+# This exact reviewed payload is a schema REFERENCE, not a DB write permit.
+EXACT_C_PRISMA_DOC_PATH = "prisma/README.md"
+EXACT_C_PRISMA_DOC_BRANCH = "session-c/we1-prisma-readme-protected-review-20261122"
+EXACT_C_PRISMA_DOC_BASE = "6f900b1e7bf9ed96486bebdb6b17624b14c1a942"
+EXACT_C_PRISMA_DOC_SHA256 = "3d19ba793326f3d03e1509ae1ce6e0d39ac832570b125f4ef3f1734343613816"
+EXACT_C_PRISMA_DOC_TEST_SHA256 = "fde644a3adbf3b7a4d9bd26de66ffa5387b6cf93680b6d6d7ada4f8c13e45afc"
+EXACT_C_PRISMA_WE3_DOC_SHA256 = {
+    "DEPLOY.md": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
+    "docs/PARSER_OBSERVATORY.md": "4002ace1b36a2ffbb18985df402c8382a7cac41a5b959f3b6db89479e0d07171",
+    "docs/WAR_ROOM_FORUM.md": "e0fdc110a01c2eb05ee833d952cb6323dc12b5d5f5ffaab05cb4803a73526612",
+}
+EXACT_C_PRISMA_DOC_REQUIRED = frozenset({
+    EXACT_C_PRISMA_DOC_PATH,
+    "scripts/product_boundary_guard.py",
+    "tests/test_c_prisma_doc_admission.py",
+}) | frozenset(EXACT_C_PRISMA_WE3_DOC_SHA256)
+EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2 = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
+# C/WE1 one exact, nonexecuting Scan OS catalog/planner admission.
+# Source-only; does NOT grant scanner execution, receiver, schedule or delete.
+EXACT_C_SCAN_OS_BRANCH = "session-c/we1-scan-os-exact-review-20261122"
+EXACT_C_SCAN_OS_BASE = "204bf5c37560dfd705ee0b46803eec3ad396b082"
+EXACT_C_SCAN_OS_HASHES = {
+    "scripts/scan_os.py": "7fe37c5b934e4f912814dfa9efb6988692e37da31de3d47ca3450a49e841320a",
+    "config/scan-os-catalog.v1.json": "5399ba92c6b93de08bc3f78c74847b88656d2371a5d21102035455209209e794",
+    "tests/test_scan_os.py": "b6d22508eb694a5812451451a25104bff34cbd87f29c4ba073172c0cd2fa92aa",
+    "tests/test_scan_os_we1_adversarial.py": "ddb268159bf89b8d7d249b618d78360d5968681e913a04c22d0254b4000bb48f",
+    "tests/test_c_scan_os_source_admission.py": "a6f20d044d136f897df973ad9b7847a54b9f078ff92ac76eba1f30a7a7a810aa",
+}
+EXACT_C_SCAN_OS_REQUIRED = frozenset(EXACT_C_SCAN_OS_HASHES) | {
+    "scripts/product_boundary_guard.py",
+}
+EXACT_C_SCAN_OS_OPTIONAL_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -140,7 +181,175 @@ EXACT_WE2_FACTORY_DOCS_REVIEW = frozenset({
 EXACT_WE2_FACTORY_CHANGED = frozenset(EXACT_WE2_FACTORY_SHA256) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"
 } | EXACT_WE2_FACTORY_DOCS_REVIEW
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|main)$")
+
+# 2026-11-23: one independent DATA-transport Factory source-only review.
+# This admission changes NO historical WE2 v3/retention pins; it authorizes
+# review of exact source blobs only, not host installation or WEBSITE T7.
+EXACT_WE2_FACTORY_DATA_BRANCH="we2/factory-data-transport-20261123"
+EXACT_WE2_FACTORY_DATA_BASE="f833d7e633cee4b36f1427fa45d76081fa0796ef"
+EXACT_WE2_FACTORY_DATA_PINS={
+    'docs/release/artifacts/aoe2war_factory_data_stage_v1.py': '96e9c5a693e55ba5475a44eba15aef3db9fd5d2b5fb2f296b7ca3eb89656c87d',
+    'docs/release/artifacts/aoe2war_prepare_product_manifest_v2.py': '063e944565cf5ce8033844aef869dc90f3b64b75ceb975ca86ec9c9dbe6e1051',
+    'docs/release/artifacts/aoe2war_product_release_controller_v3.py': 'fb31b5a8d9a95f67502f894bb88e27113d333c0f7da955c4e930cb7e0eaa748f',
+    'scripts/aoe2_product_release.py': '59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab',
+    'tests/test_factory_data_publisher_v1.py': '1d9a1fd9bcf3ab475ea3439eec565abb382980254c5df6e19e645468e29494b4',
+    'tests/test_factory_data_stage_v1.py': '14f54b6128946cb5322aaecdd66c0f599c9e1d189b5b4cba48570e62866529f9',
+    'tests/test_product_release.py': '9c319843a47d27abdc616ccef80ec2692eb2b5d5a43d3ca034030cea83401306',
+    'tests/test_product_release_recovery.py': 'f926c8b2ed37151525ac7f17742ded5b6d68f8c8b241cb837b19e33f2810ae3e',
+    'tests/test_product_controller_recovery.py': '4ea4c27a7930e4d39b31f0c4c3da3df368c71812cdfbe170fc2f1845592e5594',
+ }
+# WE1's ten genuinely rereviewed documents, integrated from the exact
+# stacked #1488 review head c7daa1a9. Only these exact bytes are admitted.
+# Generated DocsV2 registry/index are checked by ORIGINAL docs_v2_check.py
+# rather than hardcoding their hashes here (which would circularly invalidate
+# their non-document implementation baseline on every policy change).
+EXACT_WE2_FACTORY_DATA_DOC_PINS={
+    'docs/OPERATOR_START_HERE.md': '7465afac5c438dd6b352f3c3efa727ec8db558fedcebfb2fd7c5e4215ed4faf5',
+    'docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md': '667f2b74aa2053401c8e6614c2e5c8560754916d63b10ec5ec607cfc0e5fac60',
+    'docs/SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md': 'a702055899cfdc116ff481dbe5873673bb56efba051722f16a4064c487ffd966',
+    'docs/SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md': 'dc0c803be3fa81476025e4c6a89ca4145077e90b49a8e1d06d484ccc04804b35',
+    'docs/SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md': '011ced68aa01caffb6f70a2dd4711caf7561029b398c7f3b0cb1384402839be1',
+    'docs/SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md': '19cf19684bf156db8f123a3fd7a92c51f8b4535857668d88d6563686a9b69be7',
+    'docs/SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md': '226126ab408094a1f46bbb50982d2d4d07da20783e54428c371b80c58986938a',
+    'docs/STAKING_TREASURY_PAYOUTS.md': 'ee7ea6dc4d2ed7b4e4a30fcf40e5a6adad6664028d7fc4038f68816ddc0a9b23',
+    'docs/WARGRAPH_V1.md': '31d6f0acc7fadfd46dc784fb0bc786723bd7e820047603a107b999bd1be9cee6',
+    'docs/WATCHER_NATIVE_STREAM_HANDOFF.md': 'ca0a26ebe1c97d2f1a12694c3a3af599fb0ccb3c3b1f2568702d9aecf7bc3bae',
+ }
+EXACT_WE2_FACTORY_DATA_DOC_GENERATED=frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+})
+EXACT_WE2_FACTORY_DATA_CHANGED=(frozenset(EXACT_WE2_FACTORY_DATA_PINS)
+    |frozenset(EXACT_WE2_FACTORY_DATA_DOC_PINS)
+    |EXACT_WE2_FACTORY_DATA_DOC_GENERATED)|{
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+}
+
+# WE2 post-T10 Factory V3 invocation-only repair. Historical DATA-stage SHA
+# pins remain immutable. This admits exactly the new reviewed source + tests
+# from canonical main without authorizing a WEBSITE permit or T7-T10 replay.
+EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH = "we2/factory-v3-invocation-reconciliation-20261124"
+EXACT_WE2_FACTORY_V3_RECEIPT_BASE = "f14bf4625ed124beafe80dc34188dcb7da16daa0"
+EXACT_WE2_FACTORY_V3_RECEIPT_PINS = {
+    "scripts/aoe2_product_release.py":
+        "5f261cd84bf54a05e6d462d368708e143b816a8f0abad47def41ccf4841bd454",
+    "tests/test_product_deployment_invocation.py":
+        "d888e194153f48a5fa7daf05acba89c23d40a1dc43ca9d8fde255a80b219d99a",
+}
+EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS = {
+    'docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md': '72c4f17896d9ef6a99cb4ad12c7fa53f2c24bdad56db2567c38152c17a43e0c2',
+    'docs/R25_B4_KINGDOM_GRAPH_RELEASE.md': 'a1d46cb0dfcccc452cedfe44fdab39bae55626942cccad11dab97b16c0324237',
+    'docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md': 'a278607d713aab54426074ccdf7bb238f56751186d03cf8b20fb67a3f7371a54',
+    'docs/SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md': '9a5be6f084ba809c5bf655cc72a7a2c602c22e7be7f31cdac6507c9df8c48148',
+    'docs/SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md': 'f5fe36b2e669bd480f6f14b1d15b4a837b9d6d1c62001854640d84b42d0d28cb',
+    'docs/SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md': 'a3549f1952e1a6e08c372964b5e336d3d2c7f4d6fe309fcdf36c655573262f3b',
+    'docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md': 'cc00d413e77741f658378c3cf18dcddaa3da601695690f6884b16254f999f18f',
+    'docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md': '9578fec04e4689da8b963f7976e62150cffa12f205c1509ff191ac6cecb6011f',
+    'docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md': 'd00d4ba9128c653724aa99c2b20f3fc6302d489b0fb65ecd30400ec1613f6030',
+    'docs/SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md': '648a1808ed35b68a63e5141e1bfd6e98e1e45392ff85ab49b1100ea1b5bee018',
+    'docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md': '5ef5dccd95f8354ac375a95fad31d18b71edc08b11845f12614a640aa2a6d36a',
+    'docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md': 'a07901d5aa4ed54118afd5e74ed72d357b9da85b8398c2684e6cc7910f7454c1',
+    'docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md': 'e7cbd7bd5a4aeb775c6e2dd698d18d48b25395bdbf5f9e85c22be7a853393ae8',
+}
+EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
+    frozenset(EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+    frozenset(EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS) |
+    EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED |
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
+)
+
+# WE2 separately reviewed public V3 invocation projection. Retain historic
+# exact DATA and ninth-root pins; this is source review only, never ROOT install.
+EXACT_WE2_V3_PUBLIC_BRANCH = 'we2/factory-v3-public-publisher-source-20261124'
+EXACT_WE2_V3_PUBLIC_BASE = 'd7797cf7e34b230031193c563e7505b3c2b55c64'
+EXACT_WE2_V3_PUBLIC_PINS = {
+    'docs/release/artifacts/aoe2war_factory_public_status_v2.py': 'e1ba18b10824a00b3d942d94b7748a2d66fc20d6b100b402130ea89552c050af',
+    'scripts/aoe2_product_release.py': 'e34dda657b6a1d4ce06ce800e5eeb3ea06a5818b45f2e6dfe623b3f383480a90',
+    'tests/test_factory_public_status_v2.py': '22c103c203f5604bce9ad73c60c147609fc7a8eaac90f04403af5de64fc249bd',
+    'tests/test_product_factory_publication.py': 'a46a33d359795286eae3303847a2efd1631bc4e668db353a911e933cef958c3e',
+    'scripts/release/we2_factory_v3_public_publisher_reconcile_20261124.py': 'a8ef33b00a6669d60ec1e332f784e1fd8f86faea8cd52b8756286b0d4b1ced55',
+    'tests/test_we2_factory_v3_public_publisher_reconcile.py': 'aa08b72b83bfd04f4a17650dfc013821eb1571409eb4cc8836ae7635a2bdd675',
+}
+EXACT_WE2_V3_PUBLIC_GENERATED = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json"
+})
+EXACT_WE2_V3_PUBLIC_CHANGED = (
+    frozenset(EXACT_WE2_V3_PUBLIC_PINS) | EXACT_WE2_V3_PUBLIC_GENERATED |
+    {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"}
+)
+
+# WE2 root-security source review: one branch/base with immutable candidate
+# guard/proxy bytes. This is *not* a scripts/ or WE2 wildcard.
+# WE1 independently reviewed *new* original Factory post-T10 retention source.
+# This does NOT inherit the 2026-11-19 v3 exception, grants no retire/copy,
+# and binds exact branch, base, bytes and the entire changed-file set.
+EXACT_WE2_FACTORY_RETENTION_BRANCH = "we2/factory-post-t10-retention-20261122"
+EXACT_WE2_FACTORY_RETENTION_BASE = "5ead114347294b345a34700dffdc456c2bcc86ba"
+EXACT_WE2_FACTORY_RETENTION_PINS = {
+    "scripts/aoe2_product_release.py":
+        "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015",
+    "scripts/aoe2_factory_retention_post_t10.py":
+        "81eeea068721bf751d11366b13d6c75f876bce72d3629e58cde6b3f31151ca12",
+    "tests/test_factory_retention_post_t10.py":
+        "723b42341d91ff63201c723b1f4f3f132efa9c864ac602414e31b4a11e652b11",
+}
+EXACT_WE2_FACTORY_RETENTION_CHANGED = frozenset(EXACT_WE2_FACTORY_RETENTION_PINS) | {
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+
+
+EXACT_WE2_STORAGE_BRANCH = "we2/storage-protected-ingress-20261120"
+EXACT_WE2_STORAGE_BASE = "815d66ef94900d29bb50b7241dc47927a4343955"
+EXACT_WE2_STORAGE_PINS = {
+    "scripts/r25_b_guard_production_v1.cjs":
+      "8e066dbb57c935f18b9198a40290e5efa717b6f21c892fcc077400d986ff4930",
+    "docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf":
+      "463d7b269418d28663171a7b91d923146ca807f955ba5e217e9dbc47eefeaf10",
+    "docs/release/artifacts/aoe2war_storage_visual_web_store_v1.conf":
+      "7ee7e39536841eff01bcf85eccb9d28edcf7411532e1a5e8952edabdc2cf5705",
+    "tests/test_r25_production_node_guard.py":
+      "034758434e1c51b2f1165bac9f4116317d332f8b139c48c48899c8a485c16b44",
+    "tests/test_we2_storage_visual_exact_ingress.py":
+      "7d4f5daa73cdd2e73e20b9745bd9c01cf59f2e2628f06aea453a59e0dbed18b3",
+    "docs/release/WE2_STORAGE_VISUAL_PROTECTED_INGRESS_20261120.md":
+      "a45ddc319b26ef5390f2d8a36eb8febac8d208c9f5df8022e321d980d0386b20",
+}
+EXACT_WE2_STORAGE_CHANGED = frozenset(EXACT_WE2_STORAGE_PINS) | {
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    # DocsV2 implementation index is a source-owned *documentation-only*
+    # commit after the exact executable implementation baseline.
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+# New exact bridge dual-path review. Preserve the historical storage-source
+# pins unchanged; no branch wildcard, arbitrary exec file or root authorization.
+EXACT_WE2_BRIDGE_BRANCH = "we2/bridge-dual-path-20261121"
+EXACT_WE2_BRIDGE_BASE = "1bb42c53ebd44bc22b07a3b64862d39f457fb529"
+EXACT_WE2_BRIDGE_PINS = {
+    "app/api/internal/aoe2war-os/bridge/route.ts":
+        "ededff41f0a633d089bd92e1059c2569723f79c65b3dc52b7cb69bdfbe3de96f",
+    "scripts/r25_b_guard_production_v1.cjs":
+        "87308f4d23b78d275eadd7705269014f6a2bc4620f5977eece76e7f2efa939fa",
+    "tests/private-storage-visual-bridge.test.mts":
+        "482f56d5b31f50cc0869f617cb5b17b107fb288a5600b60d05cd68a5578e8602",
+    "deploy/aoe2war-bridge-dual-path.nginx.inc":
+        "1d0bf51aa269c7695c4f5cdc2a65219d707064aa058b270aa56b5604a988d19b",
+    "tests/bridge-dual-ingress-contract.test.mts":
+        "f76f9d898690ce8a46e4ac2b188bb260be05a0182f7e72f708fcfb8e94081b27",
+}
+EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+}
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -180,8 +389,79 @@ def authorize_source(raw: str) -> str:
     return str(path)
 
 
+def exact_we2_storage_blob(checkout: Path, raw: str) -> str:
+    """One immutable reviewed file, held to base/branch/source elsewhere."""
+    expected = EXACT_WE2_STORAGE_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_STORAGE_UNPINNED_FILE")
+    path = checkout
+    for component in relative_path(raw).parts:
+        path = path / component
+        if path.is_symlink():
+            raise BoundaryHold("WE2_STORAGE_SYMLINK_ANCESTOR")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+        st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000 or
+        stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("WE2_STORAGE_SINGLE_REGULAR_FILE")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) != (
+            st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_STORAGE_FILE_CHANGED")
+        blob = os.read(fd, 100001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("WE2_STORAGE_EXACT_SHA_MISMATCH")
+    return raw
+
+
+def exact_we2_bridge_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_BRIDGE_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_BRIDGE_UNPINNED_FILE")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("WE2_BRIDGE_SYMLINK_ANCESTOR")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or st.st_uid != os.geteuid() or not 1 <= st.st_size <= 100_000
+            or stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("WE2_BRIDGE_SOURCE_CUSTODY")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        actual = os.fstat(fd)
+        if (actual.st_dev, actual.st_ino, actual.st_size, actual.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_BRIDGE_SOURCE_CHANGED")
+        blob = os.read(fd, 100001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("WE2_BRIDGE_EXACT_SHA_MISMATCH")
+    return raw
+
+
 def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == "scripts/scan_os.py":
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_SCAN_OS_BRANCH:
+            raise BoundaryHold("C_SCAN_WRONG_BRANCH")
+        if base != EXACT_C_SCAN_OS_BASE:
+            raise BoundaryHold("C_SCAN_WRONG_BASE")
+        _exact_c_scan_source_blob(checkout, raw)
+        return raw
+    if raw == EXACT_C_PRISMA_DOC_PATH:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_C_PRISMA_DOC_BRANCH:
+            raise BoundaryHold("C_PRISMA_WRONG_BRANCH")
+        if base != EXACT_C_PRISMA_DOC_BASE:
+            raise BoundaryHold("C_PRISMA_WRONG_BASE")
+        _exact_c_prisma_source_blob(checkout, raw, EXACT_C_PRISMA_DOC_SHA256)
+        return raw
     if raw == EXACT_REVIEWED_KINGDOM_MENU_SCRIPT:
         if os.environ.get("BOUNDARY_BRANCH") != EXACT_REVIEWED_KINGDOM_MENU_BRANCH:
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_WRONG_BRANCH")
@@ -208,6 +488,14 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             hashlib.sha256(blob).hexdigest() != EXACT_REVIEWED_KINGDOM_MENU_SHA256):
             raise BoundaryHold("KINGDOM_MENU_REVIEWED_EXACT_SHA_MISMATCH")
         return raw
+    if (base == EXACT_WE2_BRIDGE_BASE
+            and os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_BRIDGE_BRANCH
+            and raw in EXACT_WE2_BRIDGE_PINS):
+        return exact_we2_bridge_blob(checkout, raw)
+    if raw == EXACT_REVIEWED_B_EMBER_GUARD and base == EXACT_WE2_STORAGE_BASE:
+        if os.environ.get("BOUNDARY_BRANCH") != EXACT_WE2_STORAGE_BRANCH:
+            raise BoundaryHold("WE2_STORAGE_WRONG_BRANCH")
+        return exact_we2_storage_blob(checkout, raw)
     if raw == EXACT_REVIEWED_B_EMBER_GUARD:
         if base != EXACT_REVIEWED_B_EMBER_BASE:
             raise BoundaryHold("B_EMBER_GUARD_WRONG_BASE")
@@ -279,6 +567,28 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
                 hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_B_BROWSER_SHA256):
             raise BoundaryHold("B_BROWSER_EXACT_SHA_MISMATCH")
         return raw
+    # Dedicated exact DATA-stage source exception: never reuse legacy
+    # original Factory or retention review pins for this new protected blob.
+    if (base == EXACT_WE2_FACTORY_DATA_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_DATA_BRANCH and
+            raw in EXACT_WE2_FACTORY_DATA_PINS):
+        return exact_we2_factory_data_blob(checkout,raw)
+    # Original DATA Factory source remains frozen. Post-T10 V3 receipt
+    # code is a separately qualified exact branch/base/hash transition.
+    if (base == EXACT_WE2_FACTORY_V3_RECEIPT_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH and
+            raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS):
+        return exact_we2_factory_v3_receipt_blob(checkout, raw)
+    # Separate frozen-root public publisher V3 projection source admission.
+    if (base == EXACT_WE2_V3_PUBLIC_BASE and
+        os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_V3_PUBLIC_BRANCH and
+        raw in EXACT_WE2_V3_PUBLIC_PINS):
+        return exact_we2_v3_public_blob(checkout, raw)
+    # New exact post-T10 source review, distinct from the frozen v3 runner.
+    if (base == EXACT_WE2_FACTORY_RETENTION_BASE and
+            os.environ.get("BOUNDARY_BRANCH") == EXACT_WE2_FACTORY_RETENTION_BRANCH
+            and raw in EXACT_WE2_FACTORY_RETENTION_PINS):
+        return exact_we2_factory_retention_blob(checkout, raw)
     # One exact reviewed Factory-root pin transition on the sole WE2 branch.
     # This does not admit a general release runner or change root authority.
     if raw == "scripts/aoe2_product_release.py" and base == EXACT_WE2_FACTORY_BASE:
@@ -474,6 +784,130 @@ def check_checkout(checkout: Path, repo_name: str, expected_sha: str,
     return {"repo": repo_name, "sha": expected_sha, "branch": expected_branch, "origin": origin}
 
 
+# B-owned source-only admission for the exact WE1-reviewed Watcher SQL pair.
+# No change to general SQL denial, task argv, financial or DB write authority.
+EXACT_B_WATCHER_BASE = "a187ada489ce76c939d6d52218ee5a7f22520921"
+EXACT_B_WATCHER_BRANCH = "session-c/we3-watcher-v3-release-20261124"
+EXACT_B_WATCHER_REVIEWED = "c5577d3050631a2426ea66816dc6b18c0a9ddd84"
+EXACT_B_WATCHER_SQL = {
+    "config/nonfinancial-public-watcher-v3.sql":
+        (13699, "b46f4eb2804cb49a8fdc807e7d0a6f80b49c6bce023581acf7568120ef55c820"),
+    "tests/fixtures/current-watcher-v3-original.sql":
+        (12687, "d97dc6cc41cd33a86f5a8e0529593ae99b905535cf626f4775b5be4264d1236d"),
+}
+# Exact WE3 legacy regression correction; this is not another SQL admission.
+EXACT_B_WATCHER_REGRESSION = "tests/test_r25_public_watcher_source_parity.py"
+EXACT_B_WATCHER_REGRESSION_SHA256 = "d47078b09e710ee7b36354c71d1cef46c4febcac63fc8a67dd0b758e58629c84"
+EXACT_B_WATCHER_CHANGED = frozenset(EXACT_B_WATCHER_SQL) | {
+    EXACT_B_WATCHER_REGRESSION,
+    "lib/currentWatcherAccountState.ts",
+    "lib/currentWatcherAccountStateRefreshGate.ts",
+    "tests/current-watcher-v3-refresh-retry.test.mts",
+    "tests/replay-projection-cache-v2.test.mts",
+    "tests/test_current_watcher_v3_sql_pg.py",
+    "scripts/product_boundary_guard.py",
+    "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+
+
+def exact_b_watcher_blob(checkout: Path, raw: str) -> str:
+    if raw not in EXACT_B_WATCHER_SQL:
+        raise BoundaryHold("B_WATCHER_UNREVIEWED_SQL")
+    size, digest = EXACT_B_WATCHER_SQL[raw]
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("B_WATCHER_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or st.st_uid != os.geteuid() or st.st_size != size
+            or stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("B_WATCHER_SOURCE_CUSTODY")
+    identity = lambda x: (x.st_dev, x.st_ino, x.st_size, x.st_mtime_ns,
+                          x.st_ctime_ns, x.st_uid, x.st_mode, x.st_nlink)
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if identity(os.fstat(fd)) != identity(st):
+            raise BoundaryHold("B_WATCHER_SOURCE_RACE")
+        data = os.read(fd, size + 1)
+        if identity(os.fstat(fd)) != identity(st):
+            raise BoundaryHold("B_WATCHER_SOURCE_RACE")
+    finally:
+        os.close(fd)
+    if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
+        raise BoundaryHold("B_WATCHER_SQL_SHA")
+    return raw
+
+
+def check_exact_b_watcher_context(checkout: Path, repo: str, branch: str,
+                                  base: str, sha: str, *, ci: bool) -> None:
+    if repo != "Emaren/app-prodn" or base != EXACT_B_WATCHER_BASE:
+        raise BoundaryHold("B_WATCHER_REPO_OR_BASE")
+    if branch not in (EXACT_B_WATCHER_BRANCH, "main"):
+        raise BoundaryHold("B_WATCHER_BRANCH")
+    if ci:
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+        if branch == EXACT_B_WATCHER_BRANCH:
+            pr = event.get("pull_request", {})
+            h, b = pr.get("head", {}), pr.get("base", {})
+            if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
+                    or event.get("number") != 1499
+                    or (h.get("repo") or {}).get("full_name") != repo
+                    or (b.get("repo") or {}).get("full_name") != repo
+                    or h.get("ref") != branch or h.get("sha") != sha
+                    or b.get("ref") != "main" or b.get("sha") != base):
+                raise BoundaryHold("B_WATCHER_PR_IDENTITY")
+        elif (os.environ.get("GITHUB_EVENT_NAME") != "push"
+              or event.get("ref") != "refs/heads/main"
+              or event.get("before") != base or event.get("after") != sha
+              or (event.get("repository") or {}).get("full_name") != repo):
+            raise BoundaryHold("B_WATCHER_MAIN_IDENTITY")
+    if branch == "main":
+        parents = git(checkout, "rev-list", "--parents", "-n", "1", sha).split()
+        if len(parents) != 3 or parents[:2] != [sha, base]:
+            raise BoundaryHold("B_WATCHER_MAIN_PARENTS")
+        candidate = parents[2]
+        if git(checkout, "rev-parse", sha + "^{tree}") != git(
+                checkout, "rev-parse", candidate + "^{tree}"):
+            raise BoundaryHold("B_WATCHER_MAIN_TREE")
+    else:
+        candidate = sha
+    if git(checkout, "merge-base", EXACT_B_WATCHER_REVIEWED, candidate) != EXACT_B_WATCHER_REVIEWED:
+        raise BoundaryHold("B_WATCHER_REVIEW_ANCESTRY")
+    if git(checkout, "merge-base", base, candidate) != base:
+        raise BoundaryHold("B_WATCHER_BASE_ANCESTRY")
+
+
+def exact_b_watcher_changes(checkout: Path, base: str) -> list[str]:
+    # Include deletions and type changes; do not inherit ordinary diff-filter.
+    changes = git(checkout, "diff", "--name-status", "--no-renames", base, "HEAD", "--")
+    rows = [line.split("\t") for line in changes.splitlines()]
+    if (any(len(row) != 2 or row[0] not in ("A", "M") for row in rows)
+            or len(rows) != len(EXACT_B_WATCHER_CHANGED)
+            or {row[1] for row in rows} != EXACT_B_WATCHER_CHANGED):
+        raise BoundaryHold("B_WATCHER_EXACT_CHANGED_SCOPE")
+    for _, raw in rows:
+        if raw in EXACT_B_WATCHER_SQL:
+            exact_b_watcher_blob(checkout, raw)
+        else:
+            authorize_changed_source(checkout, base, raw)
+        if raw == EXACT_B_WATCHER_REGRESSION:
+            target = checkout
+            for part in relative_path(raw).parts:
+                target = target / part
+                if target.is_symlink():
+                    raise BoundaryHold("B_WATCHER_REGRESSION_SYMLINK")
+            if hashlib.sha256(target.read_bytes()).hexdigest() != EXACT_B_WATCHER_REGRESSION_SHA256:
+                raise BoundaryHold("B_WATCHER_REGRESSION_SHA")
+        mode = git(checkout, "ls-files", "--stage", "--", raw)
+        if not mode.startswith("100644 ") or len(mode.splitlines()) != 1:
+            raise BoundaryHold("B_WATCHER_INDEX_MODE")
+    return [row[1] for row in rows]
+
+
 def changed_source(checkout: Path, base: str) -> list[str]:
     if not SHA.fullmatch(base):
         raise BoundaryHold("UNPINNED_BASE_SHA")
@@ -487,6 +921,137 @@ def changed_source(checkout: Path, base: str) -> list[str]:
             raise BoundaryHold("SYMLINK_SOURCE_CHANGE")
     return changes
 
+
+def exact_we2_factory_data_blob(checkout: Path, raw: str) -> str:
+    """Validate an exact reviewed DATA-stage blob via O_NOFOLLOW fd."""
+    expected=EXACT_WE2_FACTORY_DATA_PINS.get(
+        raw,EXACT_WE2_FACTORY_DATA_DOC_PINS.get(raw))
+    if expected is None:
+        raise BoundaryHold("WE2_FACTORY_DATA_UNPINNED_SOURCE")
+    p=checkout
+    for part in relative_path(raw).parts:
+        p=p/part
+        if p.is_symlink():
+            raise BoundaryHold("WE2_FACTORY_DATA_SYMLINK")
+    st=p.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink!=1 or
+        st.st_uid!=os.geteuid() or stat.S_IMODE(st.st_mode)&0o022 or
+        not 1<=st.st_size<=150000):
+        raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_CUSTODY")
+    fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        live=os.fstat(fd)
+        if (live.st_dev,live.st_ino,live.st_size,live.st_mtime_ns)!=(
+                st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns):
+            raise BoundaryHold("WE2_FACTORY_DATA_INODE_CHANGED")
+        content=os.read(fd,150001)
+    finally:
+        os.close(fd)
+    if len(content)!=st.st_size or hashlib.sha256(content).hexdigest()!=expected:
+        raise BoundaryHold("WE2_FACTORY_DATA_SOURCE_SHA")
+    return raw
+
+def exact_we2_factory_v3_receipt_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_FACTORY_V3_RECEIPT_PINS.get(raw, EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS.get(raw))
+    if expected is None:
+        raise BoundaryHold("WE2_V3_RECEIPT_UNPINNED")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("WE2_V3_RECEIPT_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+            not 1 <= st.st_size <= 150000):
+        raise BoundaryHold("WE2_V3_RECEIPT_FILE_AUTHORITY")
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        observed = os.fstat(fd)
+        if (observed.st_dev, observed.st_ino, observed.st_size,
+                observed.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_V3_RECEIPT_INODE_RACE")
+        raw_bytes = os.read(fd, 150001)
+    finally:
+        os.close(fd)
+    if (len(raw_bytes) != st.st_size or
+            hashlib.sha256(raw_bytes).hexdigest() != expected):
+        raise BoundaryHold("WE2_V3_RECEIPT_SHA")
+    return raw
+
+
+def check_exact_we2_factory_v3_receipt_source(checkout: Path, repo: str,
+                                              branch: str, base: str,
+                                              changes: list[str]) -> None:
+    if branch != EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY_V3_RECEIPT_BASE:
+        raise BoundaryHold("WE2_V3_RECEIPT_BASE_OR_REPO")
+    if (len(changes) != len(EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED) or
+            frozenset(changes) != EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED):
+        raise BoundaryHold("WE2_V3_RECEIPT_CHANGED_SCOPE")
+    for raw in EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+    for raw in EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS:
+        exact_we2_factory_v3_receipt_blob(checkout, raw)
+
+
+def exact_we2_v3_public_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_V3_PUBLIC_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_V3_PUBLIC_UNPINNED")
+    path = checkout
+    for part in relative_path(raw).parts:
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("WE2_V3_PUBLIC_SYMLINK")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+            not 1 <= st.st_size <= 150000):
+        raise BoundaryHold("WE2_V3_PUBLIC_FILE_AUTHORITY")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        live = os.fstat(fd)
+        if ((live.st_dev,live.st_ino,live.st_size,live.st_mtime_ns) !=
+            (st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns)):
+            raise BoundaryHold("WE2_V3_PUBLIC_INODE_RACE")
+        data = os.read(fd,150001)
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("WE2_V3_PUBLIC_SHA")
+    return raw
+
+
+def check_exact_we2_v3_public_source(checkout: Path, repo: str,
+                                     branch: str, base: str,
+                                     changes: list[str]) -> None:
+    if branch != EXACT_WE2_V3_PUBLIC_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_V3_PUBLIC_BASE:
+        raise BoundaryHold("WE2_V3_PUBLIC_BASE_OR_REPO")
+    if (len(changes)!=len(EXACT_WE2_V3_PUBLIC_CHANGED) or
+            frozenset(changes)!=EXACT_WE2_V3_PUBLIC_CHANGED):
+        raise BoundaryHold("WE2_V3_PUBLIC_CHANGED_SCOPE")
+    for raw in EXACT_WE2_V3_PUBLIC_PINS:
+        exact_we2_v3_public_blob(checkout, raw)
+
+
+def check_exact_we2_factory_data_source(checkout: Path, repo: str, branch: str,
+                                        base: str, changes: list[str]) -> None:
+    if branch!=EXACT_WE2_FACTORY_DATA_BRANCH:
+        return
+    if repo!="Emaren/app-prodn" or base!=EXACT_WE2_FACTORY_DATA_BASE:
+        raise BoundaryHold("WE2_FACTORY_DATA_REPO_OR_BASE")
+    if (len(changes)!=len(EXACT_WE2_FACTORY_DATA_CHANGED) or
+            frozenset(changes)!=EXACT_WE2_FACTORY_DATA_CHANGED):
+        raise BoundaryHold("WE2_FACTORY_DATA_CHANGED_SCOPE")
+    for file in EXACT_WE2_FACTORY_DATA_PINS:
+        exact_we2_factory_data_blob(checkout,file)
+    for file in EXACT_WE2_FACTORY_DATA_DOC_PINS:
+        exact_we2_factory_data_blob(checkout,file)
 
 def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
                                   base: str, changes: list[str]) -> None:
@@ -518,6 +1083,172 @@ def check_exact_we2_factory_source(checkout: Path, repo: str, branch: str,
         if len(raw)!=st.st_size or hashlib.sha256(raw).hexdigest()!=expected:
             raise BoundaryHold("WE2_FACTORY_EXACT_SOURCE_SHA256_DRIFT")
 
+def exact_we2_factory_retention_blob(checkout: Path, raw: str) -> str:
+    expected = EXACT_WE2_FACTORY_RETENTION_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("WE2_RETENTION_UNPINNED_SOURCE")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("WE2_RETENTION_SOURCE_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid()
+            or st.st_nlink != 1 or stat.S_IMODE(st.st_mode) & 0o022
+            or not 100 <= st.st_size <= 100000):
+        raise BoundaryHold("WE2_RETENTION_SOURCE_CUSTODY")
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("WE2_RETENTION_SOURCE_INODE_CHANGED")
+        data = os.read(fd, 100001)
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("WE2_RETENTION_SOURCE_HASH_DRIFT")
+    return raw
+
+
+def check_exact_we2_factory_retention_source(
+        checkout: Path, repo: str, branch: str, base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE2_FACTORY_RETENTION_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY_RETENTION_BASE:
+        raise BoundaryHold("WE2_RETENTION_SOURCE_REPO_OR_BASE")
+    if (len(changes) != len(EXACT_WE2_FACTORY_RETENTION_CHANGED)
+            or frozenset(changes) != EXACT_WE2_FACTORY_RETENTION_CHANGED):
+        raise BoundaryHold("WE2_RETENTION_EXACT_CHANGED_PATHS")
+    for path in EXACT_WE2_FACTORY_RETENTION_PINS:
+        exact_we2_factory_retention_blob(checkout, path)
+
+
+def check_exact_we2_storage_source(checkout: Path, repo: str, branch: str,
+                                   base: str, changes: list[str]) -> None:
+    """No blanket branch, arbitrary changed script or later source revision."""
+    if branch != EXACT_WE2_STORAGE_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_STORAGE_BASE:
+        raise BoundaryHold("WE2_STORAGE_EXACT_BASE_OR_REPO")
+    if len(changes) != len(EXACT_WE2_STORAGE_CHANGED) or (
+        frozenset(changes) != EXACT_WE2_STORAGE_CHANGED):
+        raise BoundaryHold("WE2_STORAGE_EXACT_CHANGED_SET")
+    for name in EXACT_WE2_STORAGE_PINS:
+        exact_we2_storage_blob(checkout, name)
+
+
+def check_exact_we2_bridge_source(checkout: Path, repo: str, branch: str,
+                                  base: str, changes: list[str]) -> None:
+    if branch != EXACT_WE2_BRIDGE_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_BRIDGE_BASE:
+        raise BoundaryHold("WE2_BRIDGE_EXACT_BASE_OR_REPO")
+    if len(changes) != len(EXACT_WE2_BRIDGE_CHANGED) or (
+            frozenset(changes) != EXACT_WE2_BRIDGE_CHANGED):
+        raise BoundaryHold("WE2_BRIDGE_EXACT_CHANGED_SET")
+    for name in EXACT_WE2_BRIDGE_PINS:
+        exact_we2_bridge_blob(checkout, name)
+
+
+def _exact_c_prisma_source_blob(checkout: Path, relative: str, expected: str) -> None:
+    """Bounded regular-file verification; no symlink, hardlink, unsafe mode or source drift."""
+    if relative not in ({EXACT_C_PRISMA_DOC_PATH, "tests/test_c_prisma_doc_admission.py"} |
+                        set(EXACT_C_PRISMA_WE3_DOC_SHA256)):
+        raise BoundaryHold("C_PRISMA_UNREVIEWED_SOURCE_PATH")
+    target = checkout
+    for name in relative.split("/"):
+        target = target / name
+        if target.is_symlink():
+            raise BoundaryHold("C_PRISMA_SYMLINK_ANCESTOR")
+    limit = 100_000 if relative in EXACT_C_PRISMA_WE3_DOC_SHA256 else 20_000
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= limit or
+            stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("C_PRISMA_SINGLE_FILE_REQUIRED")
+    fd = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if ((live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) !=
+                (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)):
+            raise BoundaryHold("C_PRISMA_SOURCE_CHANGED_DURING_READ")
+        content = os.read(fd, limit + 1)
+    finally:
+        os.close(fd)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected:
+        if relative == EXACT_C_PRISMA_DOC_PATH:
+            raise BoundaryHold("C_PRISMA_SHA256_DRIFT")
+        if relative in EXACT_C_PRISMA_WE3_DOC_SHA256:
+            raise BoundaryHold("C_PRISMA_REVIEWED_DOC_SHA256_DRIFT")
+        raise BoundaryHold("C_PRISMA_TEST_SHA256_DRIFT")
+
+
+def check_exact_c_prisma_doc_source(checkout: Path, repo: str, branch: str,
+                                    base: str, changes: list[str]) -> None:
+    """One C-reviewed documentation-only source transition, never a general Prisma rule."""
+    if branch != EXACT_C_PRISMA_DOC_BRANCH or repo != "Emaren/app-prodn":
+        raise BoundaryHold("C_PRISMA_SOURCE_BRANCH_OR_REPO")
+    if base != EXACT_C_PRISMA_DOC_BASE:
+        raise BoundaryHold("C_PRISMA_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+            not EXACT_C_PRISMA_DOC_REQUIRED.issubset(files) or
+            not files.issubset(EXACT_C_PRISMA_DOC_REQUIRED |
+                               EXACT_C_PRISMA_DOC_OPTIONAL_DOCSV2)):
+        raise BoundaryHold("C_PRISMA_CHANGED_FILE_SET")
+    _exact_c_prisma_source_blob(checkout, EXACT_C_PRISMA_DOC_PATH,
+                                EXACT_C_PRISMA_DOC_SHA256)
+    _exact_c_prisma_source_blob(checkout, "tests/test_c_prisma_doc_admission.py",
+                                EXACT_C_PRISMA_DOC_TEST_SHA256)
+    for reviewed, expected in EXACT_C_PRISMA_WE3_DOC_SHA256.items():
+        _exact_c_prisma_source_blob(checkout, reviewed, expected)
+
+
+def _exact_c_scan_source_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_C_SCAN_OS_HASHES.get(raw)
+    if expected is None:
+        raise BoundaryHold("C_SCAN_UNREVIEWED_PATH")
+    p = checkout
+    for name in raw.split("/"):
+        p = p / name
+        if p.is_symlink():
+            raise BoundaryHold("C_SCAN_SYMLINK_ANCESTOR")
+    st = p.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+            st.st_uid != os.geteuid() or not 1 <= st.st_size <= 20_000 or
+            stat.S_IMODE(st.st_mode) & 0o022):
+        raise BoundaryHold("C_SCAN_SINGLE_FILE")
+    fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(fd)
+        if (live.st_dev, live.st_ino, live.st_size, live.st_mtime_ns) != (
+                st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns):
+            raise BoundaryHold("C_SCAN_FILE_CHANGED")
+        blob = os.read(fd, 20001)
+    finally:
+        os.close(fd)
+    if len(blob) != st.st_size or hashlib.sha256(blob).hexdigest() != expected:
+        raise BoundaryHold("C_SCAN_SHA256_DRIFT")
+
+
+def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
+                                 base: str, changes: list[str]) -> None:
+    if branch != EXACT_C_SCAN_OS_BRANCH:
+        raise BoundaryHold("C_SCAN_SOURCE_BRANCH")
+    if repo != "Emaren/app-prodn":
+        raise BoundaryHold("C_SCAN_SOURCE_REPO")
+    if base != EXACT_C_SCAN_OS_BASE:
+        raise BoundaryHold("C_SCAN_SOURCE_BASE")
+    files = set(changes)
+    if (len(files) != len(changes) or
+        not EXACT_C_SCAN_OS_REQUIRED.issubset(files) or
+        not files.issubset(EXACT_C_SCAN_OS_REQUIRED | EXACT_C_SCAN_OS_OPTIONAL_DOCS)):
+        raise BoundaryHold("C_SCAN_CHANGED_FILE_SET")
+    for raw in EXACT_C_SCAN_OS_HASHES:
+        _exact_c_scan_source_blob(checkout, raw)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -531,13 +1262,38 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        receipt["changed_files"] = changed_source(checkout, base)
+        if (branch == EXACT_B_WATCHER_BRANCH or
+                (branch == "main" and base == EXACT_B_WATCHER_BASE
+                 and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
+                         for p in EXACT_B_WATCHER_SQL))):
+            check_exact_b_watcher_context(checkout, repo_name, branch, base, sha, ci=ci)
+            receipt["changed_files"] = exact_b_watcher_changes(checkout, base)
+        else:
+            receipt["changed_files"] = changed_source(checkout, base)
         check_exact_we2_factory_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_retention_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_data_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_factory_v3_receipt_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_v3_public_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_storage_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_bridge_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_PRISMA_DOC_BRANCH:
+            check_exact_c_prisma_doc_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
+        if branch == EXACT_C_SCAN_OS_BRANCH:
+            check_exact_c_scan_os_source(
+                checkout,repo_name,branch,base,receipt["changed_files"])
         receipt.update(status="PASS_SOURCE_POLICY_ONLY", os_denial_proven=False)
         print(json.dumps(receipt, sort_keys=True))
         return 0
-    except (BoundaryHold, KeyError, OSError, subprocess.TimeoutExpired) as exc:
+    except (BoundaryHold, KeyError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         print(json.dumps({"status": "HOLD_PRODUCT_BOUNDARY", "reason": str(exc)}), file=sys.stderr)
         return 3
 

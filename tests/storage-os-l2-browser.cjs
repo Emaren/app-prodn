@@ -73,12 +73,37 @@ async function main(){
      await page.waitForLoadState("load",{timeout:30000});
      const explorer=page.locator('main:visible').first();
      await explorer.getByRole("heading",{name:/Storage Explorer/}).waitFor({state:"visible",timeout:30000});
-     const cards=explorer.locator('section[aria-label="Three independent storage volumes"]');
-     assert.equal(await cards.getByRole("button").count(),3,"exactly three source planes");
-     for(const name of [/M1.*Development Mac/,/HEL1.*Root/,/HEL1.*Data volume/]){
+     const cards=explorer.locator('section[aria-label="Four independently verified storage planes"]');
+     assert.equal(await cards.getByRole("button").count(),4,"three source planes plus gated Intel vault");
+     for(const name of [/M1.*Development Mac/,/HEL1.*Root/,/HEL1.*Data volume/,/Intel.*Cold vault/]){
        assert.equal(await cards.getByRole("button",{name}).count(),1,"missing storage drive "+name);
      }
+     await cards.getByRole("button",{name:/Intel.*Cold vault/}).click();
+     await explorer.getByText(/No current verified Intel tenant inventory/).waitFor({state:"visible",timeout:15000});
+     assert.equal(await explorer.getByText(/Intel classification and automated cleanup: HOLD/).count(),1);
+     assert.equal(await explorer.getByText(/Signed free space is not signed used space/).count(),1);
+     await cards.getByRole("button",{name:/M1.*Development Mac/}).click();
      await explorer.getByText(/No current signed hog inventory for this drive/).waitFor({state:"visible",timeout:15000});
+     // BAE replaces the old three-label placeholder with four exact source-truth cards.
+     // Inspect rendered evidence, never assume unavailable bytes are zero or signed.
+     const coverage=explorer.locator('section[aria-label="Four-surface measured versus UNKNOWN evidence"]');
+     await coverage.getByRole("heading",{name:/Why is the filesystem still UNKNOWN/}).waitFor({state:"visible",timeout:15000});
+     assert.equal(await coverage.getByText("FULL BYTE COVERAGE NOT CERTIFIED",{exact:true}).count(),1);
+     const surfaces=coverage.locator("article");
+     assert.equal(await surfaces.count(),4,"three source planes and independently gated Intel must remain visible");
+     for(const label of ["M1 development Mac","HEL1 root filesystem","HEL1 mounted data volume","Intel cold-storage Mac"]){
+       const card=surfaces.filter({hasText:label});
+       assert.equal(await card.count(),1,"missing honest coverage card: "+label);
+       const detail=await card.innerText();
+       for(const marker of ["Capacity:","Directory coverage:","Authority:","Observed:","WHY:","NEXT WE"]){
+         assert.ok(detail.includes(marker),"missing "+marker+" provenance on "+label);
+       }
+     }
+     assert.match(await surfaces.filter({hasText:"M1 development Mac"}).innerText(),
+       /Directory coverage: (UNKNOWN|STALE)/,"unsigned M1 category coverage must not be promoted");
+     await explorer.getByRole("button",{name:/HEL1 · Data volume/}).click();
+     await explorer.getByText("HEL1 / Data volume 105319120",{exact:true}).first().waitFor({state:"visible"});
+     assert.equal(await explorer.getByText(/UUID.verified/i).count(),0);
      assert.equal(await explorer.getByRole("button",{name:/Record classification/i}).isDisabled(),true);
      assert.equal(await explorer.getByText(/Individual file coverage: NOT ADMITTED/).count(),1);
      assert.equal(await explorer.getByText(/No automated deletes/).count(),1);

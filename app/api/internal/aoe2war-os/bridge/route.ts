@@ -74,9 +74,89 @@ function bridgeFields(body: JsonRecord) {
   };
 }
 
+const STORAGE_VISUAL_MAX_BYTES = 49_152;
+const STORAGE_VISUAL_FIELDS = new Set([
+  "op", "bridgeId", "hostname", "platform", "version", "capabilities", "payload",
+]);
+
+function storageError(status: number, detail: string) {
+  return NextResponse.json({ detail }, { status, headers: NO_STORE });
+}
+
+async function storeVisual(payload: JsonRecord) {
+  try {
+    const ack = await acceptStorageVisualSubmission(payload);
+    return NextResponse.json(ack, { status: 201, headers: NO_STORE });
+  } catch {
+    return storageError(409, "STORAGE_VISUAL_AUTH_OR_REPLAY_HOLD");
+  }
+}
+
+async function scopedStoragePost(request: NextRequest, scope: string) {
+  if (scope !== "storage_visual") return storageError(403, "BRIDGE_SCOPE_DENIED");
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?$/i.test(contentType)) {
+    return storageError(415, "STORAGE_VISUAL_JSON_REQUIRED");
+  }
+
+  const length = request.headers.get("content-length");
+  if (length !== null && !/^\d+$/.test(length)) return storageError(400, "INVALID_CONTENT_LENGTH");
+  if (length !== null && Number(length) > STORAGE_VISUAL_MAX_BYTES) {
+    return storageError(413, "STORAGE_VISUAL_BODY_BOUNDS_HOLD");
+  }
+  if (!request.body) return storageError(400, "STORAGE_VISUAL_WIRE_INVALID");
+
+  const bytes = new Uint8Array(STORAGE_VISUAL_MAX_BYTES);
+  const reader = request.body.getReader();
+  let used = 0;
+  let wire: JsonRecord | null;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.byteLength > bytes.length - used) {
+        void reader.cancel().catch(() => undefined);
+        return storageError(413, "STORAGE_VISUAL_BODY_BOUNDS_HOLD");
+      }
+      bytes.set(value, used);
+      used += value.byteLength;
+    }
+    if (length !== null && Number(length) !== used) return storageError(400, "INVALID_CONTENT_LENGTH");
+    const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used));
+    wire = record(JSON.parse(json));
+  } catch {
+    return storageError(400, "STORAGE_VISUAL_WIRE_INVALID");
+  } finally {
+    reader.releaseLock();
+  }
+
+  // VPSSentry #50 signs the payload. Its other V1 wrapper fields describe the
+  // relay and must never supply producer identity, privileges or a heartbeat.
+  if (!wire || Object.keys(wire).length !== STORAGE_VISUAL_FIELDS.size ||
+      !Object.keys(wire).every(key => STORAGE_VISUAL_FIELDS.has(key)) ||
+      wire.op !== "storage_visual" || wire.version !== "storage-visual-bridge-v1" ||
+      typeof wire.bridgeId !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(wire.bridgeId) ||
+      typeof wire.hostname !== "string" || !wire.hostname.trim() || wire.hostname.length > 255 ||
+      typeof wire.platform !== "string" || !wire.platform.trim() || wire.platform.length > 64 ||
+      !Array.isArray(wire.capabilities) || wire.capabilities.length !== 0) {
+    return storageError(400, "STORAGE_VISUAL_WIRE_INVALID");
+  }
+  const payload = record(wire.payload);
+  return payload ? storeVisual(payload) : storageError(400, "STORAGE_VISUAL_WIRE_INVALID");
+}
+
 export async function POST(request: NextRequest) {
   const authError = unauthorized(request);
   if (authError) return authError;
+
+  // WE2 must overwrite this header on every external bridge request before
+  // opening ingress. Only the private control transport may remain unmarked.
+  const scope = request.headers.get("x-aoe2war-bridge-scope");
+  // The Nginx EXACT legacy operator endpoint must overwrite the untrusted
+  // client scope with operator_control. Only the separate storage visual
+  // endpoint may carry storage_visual. No unmarked direct POST is allowed.
+  if (scope === "storage_visual") return scopedStoragePost(request, scope);
+  if (scope !== "operator_control") return storageError(403, "BRIDGE_SCOPE_DENIED");
 
   const body = record(await request.json().catch(() => null));
   if (!body) {
@@ -148,17 +228,11 @@ export async function POST(request: NextRequest) {
   // Source-separated storage_visual uses the existing authenticated bridge.
   // No synthetic heartbeat, timer, scanner or release-controller operation.
   if (op === "storage_visual") {
-    try {
-      const payload = record(body.payload);
-      if (!payload || Buffer.byteLength(JSON.stringify(body),"utf8") > 49_152) {
-        return NextResponse.json({detail:"STORAGE_VISUAL_BODY_BOUNDS_HOLD"},{status:413,headers:NO_STORE});
-      }
-      const ack = await acceptStorageVisualSubmission(payload);
-      return NextResponse.json(ack,{status:201,headers:NO_STORE});
-    } catch {
-      // No raw private payload/keys/path or host data in an error response.
-      return NextResponse.json({detail:"STORAGE_VISUAL_AUTH_OR_REPLAY_HOLD"},{status:409,headers:NO_STORE});
+    const payload = record(body.payload);
+    if (!payload || Buffer.byteLength(JSON.stringify(body), "utf8") > STORAGE_VISUAL_MAX_BYTES) {
+      return storageError(413, "STORAGE_VISUAL_BODY_BOUNDS_HOLD");
     }
+    return storeVisual(payload);
   }
 
   const bridge = bridgeFields(body);

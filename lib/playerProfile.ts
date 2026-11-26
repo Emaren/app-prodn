@@ -10,7 +10,10 @@ import {
   readPlayerCivilizationLabel,
   isEarlyExitNoResult,
 } from "@/lib/gameStatsView";
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS } from "@/lib/replayResultAdjudications";
+import { loadRestrictedWatcherActivity, loadRestrictedViewerMemberships, loadRestrictedExactSteamSnapshots, type PublicWatcherActivity } from "@/lib/restrictedPlayerProfile";
 import { normalizeSessionKey } from "@/lib/liveSessionSnapshot";
 import {
   loadPendingWoloClaimSummariesByName,
@@ -206,32 +209,35 @@ export type PlayerBestResourceGame = {
 };
 
 export type PlayerWatcherStats = {
-  watcherKeys: number;
-  watcherEventCount: number;
+  publicActivity?: PublicWatcherActivity | null;
+  coverage?: "public-final-only";
+  watcherKeys: number | null;
+  watcherEventCount: number | null;
   watcherBackedMatches: number;
-  uniqueWatchers: number;
-  multiWatcherProofGames: number;
+  uniqueWatchers: number | null;
+  multiWatcherProofGames: number | null;
   bestMultiWatcherProofLabel: string | null;
-  bestMultiWatcherSourceCount: number;
+  bestMultiWatcherSourceCount: number | null;
   lastWatcherSeenAt: string | null;
-  recentParseMisses: number;
-  parserStoredAttempts: number;
-  parserFailedAttempts: number;
-  proofScore: number;
+  recentParseMisses: number | null;
+  parserStoredAttempts: number | null;
+  parserFailedAttempts: number | null;
+  proofScore: number | null;
 };
 
 export type PlayerWoloStats = {
+  availability?: "published-pending-only";
   pendingClaimWolo: number;
   pendingClaimCount: number;
-  claimedClaimWolo: number;
-  claimedClaimCount: number;
-  payoutTxCount: number;
-  wageredWolo: number;
-  payoutWolo: number;
-  activeStakeWolo: number;
-  stakingRewardsWolo: number;
+  claimedClaimWolo: number | null;
+  claimedClaimCount: number | null;
+  payoutTxCount: number | null;
+  wageredWolo: number | null;
+  payoutWolo: number | null;
+  activeStakeWolo: number | null;
+  stakingRewardsWolo: number | null;
   communityGiftWolo: number;
-  totalFlexWolo: number;
+  totalFlexWolo: number | null;
 };
 
 export type PlayerFormPoint = {
@@ -1148,7 +1154,9 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
     playerCivilization: player
       ? normalizePublicReplayText(readPlayerCivilizationLabel(player))
       : null,
-    submitterUids: [
+    // Restricted pages receive only their signed viewer's V10 membership after
+    // pagination, never the cached canonical owner or raw uploader identities.
+    submitterUids: isNonfinancialPublicReadProfile() ? [] : [
       game.userUid ?? null,
       ...(game.replayParseAttempts ?? []).map((attempt) => attempt.userUid),
     ],
@@ -1312,6 +1320,16 @@ function buildMatchFeed(
   };
 }
 
+export async function applyProfileViewerMembership(
+  prisma: PrismaClient, page: PlayerProfileMatchFeedPage, viewerUid: string | null,
+): Promise<PlayerProfileMatchFeedPage> {
+  if (!isNonfinancialPublicReadProfile()) return page;
+  const members = await loadRestrictedViewerMemberships(prisma, viewerUid, page.items.map(item => item.id));
+  return { ...page, items: page.items.map(item => ({
+    ...item, submitterUids: viewerUid && members.has(item.id) ? [viewerUid] : [],
+  })) };
+}
+
 function buildTickerItems(profile: {
   displayName: string;
   command: PlayerCommandStats;
@@ -1332,7 +1350,7 @@ function buildTickerItems(profile: {
     profile.normalizedStats.visibleGames > 0
       ? `${profile.normalizedStats.metricCount} exact metrics across ${profile.normalizedStats.visibleGames} games`
       : null,
-    profile.wolo.totalFlexWolo > 0 ? `${profile.wolo.totalFlexWolo} WOLO profile flex` : null,
+    profile.wolo.totalFlexWolo !== null && profile.wolo.totalFlexWolo > 0 ? `${profile.wolo.totalFlexWolo} WOLO profile flex` : null,
     profile.stream.twitchUrl ? `Twitch rail linked${profile.stream.twitchChannel ? `: ${profile.stream.twitchChannel}` : ""}` : null,
   ].filter((item): item is string => Boolean(item));
 
@@ -1437,6 +1455,33 @@ async function loadCandidateFinalGamesFresh(
     return [];
   }
 
+  if (isNonfinancialPublicReadProfile()) {
+    // V7 is final public truth. Preserve admitted scalar duration fields;
+    // never join raw attempts or private adjudication evidence.
+    const rows = await prisma.$queryRaw<Array<PlayerProfileGameRow & {
+      replayResultAdjudications: Array<{ decisionStatus: string; idempotencyKey: string; createdAt: string }>;
+    }>>(Prisma.sql`
+      SELECT v.*, g.duration, g.game_duration
+      FROM aoe2war_public_v7.parser_final_corpus v
+      JOIN public.game_stats g ON g.id = v.id
+      WHERE v.parse_reason IS DISTINCT FROM 'superseded_by_later_upload'
+      ${gameStatsIds ? Prisma.sql`AND v.id IN (${Prisma.join(gameStatsIds)})` : Prisma.empty}
+      ORDER BY v.played_on DESC, v."timestamp" DESC, v."createdAt" DESC, v.id DESC
+      LIMIT ${PROFILE_MATCH_SCAN_LIMIT}
+    `);
+    const retiredPrefixes = RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS.map(policy => `evidence:auto:${policy}:`);
+    const projected = rows.map(row => ({
+      ...row,
+      replayResultAdjudications: (row.replayResultAdjudications ?? [])
+        .filter(item => item.decisionStatus === "accepted" &&
+          !retiredPrefixes.some(prefix => item.idempotencyKey.startsWith(prefix)))
+        .slice(0, 1).map(item => ({ ...item, createdAt: new Date(item.createdAt) })),
+    }));
+    return dedupePlayerProfileGamesByReplay(cleanPublicGameRows(
+      projected as unknown as PublicGameStatsLike[], { includeReview: true, includeLive: false },
+    ) as unknown as PlayerProfileGameRow[]);
+  }
+
   const rows = await prisma.gameStats.findMany({
     where: {
       ...(gameStatsIds
@@ -1526,8 +1571,9 @@ async function loadExactSteamCandidateIndex(
   steamId: string,
 ): Promise<ExactSteamCandidateIndex | null> {
   try {
-    const snapshots =
-      await prisma.replayPlayerSnapshot.findMany({
+    const snapshots = isNonfinancialPublicReadProfile()
+      ? await loadRestrictedExactSteamSnapshots(prisma, steamId)
+      : await prisma.replayPlayerSnapshot.findMany({
         where: {
           playerKey: `steam:${steamId}`,
           projection: {
@@ -1961,6 +2007,18 @@ async function loadWatcherStats(
   games: PlayerProfileGameRow[],
   verificationLevel: number
 ): Promise<PlayerWatcherStats> {
+  if (isNonfinancialPublicReadProfile()) {
+    const publicActivity = user ? await loadRestrictedWatcherActivity(prisma, user.uid) : null;
+    return {
+      coverage: "public-final-only", publicActivity,
+      watcherKeys: null, watcherEventCount: null,
+      watcherBackedMatches: games.filter(game => (game.parse_source || "").startsWith("watcher")).length,
+      uniqueWatchers: null, multiWatcherProofGames: null,
+      bestMultiWatcherProofLabel: null, bestMultiWatcherSourceCount: null,
+      lastWatcherSeenAt: null, recentParseMisses: null,
+      parserStoredAttempts: null, parserFailedAttempts: null, proofScore: null,
+    };
+  }
   if (!user) {
     const watcherBackedMatches = games.filter((game) => (game.parse_source || "").startsWith("watcher")).length;
     return {
@@ -2191,7 +2249,17 @@ async function buildProfileFromPlayer(
 
   const [watcher, wolo, stream, rivalries, normalizedStats] = await Promise.all([
     loadWatcherStats(prisma, input.user, matchedGames, input.user?.verificationLevel ?? 0),
-    loadWoloStats(prisma, profileAliases, input.user ? { id: input.user.id } : null, community.giftedWolo),
+    isNonfinancialPublicReadProfile()
+      ? Promise.resolve<PlayerWoloStats>({
+          availability: "published-pending-only",
+          pendingClaimWolo: currentPlayer.pendingWoloClaimAmount,
+          pendingClaimCount: currentPlayer.pendingWoloClaimCount,
+          communityGiftWolo: community.giftedWolo,
+          claimedClaimWolo: null, claimedClaimCount: null, payoutTxCount: null,
+          wageredWolo: null, payoutWolo: null, activeStakeWolo: null,
+          stakingRewardsWolo: null, totalFlexWolo: null,
+        })
+      : loadWoloStats(prisma, profileAliases, input.user ? { id: input.user.id } : null, community.giftedWolo),
     loadStreamStats(prisma, input.user?.twitchStreamUrl ?? null, matchedGames),
     buildRivalSummaries(prisma, matchedGames.slice(0, 60), currentPlayer),
     loadPlayerNormalizedStats(prisma, {

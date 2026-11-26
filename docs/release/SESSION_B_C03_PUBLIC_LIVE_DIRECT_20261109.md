@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-c03-public-live-direct-20261109"
 title: "C03 explicit approved public-live endpoint without financial authority"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "App-only public read projection; finance execution denied"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "public"
 ---
 
 # C03 explicit approved public-live endpoint without financial authority
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: App-only public read projection; finance execution denied. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 The previous #1274 implementation placed public live-market summary inside the existing /api/bets/public-history payload. The requested external direct endpoint /api/bets/public-live was not provided. This additional route exposes the already-approved source as a *separate* bounded GET endpoint while retaining the old public-history result unchanged. Physical HEL1 review of aoe2war_public_v9.published_markets confirmed restricted web SELECT allowed, raw bet_markets SELECT/DML denied; the view is not intrinsically filtered to settled markets. At the checked instant there were 0 eligible open/live/closing/awaiting markets among 3462 historical rows.
 

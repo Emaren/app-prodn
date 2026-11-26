@@ -54,9 +54,36 @@ class BoundaryTests(unittest.TestCase):
                 {"docs/DOCUMENTATION_CONTROL_PLANE.md",
                  "docs/document-registry.json"} |
                 {x for x in doc_paths if x.endswith(".md")})
+        # Preserve the old v3 runner pin even though THIS PR legitimately
+        # updates the live source under a distinct, reviewed branch/base/pin.
+        self.assertEqual(policy.EXACT_WE2_FACTORY_SHA256["scripts/aoe2_product_release.py"],
+                         "84d9a0e277595b1492d88f19e7c9829dc2896929738328ec37419c792f1f23f5")
+        # Historical policy hashes NEVER move. Current branch's new exact
+        # review hashes are independent. Run old hostile fixtures using only
+        # temporary in-memory source pins for the newly changed live files.
+        self.assertEqual(policy.EXACT_WE2_FACTORY_SHA256[
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py"],
+            "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064")
         for relative,expected in policy.EXACT_WE2_FACTORY_SHA256.items():
-            self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
-                             expected)
+            if relative not in {"scripts/aoe2_product_release.py",
+                "docs/release/artifacts/aoe2war_product_release_controller_v3.py",
+                "tests/test_product_controller_recovery.py"}:
+                self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),
+                                 expected)
+        # The old guard's negative-contract fixtures must use a temporary
+        # matching runner blob, never update the real legacy policy pin.
+        temporary_runner_sha = hashlib.sha256(
+            (source/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
+        legacy_test_patch = mock.patch.dict(policy.EXACT_WE2_FACTORY_SHA256, {
+            "scripts/aoe2_product_release.py": temporary_runner_sha,
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py":
+              hashlib.sha256((source/
+                "docs/release/artifacts/aoe2war_product_release_controller_v3.py").read_bytes()).hexdigest(),
+            "tests/test_product_controller_recovery.py":
+              hashlib.sha256((source/"tests/test_product_controller_recovery.py").read_bytes()).hexdigest()
+        })
+        legacy_test_patch.start()
+        self.addCleanup(legacy_test_patch.stop)
         # The existing runner's SINGLE pinned root hash follows this exact
         # source controller, never a wildcard or runtime-discovered SHA.
         import ast
@@ -127,22 +154,443 @@ class BoundaryTests(unittest.TestCase):
             # source: the generic branch grammar remains closed.
             self.assertIsNone(policy.BRANCH.fullmatch("we2/factory-v4-future"))
 
+    def test_we2_factory_retention_new_exact_bae_source_admission(self):
+        import hashlib
+        source=GUARD.parent.parent
+        branch=policy.EXACT_WE2_FACTORY_RETENTION_BRANCH
+        base=policy.EXACT_WE2_FACTORY_RETENTION_BASE
+        pins=policy.EXACT_WE2_FACTORY_RETENTION_PINS
+        expected={
+            "scripts/aoe2_product_release.py":
+                "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015",
+            "scripts/aoe2_factory_retention_post_t10.py":
+                "81eeea068721bf751d11366b13d6c75f876bce72d3629e58cde6b3f31151ca12",
+            "tests/test_factory_retention_post_t10.py":
+                "723b42341d91ff63201c723b1f4f3f132efa9c864ac602414e31b4a11e652b11",
+        }
+        self.assertEqual(branch,"we2/factory-post-t10-retention-20261122")
+        self.assertEqual(base,"5ead114347294b345a34700dffdc456c2bcc86ba")
+        self.assertEqual(pins,expected)
+        self.assertIsNotNone(policy.BRANCH.fullmatch(branch))
+        self.assertIsNone(policy.BRANCH.fullmatch("we2/arbitrary-new-controller"))
+        expected_changes=set(expected)|{
+            "scripts/product_boundary_guard.py",
+            "tests/test_product_boundary_guard.py",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+            "docs/document-registry.json"}
+        self.assertEqual(set(policy.EXACT_WE2_FACTORY_RETENTION_CHANGED),expected_changes)
+        for relative,digest in pins.items():
+            if relative != "scripts/aoe2_product_release.py":
+                self.assertEqual(hashlib.sha256((source/relative).read_bytes()).hexdigest(),digest)
+        # Test the historical retired review using only an isolated exact
+        # SHA substitution; original policy dict is restored by addCleanup.
+        retention_patch=mock.patch.dict(policy.EXACT_WE2_FACTORY_RETENTION_PINS,{
+            "scripts/aoe2_product_release.py":hashlib.sha256(
+                (source/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
+        })
+        retention_patch.start()
+        self.addCleanup(retention_patch.stop)
+        changed=sorted(expected_changes)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            for relative in pins:
+                p=root/relative
+                p.parent.mkdir(parents=True,exist_ok=True)
+                p.write_bytes((source/relative).read_bytes())
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+                for relative in pins:
+                    self.assertEqual(policy.authorize_changed_source(root,base,relative),relative)
+                self.assertIsNone(policy.check_exact_we2_factory_retention_source(
+                    root,"Emaren/app-prodn",branch,base,changed))
+            for candidate_base,candidate_repo,candidate_changes in (
+                ("0"*40,"Emaren/app-prodn",changed),
+                (base,"Emaren/kingdom-traders",changed),
+                (base,"Emaren/app-prodn",changed[:-1]),
+                (base,"Emaren/app-prodn",changed+["scripts/another_controller.py"]),
+                (base,"Emaren/app-prodn",changed+[changed[0]]),
+            ):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.check_exact_we2_factory_retention_source(
+                        root,candidate_repo,branch,candidate_base,candidate_changes)
+            with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":"main"}):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.authorize_changed_source(
+                        root,base,"scripts/aoe2_product_release.py")
+            candidate=root/"scripts/aoe2_factory_retention_post_t10.py"
+            raw=candidate.read_bytes()
+            candidate.write_bytes(raw+b"\n# unauthorized future mutation\n")
+            with self.assertRaisesRegex(policy.BoundaryHold,
+                                        "WE2_RETENTION_SOURCE_HASH_DRIFT"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
+            candidate.write_bytes(raw)
+            link=root/"extra-hardlink"
+            os.link(candidate,link)
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RETENTION_SOURCE_CUSTODY"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
+            link.unlink()
+            candidate.unlink()
+            candidate.symlink_to(source/"scripts/aoe2_factory_retention_post_t10.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_RETENTION_SOURCE_SYMLINK"):
+                policy.exact_we2_factory_retention_blob(
+                    root,"scripts/aoe2_factory_retention_post_t10.py")
+
+    def test_we2_factory_data_exact_new_branch_no_legacy_authority(self):
+        import hashlib
+        root=GUARD.parent.parent
+        p=policy
+        branch=p.EXACT_WE2_FACTORY_DATA_BRANCH
+        base=p.EXACT_WE2_FACTORY_DATA_BASE
+        names=sorted(p.EXACT_WE2_FACTORY_DATA_CHANGED)
+        self.assertEqual(branch,"we2/factory-data-transport-20261123")
+        self.assertTrue(p.BRANCH.fullmatch(branch))
+        self.assertFalse(p.BRANCH.fullmatch("we2/other-unreviewed-root"))
+        self.assertEqual(base,"f833d7e633cee4b36f1427fa45d76081fa0796ef")
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_PINS),9)
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_DATA_DOC_PINS),10)
+        self.assertEqual(p.EXACT_WE2_FACTORY_DATA_DOC_GENERATED,{
+            "docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"})
+        self.assertEqual(set(names),
+            set(p.EXACT_WE2_FACTORY_DATA_PINS)|
+            set(p.EXACT_WE2_FACTORY_DATA_DOC_PINS)|
+            p.EXACT_WE2_FACTORY_DATA_DOC_GENERATED|{
+            "scripts/product_boundary_guard.py","tests/test_product_boundary_guard.py"})
+        self.assertEqual(p.EXACT_WE2_FACTORY_SHA256[
+            "docs/release/artifacts/aoe2war_product_release_controller_v3.py"],
+            "3ca35f437b8da2f366f3d0f84662563dd68e5d9d4caf4cd31038ec0f9145c064")
+        self.assertEqual(p.EXACT_WE2_FACTORY_RETENTION_PINS[
+            "scripts/aoe2_product_release.py"],
+            "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015")
+        # Historical DATA admission hashes stay frozen. Exercise its old
+        # negative fixtures against the current runner bytes *in memory*
+        # without widening the committed historical pin or new branch scope.
+        runner="scripts/aoe2_product_release.py"
+        historical=p.EXACT_WE2_FACTORY_DATA_PINS[runner]
+        self.assertEqual(historical,
+            "59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab")
+        self.addCleanup(p.EXACT_WE2_FACTORY_DATA_PINS.__setitem__,runner,historical)
+        p.EXACT_WE2_FACTORY_DATA_PINS[runner]=hashlib.sha256(
+            (root/runner).read_bytes()).hexdigest()
+        p.check_exact_we2_factory_data_source(root,"Emaren/app-prodn",branch,base,names)
+        with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+            for raw in p.EXACT_WE2_FACTORY_DATA_PINS:
+                self.assertEqual(p.authorize_changed_source(root,base,raw),raw)
+            with self.assertRaises(policy.BoundaryHold):
+                p.authorize_changed_source(root,"0"*40,
+                    "scripts/aoe2_product_release.py")
+        for repo,base2,changes in (
+                ("Emaren/app-prodn","0"*40,names),
+                ("Emaren/other-repo",base,names),
+                ("Emaren/app-prodn",base,names[:-1]),
+                ("Emaren/app-prodn",base,names+["scripts/unknown-source.py"]),
+                ("Emaren/app-prodn",base,names+[names[0]])):
+            with self.assertRaises(policy.BoundaryHold):
+                p.check_exact_we2_factory_data_source(root,repo,branch,base2,changes)
+        with tempfile.TemporaryDirectory() as td:
+            place=Path(td)
+            for filename in (set(p.EXACT_WE2_FACTORY_DATA_PINS)
+                             |set(p.EXACT_WE2_FACTORY_DATA_DOC_PINS)):
+                dest=place/filename
+                dest.parent.mkdir(exist_ok=True,parents=True)
+                dest.write_bytes((root/filename).read_bytes())
+            p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
+            candidate=place/"docs/release/artifacts/aoe2war_factory_data_stage_v1.py"
+            original=candidate.read_bytes()
+            candidate.write_bytes(original+b"\n# unreviewed mutation")
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SOURCE_SHA"):
+                p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
+            candidate.write_bytes(original)
+            link=place/"unreviewed-hardlink"
+            os.link(candidate,link)
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SOURCE_CUSTODY"):
+                p.exact_we2_factory_data_blob(place,
+                    "docs/release/artifacts/aoe2war_factory_data_stage_v1.py")
+            link.unlink()
+            candidate.unlink()
+            candidate.symlink_to(root/"docs/release/artifacts/aoe2war_factory_data_stage_v1.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"DATA_SYMLINK"):
+                p.check_exact_we2_factory_data_source(place,"Emaren/app-prodn",branch,base,names)
+
+    def test_we2_factory_v3_invocation_exact_source_admission_and_denials(self):
+        import hashlib
+        root=GUARD.parent.parent
+        p=policy
+        # The original V3 ROOT admission pin must remain byte-for-byte frozen.
+        # For its historic hostile fixtures, temporarily rebind only in memory.
+        frozen=p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS["scripts/aoe2_product_release.py"]
+        self.addCleanup(p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS.__setitem__,
+                        "scripts/aoe2_product_release.py", frozen)
+        p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS["scripts/aoe2_product_release.py"]=hashlib.sha256(
+            (root/"scripts/aoe2_product_release.py").read_bytes()).hexdigest()
+        branch=p.EXACT_WE2_FACTORY_V3_RECEIPT_BRANCH
+        base=p.EXACT_WE2_FACTORY_V3_RECEIPT_BASE
+        names=sorted(p.EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED)
+        self.assertEqual(branch,"we2/factory-v3-invocation-reconciliation-20261124")
+        self.assertEqual(base,"f14bf4625ed124beafe80dc34188dcb7da16daa0")
+        self.assertEqual(len(names),19)
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS),13)
+        self.assertEqual(len(p.EXACT_WE2_FACTORY_V3_RECEIPT_GENERATED),2)
+        for name,sha in p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
+
+        self.assertEqual(p.EXACT_WE2_FACTORY_DATA_PINS[
+            "scripts/aoe2_product_release.py"],
+            "59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab")
+        for name,sha in p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
+        p.check_exact_we2_factory_v3_receipt_source(
+            root,"Emaren/app-prodn",branch,base,names)
+        with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+            for path in p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS:
+                self.assertEqual(p.authorize_changed_source(root,base,path),path)
+            with self.assertRaises(policy.BoundaryHold):
+                p.authorize_changed_source(root,"0"*40,
+                    "scripts/aoe2_product_release.py")
+        for repository,prior,changed in (
+            ("Emaren/other",base,names),
+            ("Emaren/app-prodn","0"*40,names),
+            ("Emaren/app-prodn",base,names[:-1]),
+            ("Emaren/app-prodn",base,names+["scripts/unknown.py"]),
+            ("Emaren/app-prodn",base,names+[names[0]])):
+            with self.assertRaises(policy.BoundaryHold):
+                p.check_exact_we2_factory_v3_receipt_source(
+                    root,repository,branch,prior,changed)
+        with tempfile.TemporaryDirectory() as td:
+            dest=Path(td)
+            for name in (set(p.EXACT_WE2_FACTORY_V3_RECEIPT_PINS) |
+                         set(p.EXACT_WE2_FACTORY_V3_REVIEWED_DOC_PINS)):
+                target=dest/name
+                target.parent.mkdir(exist_ok=True,parents=True)
+                target.write_bytes((root/name).read_bytes())
+            p.check_exact_we2_factory_v3_receipt_source(
+                dest,"Emaren/app-prodn",branch,base,names)
+            victim=dest/"scripts/aoe2_product_release.py"
+            original=victim.read_bytes()
+            victim.write_bytes(original+b"\\n# mutation")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_RECEIPT_SHA"):
+                p.check_exact_we2_factory_v3_receipt_source(
+                    dest,"Emaren/app-prodn",branch,base,names)
+            victim.write_bytes(original)
+            victim.unlink()
+            victim.symlink_to(root/"scripts/aoe2_product_release.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_RECEIPT_SYMLINK"):
+                p.check_exact_we2_factory_v3_receipt_source(
+                    dest,"Emaren/app-prodn",branch,base,names)
+
+    def test_we2_v3_public_exact_source_and_hostile_denials(self):
+        import hashlib
+        p=policy
+        root=GUARD.parent.parent
+        branch=p.EXACT_WE2_V3_PUBLIC_BRANCH
+        base=p.EXACT_WE2_V3_PUBLIC_BASE
+        changed=sorted(p.EXACT_WE2_V3_PUBLIC_CHANGED)
+        self.assertEqual(branch,"we2/factory-v3-public-publisher-source-20261124")
+        self.assertEqual(base,"d7797cf7e34b230031193c563e7505b3c2b55c64")
+        self.assertEqual(len(changed),10)
+        self.assertEqual(len(p.EXACT_WE2_V3_PUBLIC_PINS),6)
+        for name,sha in p.EXACT_WE2_V3_PUBLIC_PINS.items():
+            self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
+        p.check_exact_we2_v3_public_source(
+            root,"Emaren/app-prodn",branch,base,changed)
+        with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
+            for name in p.EXACT_WE2_V3_PUBLIC_PINS:
+                self.assertEqual(p.authorize_changed_source(root,base,name),name)
+        for repo,head,files in (
+            ("Emaren/other",base,changed),
+            ("Emaren/app-prodn","0"*40,changed),
+            ("Emaren/app-prodn",base,changed[:-1]),
+            ("Emaren/app-prodn",base,changed+[changed[0]]),
+            ("Emaren/app-prodn",base,changed+["scripts/unreviewed.py"]),
+        ):
+            with self.assertRaises(policy.BoundaryHold):
+                p.check_exact_we2_v3_public_source(root,repo,branch,head,files)
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=Path(tmp)
+            for name in p.EXACT_WE2_V3_PUBLIC_PINS:
+                target=dest/name
+                target.parent.mkdir(exist_ok=True,parents=True)
+                target.write_bytes((root/name).read_bytes())
+            p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            victim=dest/"docs/release/artifacts/aoe2war_factory_public_status_v2.py"
+            source=victim.read_bytes()
+            victim.write_bytes(source+b"\\n# tampered")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_SHA"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            victim.write_bytes(source)
+            hardlink=dest/"hardlink"
+            os.link(victim,hardlink)
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_FILE_AUTHORITY"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+            hardlink.unlink()
+            victim.unlink()
+            victim.symlink_to(root/"docs/release/artifacts/aoe2war_factory_public_status_v2.py")
+            with self.assertRaisesRegex(policy.BoundaryHold,"WE2_V3_PUBLIC_SYMLINK"):
+                p.check_exact_we2_v3_public_source(dest,"Emaren/app-prodn",branch,base,changed)
+
+    def test_we2_storage_exact_root_source_admission_and_negative_cases(self):
+        import hashlib
+        root = GUARD.parent.parent
+        p = policy
+        self.assertEqual(p.EXACT_WE2_STORAGE_BRANCH,
+                         "we2/storage-protected-ingress-20261120")
+        self.assertEqual(p.EXACT_WE2_STORAGE_BASE,
+                         "815d66ef94900d29bb50b7241dc47927a4343955")
+        self.assertIsNotNone(p.BRANCH.fullmatch(p.EXACT_WE2_STORAGE_BRANCH))
+        self.assertIsNone(p.BRANCH.fullmatch("we2/unsafe-root-wildcard"))
+        self.assertEqual(len(p.EXACT_WE2_STORAGE_CHANGED), 10)
+        self.assertEqual(set(p.EXACT_WE2_STORAGE_CHANGED),
+                         set(p.EXACT_WE2_STORAGE_PINS) |
+                         {"scripts/product_boundary_guard.py",
+                          "tests/test_product_boundary_guard.py",
+                          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                          "docs/document-registry.json"})
+        name = "scripts/r25_b_guard_production_v1.cjs"
+        # The historical protected ingress's pin must stay immutable even
+        # after the new branch changes the guard. Prove the OLD blob from
+        # that exact prior source, not the new branch's current blob.
+        historical = subprocess.check_output([
+            "git", "-C", str(root), "show",
+            p.EXACT_WE2_BRIDGE_BASE + ":" + name], timeout=15)
+        self.assertEqual(hashlib.sha256(historical).hexdigest(),
+                         p.EXACT_WE2_STORAGE_PINS[name])
+        for item, digest in p.EXACT_WE2_STORAGE_PINS.items():
+            if item == name:
+                self.assertNotEqual(
+                    hashlib.sha256((root / item).read_bytes()).hexdigest(),
+                    digest, "new guard must not masquerade as old-reviewed source")
+            else:
+                self.assertEqual(hashlib.sha256((root / item).read_bytes()).hexdigest(),
+                                 digest, item)
+        with self.assertRaisesRegex(p.BoundaryHold, "WE2_STORAGE_EXACT_SHA_MISMATCH"):
+            p.check_exact_we2_storage_source(
+                root, "Emaren/app-prodn", p.EXACT_WE2_STORAGE_BRANCH,
+                p.EXACT_WE2_STORAGE_BASE, sorted(p.EXACT_WE2_STORAGE_CHANGED))
+        cases = [
+            ("Emaren/other-repo", p.EXACT_WE2_STORAGE_BASE,
+             sorted(p.EXACT_WE2_STORAGE_CHANGED)),
+            ("Emaren/app-prodn", "f" * 40,
+             sorted(p.EXACT_WE2_STORAGE_CHANGED)),
+            ("Emaren/app-prodn", p.EXACT_WE2_STORAGE_BASE,
+             sorted(set(p.EXACT_WE2_STORAGE_CHANGED) -
+                    {"docs/release/artifacts/aoe2war_storage_visual_exact_ingress_v1.conf"})),
+            ("Emaren/app-prodn", p.EXACT_WE2_STORAGE_BASE,
+             sorted(set(p.EXACT_WE2_STORAGE_CHANGED) | {"scripts/unreviewed-root.py"})),
+        ]
+        for repo, base, changes in cases:
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_STORAGE_"):
+                p.check_exact_we2_storage_source(
+                    root, repo, p.EXACT_WE2_STORAGE_BRANCH, base, changes)
+        with mock.patch.dict(os.environ, {"BOUNDARY_BRANCH": p.EXACT_WE2_STORAGE_BRANCH}):
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_STORAGE_EXACT_SHA_MISMATCH"):
+                p.authorize_changed_source(root, p.EXACT_WE2_STORAGE_BASE, name)
+            with self.assertRaisesRegex(p.BoundaryHold, "WRONG_BASE"):
+                p.authorize_changed_source(root, "e" * 40, name)
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp)
+            (scratch / "scripts").mkdir()
+            target = scratch / name
+            target.write_bytes(historical)
+            self.assertEqual(p.exact_we2_storage_blob(scratch, name), name)
+            target.write_bytes(historical + b"malicious")
+            with self.assertRaisesRegex(p.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                p.exact_we2_storage_blob(scratch, name)
+            target.unlink()
+            target.symlink_to(root / name)
+            with self.assertRaisesRegex(p.BoundaryHold, "SYMLINK_ANCESTOR"):
+                p.exact_we2_storage_blob(scratch, name)
+            target.unlink()
+            target.write_bytes(historical)
+            alias = scratch / "hardlink"
+            os.link(target, alias)
+            with self.assertRaisesRegex(p.BoundaryHold, "SINGLE_REGULAR_FILE"):
+                p.exact_we2_storage_blob(scratch, name)
+
+    def test_we2_bridge_dual_path_exact_source_and_hostile_cases(self):
+        import hashlib
+        p = policy
+        root = GUARD.parent.parent
+        self.assertEqual(p.EXACT_WE2_BRIDGE_BRANCH,
+                         "we2/bridge-dual-path-20261121")
+        self.assertEqual(p.EXACT_WE2_BRIDGE_BASE,
+                         "1bb42c53ebd44bc22b07a3b64862d39f457fb529")
+        self.assertTrue(p.BRANCH.fullmatch(p.EXACT_WE2_BRIDGE_BRANCH))
+        self.assertFalse(p.BRANCH.fullmatch("we2/unreviewed-post"))
+        self.assertEqual(set(p.EXACT_WE2_BRIDGE_CHANGED),
+                         set(p.EXACT_WE2_BRIDGE_PINS) |
+                         {"scripts/product_boundary_guard.py",
+                          "tests/test_product_boundary_guard.py",
+                          "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                          "docs/document-registry.json"})
+        for name, digest in p.EXACT_WE2_BRIDGE_PINS.items():
+            self.assertEqual(hashlib.sha256((root / name).read_bytes()).hexdigest(),
+                             digest, name)
+        p.check_exact_we2_bridge_source(
+            root, "Emaren/app-prodn", p.EXACT_WE2_BRIDGE_BRANCH,
+            p.EXACT_WE2_BRIDGE_BASE, sorted(p.EXACT_WE2_BRIDGE_CHANGED))
+        for repo, base, changes in [
+            ("Emaren/unsafe", p.EXACT_WE2_BRIDGE_BASE,
+             sorted(p.EXACT_WE2_BRIDGE_CHANGED)),
+            ("Emaren/app-prodn", "f" * 40,
+             sorted(p.EXACT_WE2_BRIDGE_CHANGED)),
+            ("Emaren/app-prodn", p.EXACT_WE2_BRIDGE_BASE,
+             sorted(set(p.EXACT_WE2_BRIDGE_CHANGED) -
+                    {"deploy/aoe2war-bridge-dual-path.nginx.inc"})),
+            ("Emaren/app-prodn", p.EXACT_WE2_BRIDGE_BASE,
+             sorted(set(p.EXACT_WE2_BRIDGE_CHANGED) | {"scripts/unreviewed-post.cjs"})),
+        ]:
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_BRIDGE_"):
+                p.check_exact_we2_bridge_source(
+                    root, repo, p.EXACT_WE2_BRIDGE_BRANCH, base, changes)
+        guard = "scripts/r25_b_guard_production_v1.cjs"
+        with mock.patch.dict(os.environ, {"BOUNDARY_BRANCH": p.EXACT_WE2_BRIDGE_BRANCH}):
+            self.assertEqual(p.authorize_changed_source(
+                root, p.EXACT_WE2_BRIDGE_BASE, guard), guard)
+            with self.assertRaisesRegex(p.BoundaryHold, "(WRONG_BASE|WE2_)"):
+                p.authorize_changed_source(root, "e" * 40, guard)
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp)
+            (scratch / "scripts").mkdir()
+            target = scratch / guard
+            original = (root / guard).read_bytes()
+            target.write_bytes(original)
+            self.assertEqual(p.exact_we2_bridge_blob(scratch, guard), guard)
+            target.write_bytes(original + b"// forbidden addition")
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_BRIDGE_EXACT_SHA_MISMATCH"):
+                p.exact_we2_bridge_blob(scratch, guard)
+            target.unlink()
+            target.symlink_to(root / guard)
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_BRIDGE_SYMLINK_ANCESTOR"):
+                p.exact_we2_bridge_blob(scratch, guard)
+            target.unlink()
+            target.write_bytes(original)
+            alias = scratch / "hardlink"
+            os.link(target, alias)
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_BRIDGE_SOURCE_CUSTODY"):
+                p.exact_we2_bridge_blob(scratch, guard)
+
     def test_owner_b_ember_guard_exact_branch_base_hash_and_no_wildcard(self):
         name = policy.EXACT_REVIEWED_B_EMBER_GUARD
         source = GUARD.parent / "r25_b_guard_production_v1.cjs"
         import hashlib
+        # Historical Ember source is verified at the *immutable prior main*
+        # commit, not silently rebound to the newly reviewed WE2 guard bytes.
+        historical = subprocess.check_output([
+            "git", "-C", str(GUARD.parent.parent), "show",
+            policy.EXACT_WE2_STORAGE_BASE + ":scripts/r25_b_guard_production_v1.cjs",
+        ], timeout=15)
         self.assertEqual(policy.EXACT_REVIEWED_B_EMBER_BRANCH,
                          "session-b/ember-november-polish-20261116")
         self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_REVIEWED_B_EMBER_BRANCH))
         self.assertIsNone(policy.BRANCH.fullmatch("session-b/another-os-release"))
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
+        self.assertEqual(hashlib.sha256(historical).hexdigest(),
                          policy.EXACT_REVIEWED_B_EMBER_SHA256)
         self.denied_source(name)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "scripts").mkdir()
             p = root / name
-            blob = source.read_bytes()
+            blob = historical
             p.write_bytes(blob)
             self.assertEqual(policy.authorize_changed_source(
                 root, policy.EXACT_REVIEWED_B_EMBER_BASE, name), name)
@@ -415,6 +863,124 @@ class BoundaryTests(unittest.TestCase):
                 policy.authorize_changed_source(
                     checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE,
                     "scripts/aoe2_product_unreviewed_future.py")
+
+    def test_b_watcher_exact_sql_custody_and_default_deny(self):
+        source = GUARD.parent.parent
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in policy.EXACT_B_WATCHER_SQL:
+                self.denied_source(name)
+                out = root / name
+                out.parent.mkdir(parents=True, exist_ok=True)
+                original = (source / name).read_bytes()
+                out.write_bytes(original)
+                self.assertEqual(policy.exact_b_watcher_blob(root, name), name)
+                out.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+                with self.assertRaisesRegex(policy.BoundaryHold, "SQL_SHA"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.write_bytes(original)
+                out.chmod(0o666)
+                with self.assertRaisesRegex(policy.BoundaryHold, "CUSTODY"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.chmod(0o644)
+                alias = root / "alias"
+                os.link(out, alias)
+                with self.assertRaisesRegex(policy.BoundaryHold, "CUSTODY"):
+                    policy.exact_b_watcher_blob(root, name)
+                alias.unlink()
+                out.rename(alias)
+                out.symlink_to(alias)
+                with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK"):
+                    policy.exact_b_watcher_blob(root, name)
+                out.unlink()
+                alias.rename(out)
+            for name in ("config/other.sql", "tests/fixtures/other.sql",
+                         "db/financial.sql", "prisma/migrations/other.sql"):
+                self.denied_source(name)
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.exact_b_watcher_blob(root, name)
+
+    def test_b_watcher_exact_changed_scope(self):
+        source = GUARD.parent.parent
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in policy.EXACT_B_WATCHER_SQL:
+                out = root / name
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes((source / name).read_bytes())
+            regression = root / policy.EXACT_B_WATCHER_REGRESSION
+            original = (source / policy.EXACT_B_WATCHER_REGRESSION).read_bytes()
+            regression.write_bytes(original)
+            rows = ["M\t" + name for name in sorted(policy.EXACT_B_WATCHER_CHANGED)]
+            def check(data, mode="100644 abc 0\tfile"):
+                def fake_git(_, *args):
+                    return "\n".join(data) if args[0] == "diff" else mode
+                with mock.patch.object(policy, "git", side_effect=fake_git):
+                    return policy.exact_b_watcher_changes(root, policy.EXACT_B_WATCHER_BASE)
+            self.assertEqual(set(check(rows)), policy.EXACT_B_WATCHER_CHANGED)
+            regression.write_bytes(original + b"\n")
+            with self.assertRaisesRegex(policy.BoundaryHold, "REGRESSION_SHA"):
+                check(rows)
+            regression.write_bytes(original)
+            for bad in (rows[:-1], rows + ["A\tconfig/third.sql"],
+                        rows + ["D\tlib/other.ts"], rows + [rows[0]],
+                        ["D" + rows[0][1:]] + rows[1:],
+                        ["T" + rows[0][1:]] + rows[1:]):
+                with self.assertRaisesRegex(policy.BoundaryHold, "CHANGED_SCOPE"):
+                    check(bad)
+            with self.assertRaisesRegex(policy.BoundaryHold, "INDEX_MODE"):
+                check(rows, "120000 abc 0\tfile")
+
+    def test_b_watcher_context_and_exact_main_merge(self):
+        import json
+        base = policy.EXACT_B_WATCHER_BASE
+        branch = policy.EXACT_B_WATCHER_BRANCH
+        sha, second, tree = "a"*40, "b"*40, "c"*40
+        repo = "Emaren/app-prodn"
+        with tempfile.TemporaryDirectory() as tmp:
+            event_path = Path(tmp) / "event.json"
+            event = {"number":1499,"pull_request":{
+                "head":{"repo":{"full_name":repo},"ref":branch,"sha":sha},
+                "base":{"repo":{"full_name":repo},"ref":"main","sha":base}}}
+            def fake_git(_, *args):
+                if args[0] == "merge-base":
+                    return args[1]
+                if args[0] == "rev-list":
+                    return f"{sha} {base} {second}"
+                if args[0] == "rev-parse":
+                    return tree
+                raise AssertionError(args)
+            def check(r=repo,b=branch,ba=base,ci=True):
+                policy.check_exact_b_watcher_context(Path(tmp),r,b,ba,sha,ci=ci)
+            with mock.patch.object(policy,"git",side_effect=fake_git), mock.patch.dict(
+                    os.environ,{"GITHUB_EVENT_PATH":str(event_path),
+                                "GITHUB_EVENT_NAME":"pull_request"}):
+                event_path.write_text(json.dumps(event))
+                check()
+                for r,b,ba in ((repo,"session-c/other",base),
+                               ("Emaren/kingdom-traders",branch,base),
+                               (repo,branch,"0"*40)):
+                    with self.assertRaises(policy.BoundaryHold):
+                        check(r,b,ba)
+                event["pull_request"]["head"]["repo"]["full_name"]="fork/app-prodn"
+                event_path.write_text(json.dumps(event))
+                with self.assertRaisesRegex(policy.BoundaryHold,"PR_IDENTITY"):
+                    check()
+                event_path.write_text(json.dumps({"ref":"refs/heads/main",
+                    "before":base,"after":sha,"repository":{"full_name":repo}}))
+                with mock.patch.dict(os.environ,{"GITHUB_EVENT_NAME":"push"}):
+                    check(b="main")
+                    with mock.patch.object(policy,"git",return_value=f"{sha} {base}"):
+                        with self.assertRaisesRegex(policy.BoundaryHold,"MAIN_PARENTS"):
+                            check(b="main")
+                    def wrong_tree(_, *args):
+                        return "d"*40 if args == ("rev-parse",second+"^{tree}") else fake_git(_, *args)
+                    with mock.patch.object(policy,"git",side_effect=wrong_tree):
+                        with self.assertRaisesRegex(policy.BoundaryHold,"MAIN_TREE"):
+                            check(b="main")
+            with mock.patch.object(policy,"git",return_value="d"*40):
+                with self.assertRaisesRegex(policy.BoundaryHold,"REVIEW_ANCESTRY"):
+                    check(ci=False)
 
     def test_prior_nine_negative_cases(self):
         values = (

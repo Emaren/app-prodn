@@ -13,6 +13,14 @@ const STEAM = "steamcommunity.com";
 // The approved appearance writer is a separate nonfinancial SCRAM-only
 // daemon on one group-gated Unix socket. Never accept an arbitrary socket path.
 const APPEARANCE_SOCKET = "/run/aoe2war-appearance-writer/appearance.sock";
+// Separate, source-pinned nonfinancial signed-session text writer.
+const SOCIAL_SOCKET = "/run/aoe2war-social-writer/social.sock";
+const SOCIAL_ROUTES = new Set([
+  "/api/social/clan-text", "/api/contact-emaren", "/api/lobby/chat",
+]);
+const SOCIAL_SERVICE_PATHS = new Set([
+  "/v1/clan/text", "/v1/direct/text", "/v1/lobby/text",
+]);
 const APPEARANCE_ROUTES = new Set([
   "/api/admin/site-theme-campaign", "/api/user/theme-campaign-override",
 ]);
@@ -33,6 +41,22 @@ function approvedAppearanceRequest(opts) {
     opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
     !opts.protocol && !opts.auth && approvedAppearanceHeaders(opts.headers);
 }
+function approvedSocialHeaders(h) {
+  return h && typeof h === "object" && Object.keys(h).length === 4 &&
+    h["Content-Type"] === "application/json" && h.Connection === "close" &&
+    Number.isInteger(h["Content-Length"]) && h["Content-Length"] >= 2 &&
+    h["Content-Length"] <= 4096 &&
+    typeof h["x-social-signed-session"] === "string" &&
+    h["x-social-signed-session"].length >= 32 &&
+    h["x-social-signed-session"].length <= 4096;
+}
+function approvedSocialRequest(opts) {
+  if (!opts || typeof opts !== "object") return false;
+  return opts.socketPath === SOCIAL_SOCKET &&
+    SOCIAL_SERVICE_PATHS.has(opts.path) && opts.method === "POST" &&
+    opts.timeout === 2300 && !opts.host && !opts.hostname && !opts.port &&
+    !opts.protocol && !opts.auth && approvedSocialHeaders(opts.headers);
+}
 function hold(reason) { throw new Error("AOE2WAR_PRODUCTION_HOLD:" + reason); }
 function need(ok, reason) { if (!ok) hold(reason); }
 const required = Object.freeze({
@@ -48,7 +72,35 @@ const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECR
   "PATH", "HOME", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TERM",
   "INVOCATION_ID", "JOURNAL_STREAM", "SYSTEMD_EXEC_PID", "NOTIFY_SOCKET",
   "WATCHDOG_PID", "WATCHDOG_USEC", "TMPDIR", "NEXT_TELEMETRY_DISABLED",
-  "CACHE_DIRECTORY"]);
+  "CACHE_DIRECTORY",
+  // Source-pinned, nonfinancial Storage OS receipt reader only. No teaching
+  // owner key, deletion signer, custody authority or arbitrary env suffix.
+  "AOE2WAR_OS_STORE_DIR", "AOE2WAR_OS_BRIDGE_TOKEN",
+  "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HMAC_KEY",
+  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY"]);
+const storageKeys = [
+  "AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY",
+  "AOE2WAR_STORAGE_VISUAL_HMAC_KEY",
+  "AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY",
+];
+const storageEnv = ["AOE2WAR_OS_STORE_DIR", "AOE2WAR_OS_BRIDGE_TOKEN", ...storageKeys];
+const storagePresent = storageEnv.filter(k => Object.prototype.hasOwnProperty.call(process.env, k));
+if (storagePresent.length) {
+  need(storagePresent.length === storageEnv.length, "STORAGE_PARTIAL_ENROLLMENT_DENIED");
+  need(process.env.AOE2WAR_OS_STORE_DIR ===
+    "/var/lib/aoe2war-storage-visual-web-v1",
+    "STORAGE_STORE_EXACT_ROOT_REQUIRED");
+  const token = process.env.AOE2WAR_OS_BRIDGE_TOKEN;
+  need(typeof token === "string" && /^[A-Za-z0-9_+=/-]{32,256}$/.test(token),
+    "STORAGE_BRIDGE_TOKEN_INVALID");
+  const keys = storageKeys.map(k => process.env[k]);
+  need(keys.every(k => typeof k === "string" && /^[a-f0-9]{64}$/.test(k)) &&
+    new Set(keys).size === keys.length &&
+    keys.every(k => k !== token), "STORAGE_SOURCE_KEY_SEGREGATION_REQUIRED");
+}
 need(process.platform === "linux" && process.getuid() === UID && process.geteuid() === UID,
   "EXACT_DEDICATED_UID_REQUIRED");
 for (const [key, value] of Object.entries(required)) need(process.env[key] === value, "ENV_" + key);
@@ -152,8 +204,16 @@ net.Socket.prototype.connect = function (...args) {
     opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
     !opts.protocol && !opts.auth && opts.method === "POST" &&
     opts.timeout === 2300 && approvedAppearanceHeaders(opts.headers);
+  const nodeSocialConnect = opts.path === SOCIAL_SOCKET &&
+    opts.socketPath === SOCIAL_SOCKET &&
+    opts.host === "localhost" && opts.port === 80 && !opts.hostname &&
+    !opts.protocol && !opts.auth && opts.method === "POST" &&
+    opts.timeout === 2300 && approvedSocialHeaders(opts.headers);
   const exactWriterSocket = (opts.path === APPEARANCE_SOCKET &&
-    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect;
+    !opts.host && !opts.hostname && !opts.port) || nodeWriterConnect ||
+    nodeSocialConnect;
+  // Deliberately do not permit a bare {path:SOCIAL_SOCKET} connect:
+  // the new Social lane requires the exact signed-session Node22 envelope.
   need(exactWriterSocket || (!opts.path &&
     ((host === "127.0.0.1" && [5432, 3331].includes(port)) ||
      (host === STEAM && port === 443 && this instanceof tls.TLSSocket))),
@@ -180,10 +240,11 @@ for (const api of [http, https]) {
         hostname: new URL(first).hostname, port: new URL(first).port,
         path: new URL(first).pathname + new URL(first).search, protocol: new URL(first).protocol } : first;
     const exactAppearance = api === http && approvedAppearanceRequest(opts);
-    need(opts && (!opts.socketPath || exactAppearance) &&
+    const exactSocial = api === http && approvedSocialRequest(opts);
+    need(opts && (!opts.socketPath || exactAppearance || exactSocial) &&
       !opts.auth && !opts.createConnection &&
       (!opts.agent || opts.agent === api.globalAgent), "CUSTOM_NETWORK_AGENT_DENIED");
-    if (exactAppearance) return original.apply(this, args);
+    if (exactAppearance || exactSocial) return original.apply(this, args);
     const protocol = api === https ? "https:" : "http:";
     const host = opts.hostname || opts.host;
     const url = protocol + "//" + host + ":" + (opts.port || (api === https ? 443 : 80)) + (opts.path || "/");
@@ -222,10 +283,54 @@ http.Server.prototype.emit = function (event, ...args) {
       APPEARANCE_ROUTES.has(path) &&
       typeof request.headers?.["content-type"] === "string" &&
       request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
+    const socialWrite = request.method === "POST" &&
+      SOCIAL_ROUTES.has(path) &&
+      typeof request.headers?.["content-type"] === "string" &&
+      request.headers["content-type"].split(";", 1)[0].trim() === "application/json";
+    // Storage ingest is the ONLY additionally permitted nonfinancial write.
+    // Nginx MUST replace an external x-aoe2war-bridge-scope header with its
+    // own storage_visual scope in an exact-route, POST-only proxy location.
+    // This guard is not the signer: the route still authenticates the bridge
+    // bearer and per-plane HMAC receipts, then emits a signed durable ACK.
+    const bridgeLength = request.headers?.["content-length"];
+    const bridgeToken = request.headers?.["x-aoe2war-os-key"];
+    const storageVisualOnlyWrite =
+      request.method === "POST" &&
+      request.url === "/api/internal/aoe2war-os/bridge" &&
+      request.socket?.remoteAddress === "127.0.0.1" &&
+      request.headers?.host === "aoe2war.com" &&
+      request.headers?.["x-forwarded-proto"] === "https" &&
+      request.headers?.["x-aoe2war-bridge-scope"] === "storage_visual" &&
+      typeof bridgeToken === "string" &&
+      bridgeToken.length >= 32 && bridgeToken.length <= 256 &&
+      typeof bridgeLength === "string" &&
+      /^[1-9][0-9]{0,4}$/.test(bridgeLength) &&
+      Number(bridgeLength) <= 49152 &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      request.headers?.["content-type"] === "application/json";
+    // Separate trusted Nginx path preserves the existing operator commands
+    // and heartbeat without weakening storage_visual's signed-submission lane.
+    // Nginx MUST overwrite the client-supplied scope on the exact control
+    // endpoint; downstream route independently checks the bearer credential.
+    const operatorBridgeWrite =
+      request.method === "POST" &&
+      request.url === "/api/internal/aoe2war-os/bridge" &&
+      request.socket?.remoteAddress === "127.0.0.1" &&
+      request.headers?.host === "aoe2war.com" &&
+      request.headers?.["x-forwarded-proto"] === "https" &&
+      request.headers?.["x-aoe2war-bridge-scope"] === "operator_control" &&
+      typeof bridgeToken === "string" &&
+      bridgeToken.length >= 32 && bridgeToken.length <= 256 &&
+      typeof bridgeLength === "string" &&
+      /^[1-9][0-9]{0,6}$/.test(bridgeLength) &&
+      Number(bridgeLength) <= 262144 &&
+      request.headers?.["transfer-encoding"] === undefined &&
+      request.headers?.["content-type"] === "application/json";
     const safe = ["GET", "HEAD"].includes(request.method) ||
       (path === "/api/auth/session" && ["POST", "DELETE"].includes(request.method)) ||
       (path === "/api/user/ping" && request.method === "POST") ||
-      appearanceWrite;
+      appearanceWrite || socialWrite || storageVisualOnlyWrite ||
+      operatorBridgeWrite;
     if (!safe) {
       response.writeHead(405, { Allow: "GET, HEAD", "Cache-Control": "no-store", "Content-Length": "0" });
       response.end(); return true;

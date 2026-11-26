@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-c03-same-slot-dropin-pin-v2-20261109"
 title: "C03: source-pinned same-slot rollback with existing systemd memory drop-in"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "source-only, finance-restricted, requires physical acceptance"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # C03: source-pinned same-slot rollback with existing systemd memory drop-in
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: source-only, finance-restricted, requires physical acceptance. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 The original reviewed #1267 root controller has an impossible live HEL1 precondition: its restore requires DropInPaths empty. HEL1's actual aoe2hdbets-web-prod.service has a legitimate, root-owned systemd memory cap drop-in. Do not delete or override it to satisfy an outdated predicate.
 

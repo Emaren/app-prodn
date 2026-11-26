@@ -231,3 +231,100 @@ class FactoryF1PublicationTests(unittest.TestCase):
         self.assertEqual(result["root"]["reservedBytes"],10*4096)
         self.assertEqual(result["root"]["usedBytes"],800*4096)
         self.assertEqual(result["root"]["usedPercent"],81)
+
+    def make_data_fixture(self,base):
+        obj=self.invocation_fixture(base)
+        stage_root=base/"data-stage"
+        stage=stage_root/(".aoe2war-b-os-"+("f"*12)+"-run-1234")
+        stage.mkdir(parents=True,mode=0o700)
+        stage.chmod(0o700)
+        archive=stage/"runtime.tar.gz"
+        raw=(b"REVIEWED_ARCHIVE_SHA256_DATA_V3_"*8)
+        archive.write_bytes(raw)
+        archive.chmod(0o400)
+        st=archive.stat()
+        manifest_path=base/("f"*12+"-run-1234.json")
+        manifest=json.loads(manifest_path.read_text())
+        sha=hashlib.sha256(raw).hexdigest()
+        manifest.update({
+            "schema":"aoe2war.product.web-release-manifest.v3",
+            "transport_mode":"data-archive-v1",
+            "archive_path":str(archive),
+            "archive_dev":st.st_dev,
+            "archive_inode":st.st_ino,
+            "archive_bytes":len(raw),
+            "archive_sha256":sha
+        })
+        obj["runtimeArchiveBytes"]=len(raw)
+        obj["artifactSha256"]=sha
+        manifest_path.write_text(json.dumps(manifest))
+        return obj,manifest,manifest_path,archive,stage_root
+
+    def read_v3(self,base,obj,stage_root):
+        archive=stage_root/(".aoe2war-b-os-"+("f"*12)+"-run-1234")/"runtime.tar.gz"
+        with patch.object(m,"DATA_STAGE_BASE",stage_root), \
+             patch.object(m,"DATA_STAGE_DEV",archive.stat().st_dev), \
+             patch.object(m,"DATA_STAGE_OWNER_UID",archive.stat().st_uid):
+            return self.read_invocation(base,obj)
+
+    def test_v3_data_manifest_positive_original_clock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp)
+            obj,manifest,mp,archive,stage_root=self.make_data_fixture(base)
+            result=self.read_v3(base,obj,stage_root)
+            self.assertIsNotNone(result)
+            self.assertEqual(result["receiptSha256"],hashlib.sha256(
+                (base/"deployment-invocation-v1.json").read_bytes()).hexdigest())
+            self.assertEqual(result["kind"],"warm")
+            self.assertEqual(result["coverage"],"full")
+            self.assertEqual(result["firstVerifiedLiveMs"],2000)
+            self.assertEqual(result["durableAcceptanceMs"],5000)
+            self.assertNotIn("monotonicOriginNs",result)
+
+    def test_v3_rejects_wrong_transport_device_inode_path_and_downgrade(self):
+        for change in (
+            {"transport_mode":"root-archive-v1"},
+            {"archive_dev":0},
+            {"archive_dev":True},
+            {"archive_inode":0},
+            {"archive_inode":None},
+            {"archive_inode":99999999},
+            {"archive_path":"/tmp/forged-runtime.tar.gz"},
+            {"schema":"aoe2war.product.web-release-manifest.v2"},
+        ):
+            with self.subTest(change=change),tempfile.TemporaryDirectory() as tmp:
+                base=Path(tmp)
+                obj,manifest,mp,archive,stage_root=self.make_data_fixture(base)
+                manifest.update(change)
+                mp.write_text(json.dumps(manifest))
+                self.assertIsNone(self.read_v3(base,obj,stage_root))
+
+    def test_v3_rejects_content_tamper_symlink_and_unfrozen_mode(self):
+        for variant in ("digest","symlink","mode","stage-mode"):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as tmp:
+                base=Path(tmp)
+                obj,manifest,mp,archive,stage_root=self.make_data_fixture(base)
+                if variant=="digest":
+                    archive.chmod(0o600)
+                    raw=archive.read_bytes()
+                    archive.write_bytes(b"A"+raw[1:])
+                    archive.chmod(0o400)
+                elif variant=="symlink":
+                    previous=archive.with_name("original.tar.gz")
+                    archive.rename(previous)
+                    archive.symlink_to(previous.name)
+                elif variant=="mode":
+                    archive.chmod(0o600)
+                else:
+                    archive.parent.chmod(0o750)
+                self.assertIsNone(self.read_v3(base,obj,stage_root))
+
+    def test_v3_rejects_wrong_archive_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp)
+            obj,manifest,mp,archive,stage_root=self.make_data_fixture(base)
+            archive.chmod(0o400)
+            with patch.object(m,"DATA_STAGE_BASE",stage_root), \
+                 patch.object(m,"DATA_STAGE_DEV",archive.stat().st_dev), \
+                 patch.object(m,"DATA_STAGE_OWNER_UID",-1):
+                self.assertIsNone(self.read_invocation(base,obj))

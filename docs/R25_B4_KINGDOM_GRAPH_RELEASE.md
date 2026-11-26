@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "post-r25-source-only-visual-no-runtime"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "internal"
 ---
@@ -43,3 +43,14 @@ Review basis: the retained original document and the current canonical App main 
 The canonical Kingdom Index routes and protected admin layout are tracked. Historical B4 construction source does not prove a November rendered route, runtime, restart, financial admission or site-theme activation. New candidate Index fingerprint needs an independent exact-head census.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `config/kingdom-index-routes.json`: current canonical-main blob `f0271c18d2151aded1581ea04aacfff9d8a169a8`
+- `app/admin/layout.tsx`: current canonical-main blob `06f0e673651de9e6b8adb87803d4f83ac002b5f0`
+
+**Current finding:** Kingdom Index route JSON has materially changed since the prior 8cc838... blob; the old route-count fingerprint cannot be treated as current. Admin layout is unchanged.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

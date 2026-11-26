@@ -179,3 +179,44 @@ test("original Traffic page displays two distinct source stamps without backfill
   assert.match(s,/<PremiumTimeSeriesChart/);
   assert.doesNotMatch(s,/Recent observations graph|backfillMissingDays/);
 });
+
+const versionedTrafficFixture = () => ({
+  archive_calculated_at: "2026-11-27T01:00:00Z",
+  metric_transition: { first_date: "2026-11-25", from_version: "legacy-canonical-session",
+    to_version: "v3-utc-day-slice", description: "V3 day-local model" },
+  points: [
+    { date: "2026-10-19", values: { totalTraffic: 100, suspectedHuman: 20, confirmedHuman: 4 } },
+    { date: "2026-11-25", metricVersion: "v3-utc-day-slice", values: { totalTraffic: 110, suspectedHuman: 22, confirmedHuman: 5 } },
+  ],
+});
+
+test("V3 proxy preserves the real first certified metric transition without backfill", () => {
+  const result = normalizePublicTrafficPayload(versionedTrafficFixture(), "2026-11-27");
+  assert.deepEqual(result.metricTransition, { firstDate: "2026-11-25",
+    fromVersion: "legacy-canonical-session", toVersion: "v3-utc-day-slice" });
+  assert.equal(result.points[0].metricVersion, undefined);
+  assert.equal(result.points[1].metricVersion, "v3-utc-day-slice");
+  assert.deepEqual(result.points.map(p => p.date), ["2026-10-19", "2026-11-25"]);
+  const page = readFileSync("app/traffic/page.tsx", "utf8");
+  assert.match(page, /metricTransition = report.metricTransition/);
+  assert.match(page, /Metric definition changes on/);
+});
+
+test("V3 proxy rejects absent, orphan, premature and mixed metric transition evidence", () => {
+  const make = versionedTrafficFixture;
+  const f = make();
+  assert.throws(() => normalizePublicTrafficPayload({ ...f, metric_transition: undefined }, "2026-11-27"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload({ ...f, points: f.points.slice(0,1) }, "2026-11-27"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload({ ...f, metric_transition: {...f.metric_transition, first_date: "2026-11-24"} }, "2026-11-27"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload({ ...f, points: [...f.points, {...f.points[0], date:"2026-11-26"}] }, "2026-11-27"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload({ ...f, points: [{...f.points[0], metricVersion:"unknown"}, f.points[1]] }, "2026-11-27"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload(f, "2026-11-25"), /metric transition/);
+  assert.throws(() => normalizePublicTrafficPayload({...f, points:[f.points[0], {...f.points[1], calculatedAt:"2026-11-25T01:00:00Z"}]}, "2026-11-27"), /metric transition/);
+});
+
+test("legacy-only history has no invented metric transition", () => {
+  const f = versionedTrafficFixture();
+  const result = normalizePublicTrafficPayload({archive_calculated_at:f.archive_calculated_at,points:[f.points[0]]},"2026-11-27");
+  assert.equal(result.metricTransition, undefined);
+  assert.equal(result.points.length, 1);
+});

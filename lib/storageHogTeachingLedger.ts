@@ -6,9 +6,10 @@ import {createHash,createHmac,randomUUID,timingSafeEqual} from "node:crypto";
 import {constants} from "node:fs";
 import {promises as fs} from "node:fs";
 import path from "node:path";
+import {assertIndependentTip,enrolledOwnerBinding,witnessIndependentTip} from "./storageIndependentLedgerTip.ts";
 import {
-  STORAGE_TEACHING_SCHEMA,teachingDisposition,isTeachingLevel,isTeachingPlane,
-  isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,
+  STORAGE_TEACHING_SCHEMA,CATEGORY_REVIEW_VERSION,CLASSIFICATION_REVIEW_VERSION,teachingDisposition,strongestRecordedProtection,isTeachingLevel,isTeachingPlane,isBusinessDomain,isStorageLifecycle,
+  isProtectionLevel,type TeachingPlane,type TeachingLevel,type ProtectionLevel,type BusinessDomain,type StorageLifecycle,
   type LearningEffect,
 } from "./storageHogTeachingPolicy.ts";
 
@@ -24,11 +25,27 @@ export type TeachingEvent={
   id:string;at:string;plane:TeachingPlane;category:string;
   sourceObservedAt:string;sourceFingerprint:string;grossBytes:number;
   sourceFloor:ProtectionLevel;overlaps:boolean;
+  // Earlier V1 entries have no authenticated account binding.
+  ownerBinding?:string;
+  reviewVersion?:string;
+  // V2 labels are separate owner intent, never inferred from folder names.
+  domain?:BusinessDomain;
+  lifecycle?:StorageLifecycle;
   requestedLevel:TeachingLevel;effectiveLevel:ProtectionLevel;
   note:string;previousId:string|null;previousDigest:string|null;
   effect:LearningEffect;digestSha256:string;hmacSha256:string;
 };
 type BareEvent=Omit<TeachingEvent,"digestSha256"|"hmacSha256">;
+
+export function teachingOwnerAccess(sessionUid:string, enrolledUid=process.env.AOE2WAR_STORAGE_TEACHING_OWNER_UID) {
+  if (!enrolledUid || enrolledUid.trim() !== enrolledUid || enrolledUid.length > 100) {
+    return {ownerBinding:null, mayRecord:false};
+  }
+  return {
+    ownerBinding:createHash("sha256").update("AOE2WAR:STORAGE-TEACHING-ACCOUNT:V1\0").update(enrolledUid).digest("hex"),
+    mayRecord:sessionUid === enrolledUid,
+  };
+}
 
 function key():Buffer {
   const hex=process.env.AOE2WAR_STORAGE_OWNER_TEACHING_HMAC_KEY?.trim();
@@ -91,6 +108,13 @@ function verified(event:unknown,secret:Buffer):event is TeachingEvent{
     typeof x.sourceFingerprint!=="string"||!HEX.test(x.sourceFingerprint)||
     typeof x.grossBytes!=="number"||!Number.isSafeInteger(x.grossBytes)||x.grossBytes<0||
     !isProtectionLevel(x.sourceFloor)||typeof x.overlaps!=="boolean"||
+    (x.ownerBinding!==undefined&&(typeof x.ownerBinding!=="string"||!HEX.test(x.ownerBinding)))||
+    ((x.ownerBinding===undefined)!==(x.reviewVersion===undefined))||
+    (x.reviewVersion!==undefined&&x.reviewVersion!==CATEGORY_REVIEW_VERSION&&
+      x.reviewVersion!==CLASSIFICATION_REVIEW_VERSION)||
+    (x.reviewVersion===CLASSIFICATION_REVIEW_VERSION
+      ? (!isBusinessDomain(x.domain)||!isStorageLifecycle(x.lifecycle))
+      : (x.domain!==undefined||x.lifecycle!==undefined))||
     !isTeachingLevel(x.requestedLevel)||!isProtectionLevel(x.effectiveLevel)||
     typeof x.note!=="string"||x.note.length>160||
     !(x.previousId===null||(typeof x.previousId==="string"&&/^[a-f0-9-]{36}$/.test(x.previousId)))||
@@ -109,7 +133,11 @@ export async function readTeachingEvents():Promise<TeachingEvent[]>{
   const secret=key();
   let dir:string;
   try{dir=await ledgerDir(false);}
-  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return [];throw e;}
+  catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT"){
+    if(process.env.NODE_ENV==="production")
+      await assertIndependentTip("teaching",[],enrolledOwnerBinding());
+    return [];
+  }throw e;}
   const names=(await fs.readdir(dir)).filter(n=>n!==".write-lock").sort();
   if(names.length>MAX_EVENTS||names.some(n=>!FILE.test(n)))
     throw Error("TEACHING_EVENT_NAMES_HOLD");
@@ -134,6 +162,8 @@ export async function readTeachingEvents():Promise<TeachingEvent[]>{
       events.push(x);prior=x;
     }finally{await fh.close();}
   }
+  if(process.env.NODE_ENV==="production")
+    await assertIndependentTip("teaching",events,enrolledOwnerBinding());
   return events;
 }
 export function latestTeachingEvent(events:TeachingEvent[],plane:TeachingPlane,category:string){
@@ -142,14 +172,28 @@ export function latestTeachingEvent(events:TeachingEvent[],plane:TeachingPlane,c
 export async function appendTeachingEvent(input:{
   plane:TeachingPlane;category:string;sourceObservedAt:string;sourceFingerprint:string;
   grossBytes:number;sourceFloor:ProtectionLevel;overlaps:boolean;
-  requestedLevel:TeachingLevel;note:string;previousId:string|null;
+  requestedLevel:TeachingLevel;note:string;previousId:string|null;ownerBinding:string;
+  domain?:BusinessDomain; lifecycle?:StorageLifecycle;
 }):Promise<TeachingEvent>{
-  if(!CAT.test(input.category)||!HEX.test(input.sourceFingerprint)||!isTeachingPlane(input.plane)||
+  if(typeof input.ownerBinding!=="string"||!HEX.test(input.ownerBinding)||
+     !CAT.test(input.category)||!HEX.test(input.sourceFingerprint)||!isTeachingPlane(input.plane)||
      !isTeachingLevel(input.requestedLevel)||!isProtectionLevel(input.sourceFloor)||
      !Number.isSafeInteger(input.grossBytes)||input.grossBytes<0||
      typeof input.overlaps!=="boolean"||!Number.isFinite(Date.parse(input.sourceObservedAt))||
-     typeof input.note!=="string"||input.note.length>160)
+     typeof input.note!=="string"||input.note.length>160||
+     ((input.domain===undefined)!==(input.lifecycle===undefined))||
+     (input.domain!==undefined&&(!isBusinessDomain(input.domain)||
+       !isStorageLifecycle(input.lifecycle))))
     throw Error("TEACHING_FIELDS_INVALID");
+  if(process.env.NODE_ENV==="production"){
+    if(process.env.AOE2WAR_STORAGE_OWNER_TIP_WITNESS_SOCKET!==
+      "/run/aoe2war-storage-independent-tip/witness.sock")
+      throw Error("TEACHING_INDEPENDENT_WITNESS_REQUIRED");
+    if(input.domain===undefined||input.lifecycle===undefined)
+      throw Error("TEACHING_DIMENSIONS_REQUIRED");
+    if(input.ownerBinding!==enrolledOwnerBinding())
+      throw Error("TEACHING_OWNER_BINDING_HOLD");
+  }
   const dir=await ledgerDir(true),lock=path.join(dir,".write-lock");
   try{await fs.mkdir(lock,{mode:0o700});}catch{throw Error("TEACHING_BUSY_HOLD");}
   try{
@@ -162,10 +206,20 @@ export async function appendTeachingEvent(input:{
     if(admission.status!=="ACCEPT"||admission.effect===null||admission.effectiveLevel===null)
       throw Error("TEACHING_PROTECTED_LEVEL_HOLD");
     if(immutable)throw Error("TEACHING_L5_ALREADY_PERMANENT");
+    // The signed ledger is append-only. Later L2 suggestions cannot silently
+    // undo any earlier L3/L4, owner deny or inherited source floor.
+    const priorFloor=strongestRecordedProtection(old,input.plane,input.category);
+    if(input.requestedLevel<priorFloor)
+      throw Error("TEACHING_OWNER_STRONGER_PROTECTION_HOLD");
+    // No reclassification/downgrade authority is installed here; a distinct
+    // separately authenticated and reviewed version would be required.
+
     const before=old.at(-1)??null;
     const stamp=new Date(Math.max(Date.now(),before?Date.parse(before.at)+1:0)).toISOString();
     const bare:BareEvent={schema:STORAGE_TEACHING_SCHEMA,id:randomUUID(),at:stamp,
-      plane:input.plane,category:input.category,
+      plane:input.plane,category:input.category,ownerBinding:input.ownerBinding,
+      reviewVersion:input.domain===undefined?CATEGORY_REVIEW_VERSION:CLASSIFICATION_REVIEW_VERSION,
+      ...(input.domain===undefined?{}:{domain:input.domain,lifecycle:input.lifecycle}),
       sourceObservedAt:input.sourceObservedAt,sourceFingerprint:input.sourceFingerprint,
       grossBytes:input.grossBytes,sourceFloor:input.sourceFloor,overlaps:input.overlaps,
       requestedLevel:input.requestedLevel,effectiveLevel:admission.effectiveLevel,
@@ -180,6 +234,8 @@ export async function appendTeachingEvent(input:{
     finally{await fh.close();}
     const d=await fs.open(dir,constants.O_RDONLY);
     try{await d.sync();}finally{await d.close();}
+    if(process.env.NODE_ENV==="production")
+      await witnessIndependentTip("teaching",[...old,event],input.ownerBinding);
     return event;
   }finally{await fs.rmdir(lock);}
 }

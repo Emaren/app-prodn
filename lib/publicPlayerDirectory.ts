@@ -1200,7 +1200,7 @@ async function overlayPublicPlayerDirectoryLiveState(
 
   const signedWatcherByKey =
     new Map(
-      signedWatcherRatings.map((state) => [
+      (signedWatcherRatings ?? []).map((state) => [
         `steam:${state.steamId}`,
         state,
       ]),

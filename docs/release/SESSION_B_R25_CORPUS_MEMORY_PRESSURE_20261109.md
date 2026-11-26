@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-r25-corpus-heap-pressure-20261109"
 title: "Session B R25 generation-aware replay corpus pressure repair"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
-source_of_truth: "git"
-authority: "source-only-nonfinancial-r25-memory-guard"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Session B R25 generation-aware replay corpus pressure repair
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: source-only-nonfinancial-r25-memory-guard. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 ## Exact physical problem
 

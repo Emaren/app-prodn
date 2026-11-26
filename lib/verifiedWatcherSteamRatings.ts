@@ -51,8 +51,11 @@ export function selectLatestSteamObservation(
 }
 
 const TTL_MS = 120_000;
+const FAILURE_RETRY_MS = 30_000;
 let cache: { until: number; value: VerifiedWatcherSteamRating[] } | null = null;
 let active: Promise<VerifiedWatcherSteamRating[]> | null = null;
+let retryNotBefore = 0;
+let cacheGeneration = 0;
 const rating = (x: unknown): number | null =>
   typeof x === "number" && Number.isInteger(x) && x > 0 && x <= 5000 ? x : null;
 const iso = (x: Date | null) =>
@@ -60,7 +63,7 @@ const iso = (x: Date | null) =>
 
 async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRating[]> {
   const rows = await prisma.$queryRaw<DbRow[]>(Prisma.sql`
-    WITH verified_games AS MATERIALIZED (
+    WITH verified_games AS (
       SELECT g.id, g.played_on, g.timestamp, g.players::jsonb AS players
       FROM game_stats g
       WHERE g.parse_source IN ('watcher_live','watcher_final')
@@ -129,48 +132,66 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
              IN ('final_recording','legacy_recording'))
         )
     ),
+    -- The original global identity_count window sorted *all* expanded
+    -- historical participants. Prove uniqueness inside each one-game JSON
+    -- array instead; no historical replay, player, or provenance is dropped.
     observations AS (
-      SELECT game.id, game.played_on, game.timestamp, p->>'steam_id' AS steam_id,
-        COUNT(*) OVER (PARTITION BY game.id, p->>'steam_id') AS identity_count,
-        CASE WHEN jsonb_typeof(p->'steam_rm_rating') = 'number'
-            AND p->>'steam_rm_rating' ~ '^[0-9]{1,5}$'
-            AND (p->>'steam_rm_rating')::integer BETWEEN 1 AND 5000
-            AND COALESCE(p #>> '{steam_rating_sources,steam_rm_rating}', 'unmarked')
+      SELECT game.id, game.played_on, game.timestamp,
+        unique_player.steam_id,
+        CASE WHEN jsonb_typeof(unique_player.p->'steam_rm_rating') = 'number'
+            AND unique_player.p->>'steam_rm_rating' ~ '^[0-9]{1,5}$'
+            AND (unique_player.p->>'steam_rm_rating')::integer BETWEEN 1 AND 5000
+            AND COALESCE(unique_player.p #>>
+              '{steam_rating_sources,steam_rm_rating}', 'unmarked')
               IN ('hd_header','unmarked')
-          THEN (p->>'steam_rm_rating')::integer END AS rm,
-        CASE WHEN jsonb_typeof(p->'steam_dm_rating') = 'number'
-            AND p->>'steam_dm_rating' ~ '^[0-9]{1,5}$'
-            AND (p->>'steam_dm_rating')::integer BETWEEN 1 AND 5000
-            AND COALESCE(p #>> '{steam_rating_sources,steam_dm_rating}', 'unmarked')
+          THEN (unique_player.p->>'steam_rm_rating')::integer END AS rm,
+        CASE WHEN jsonb_typeof(unique_player.p->'steam_dm_rating') = 'number'
+            AND unique_player.p->>'steam_dm_rating' ~ '^[0-9]{1,5}$'
+            AND (unique_player.p->>'steam_dm_rating')::integer BETWEEN 1 AND 5000
+            AND COALESCE(unique_player.p #>>
+              '{steam_rating_sources,steam_dm_rating}', 'unmarked')
               IN ('hd_header','unmarked','summary_rate_snapshot')
-          THEN (p->>'steam_dm_rating')::integer END AS dm
+          THEN (unique_player.p->>'steam_dm_rating')::integer END AS dm
       FROM verified_games game
-      CROSS JOIN LATERAL jsonb_array_elements(
-        CASE WHEN jsonb_typeof(game.players) = 'array'
-          THEN game.players ELSE '[]'::jsonb END
-      ) participant(p)
-      WHERE jsonb_typeof(p) = 'object' AND p->>'steam_id' ~ '^[0-9]{17}$'
+      CROSS JOIN LATERAL (
+        SELECT participant.p->>'steam_id' AS steam_id,
+          jsonb_agg(participant.p)->0 AS p
+        FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(game.players) = 'array'
+            THEN game.players ELSE '[]'::jsonb END
+        ) AS participant(p)
+        WHERE jsonb_typeof(participant.p) = 'object'
+          AND participant.p->>'steam_id' ~ '^[0-9]{17}$'
+        GROUP BY participant.p->>'steam_id'
+        HAVING COUNT(*) = 1
+      ) unique_player
     ),
-    rm AS (
-      SELECT DISTINCT ON (steam_id) steam_id, rm AS value, played_on
-      FROM observations WHERE rm IS NOT NULL AND identity_count = 1
-      ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC
+    -- A single rating-lane ordering replaces two global DISTINCT ON sorts.
+    -- Existing per-lane played_on/timestamp/id tie authority is unchanged.
+    lane_observations AS (
+      SELECT o.id, o.played_on, o.timestamp, o.steam_id,
+        lane.kind, lane.value
+      FROM observations o
+      CROSS JOIN LATERAL (VALUES ('rm',o.rm),('dm',o.dm))
+        AS lane(kind,value)
+      WHERE lane.value IS NOT NULL
     ),
-    dm AS (
-      SELECT DISTINCT ON (steam_id) steam_id, dm AS value, played_on
-      FROM observations WHERE dm IS NOT NULL AND identity_count = 1
-      ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC
-    ),
-    ids AS (SELECT steam_id FROM rm UNION SELECT steam_id FROM dm)
-    SELECT ids.steam_id AS "steamId",
-      rm.value AS "steamRmRating",
-      rm.played_on AT TIME ZONE 'UTC' AS "steamRmObservedAt",
-      dm.value AS "steamDmRating",
-      dm.played_on AT TIME ZONE 'UTC' AS "steamDmObservedAt"
-    FROM ids
-    LEFT JOIN rm USING (steam_id)
-    LEFT JOIN dm USING (steam_id)
-    ORDER BY ids.steam_id
+    latest_per_lane AS (
+      SELECT DISTINCT ON (steam_id,kind)
+        steam_id, kind, value, played_on
+      FROM lane_observations
+      ORDER BY steam_id, kind, played_on DESC, timestamp DESC NULLS LAST, id DESC
+    )
+    SELECT latest.steam_id AS "steamId",
+      MAX(latest.value) FILTER (WHERE latest.kind = 'rm') AS "steamRmRating",
+      (MAX(latest.played_on) FILTER (WHERE latest.kind = 'rm'))
+        AT TIME ZONE 'UTC' AS "steamRmObservedAt",
+      MAX(latest.value) FILTER (WHERE latest.kind = 'dm') AS "steamDmRating",
+      (MAX(latest.played_on) FILTER (WHERE latest.kind = 'dm'))
+        AT TIME ZONE 'UTC' AS "steamDmObservedAt"
+    FROM latest_per_lane latest
+    GROUP BY latest.steam_id
+    ORDER BY latest.steam_id
   `);
   return rows.flatMap((row) => {
     const steamId = normalizeLeaderboardSteamId(row.steamId);
@@ -186,35 +207,55 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
   });
 }
 
-function refresh(prisma: PrismaClient) {
+function refresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRating[]> {
   if (active) return active;
+  const generation = cacheGeneration;
   const run = readFresh(prisma)
     .then((value) => {
-      cache = { until: Date.now() + TTL_MS, value };
+      if (generation === cacheGeneration) {
+        cache = { until: Date.now() + TTL_MS, value };
+        retryNotBefore = 0;
+      }
       return value;
+    }, (error: unknown) => {
+      if (generation === cacheGeneration) {
+        retryNotBefore = Date.now() + FAILURE_RETRY_MS;
+        // Log once per failed SQL attempt, never once per waiting request.
+        console.warn("Verified Watcher Steam rating query unavailable:", error);
+      }
+      throw error;
     })
     .finally(() => { if (active === run) active = null; });
   active = run;
   return run;
 }
 
-export async function loadVerifiedWatcherSteamRatings(prisma: PrismaClient) {
+/** null means unavailable; [] means a successful, genuinely empty SQL result.
+ * A last-known-good response is never replaced with an invented fresh empty.
+ * The optional public leaderboard continues without failing its other rails.
+ */
+export async function loadVerifiedWatcherSteamRatings(
+  prisma: PrismaClient,
+): Promise<VerifiedWatcherSteamRating[] | null> {
   if (cache) {
-    if (cache.until <= Date.now() && !active) {
-      void refresh(prisma).catch((err) =>
-        console.warn("Watcher Steam rating refresh failed:", err));
+    if (cache.until <= Date.now() && !active && Date.now() >= retryNotBefore) {
+      void refresh(prisma).catch(() => undefined);
     }
     return cache.value;
   }
-  return refresh(prisma).catch((error) => {
-    // An unavailable optional rating rail must never break the whole
-    // public leaderboard; the immutable receipt and replay history remain.
-    console.warn("Verified Watcher Steam rating cold load failed:", error);
-    return [];
-  });
+  // Avoid retry storms after a failed cold read. Do not pretend an SQL error
+  // was a zero-row observation or submit a second historical query.
+  if (!active && Date.now() < retryNotBefore) return null;
+  try {
+    return await refresh(prisma);
+  } catch {
+    return null;
+  }
 }
 
 export function invalidateVerifiedWatcherSteamRatingsCache() {
+  cacheGeneration++;
   cache = null;
   active = null;
+  retryNotBefore = 0;
 }

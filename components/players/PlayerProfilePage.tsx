@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { applyProfileViewerMembership } from "@/lib/playerProfile";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -144,6 +148,10 @@ function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
 }
 
 export default async function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
+  if (isNonfinancialPublicReadProfile()) {
+    const claims = await verifySession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
+    profile = { ...profile, matchFeed: await applyProfileViewerMembership(getPrisma(), profile.matchFeed, claims?.uid ?? null) };
+  }
   const titleHonors = await loadPlayerTitleHonors(profile);
   const profileSurface =
     viewMode === "basic"
@@ -158,6 +166,11 @@ export default async function PlayerProfilePage({ profile, viewMode }: PlayerPro
       <PlayerProfileRealtimeRefresh
         initialGeneration={profile.matchFeed.generation}
       />
+      {profile.watcher.coverage === "public-final-only" ? (
+        <p className="rounded-xl border border-white/10 p-3 text-sm text-slate-300">
+          Public profile statistics cover up to 8,000 admitted final replay rows. Non-final candidates and private diagnostic statistics are unavailable.
+        </p>
+      ) : null}
       {profileSurface}
     </>
   );
@@ -189,7 +202,7 @@ function PlayerProfileExtreme({
                 <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
                 <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
                 <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
-                <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
+                <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100 proof"}`} tone="red" />
               </div>
 
               <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -244,7 +257,7 @@ function PlayerProfileExtreme({
               />
             </Panel>
 
-            <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
+            <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100"}`}>
               <WatcherRail profile={profile} />
             </Panel>
 
@@ -252,7 +265,7 @@ function PlayerProfileExtreme({
               <AiRail profile={profile} />
             </Panel>
 
-            <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo} WOLO`}>
+            <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo === null ? "Unavailable" : profile.wolo.totalFlexWolo + " WOLO"}`}>
               <WoloRail profile={profile} />
             </Panel>
 
@@ -285,7 +298,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
-              <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
+              <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100 proof"}`} tone="red" />
             </div>
 
             <div className="mt-5 grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
@@ -339,7 +352,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             />
           </Panel>
 
-          <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
+          <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100"}`}>
             <WatcherRail profile={profile} />
           </Panel>
 
@@ -347,7 +360,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             <AiRail profile={profile} />
           </Panel>
 
-          <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo} WOLO`}>
+          <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo === null ? "Unavailable" : profile.wolo.totalFlexWolo + " WOLO"}`}>
             <WoloRail profile={profile} />
           </Panel>
 
@@ -696,7 +709,7 @@ function ExtremeHero({
                 label={profile.wolo.pendingClaimWolo > 0 ? "Pending WOLO (unverified)" : "WOLO Flex"}
                 value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
               />
-              <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
+              <HeroStat label="Proof" value={`${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100"}`} />
             </div>
           </div>
 
@@ -724,9 +737,9 @@ function ExtremeHero({
             label="Watcher-Captured"
             value={`${profile.watcher.watcherBackedMatches} games`}
             detail={
-              profile.watcher.multiWatcherProofGames > 0
+              profile.watcher.multiWatcherProofGames !== null && profile.watcher.multiWatcherProofGames > 0
                 ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
-                : "Replay evidence may come from any participant watcher"
+                : profile.watcher.multiWatcherProofGames === null ? "Multi-watcher proof unavailable" : "Replay evidence may come from any participant watcher"
             }
             tone="emerald"
           />
@@ -811,7 +824,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
                 label={profile.wolo.pendingClaimWolo > 0 ? "Pending WOLO (unverified)" : "WOLO Flex"}
                 value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
               />
-            <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
+            <HeroStat label="Proof" value={`${profile.watcher.proofScore === null ? "Unavailable" : profile.watcher.proofScore + "/100"}`} />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -834,9 +847,9 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
             label="Watcher-Captured"
             value={`${profile.watcher.watcherBackedMatches} games`}
             detail={
-              profile.watcher.multiWatcherProofGames > 0
+              profile.watcher.multiWatcherProofGames !== null && profile.watcher.multiWatcherProofGames > 0
                 ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
-                : "Replay evidence may come from any participant watcher"
+                : profile.watcher.multiWatcherProofGames === null ? "Multi-watcher proof unavailable" : "Replay evidence may come from any participant watcher"
             }
             tone="emerald"
           />
@@ -1373,25 +1386,33 @@ function BestGamesGrid({ games }: { games: PlayerBestGame[] }) {
 
 
 function WatcherRail({ profile }: { profile: PlayerProfile }) {
-  const watcherSourceCount = profile.watcher.uniqueWatchers || profile.watcher.watcherKeys;
+  const watcherSourceCount = profile.watcher.uniqueWatchers === null ? null : profile.watcher.uniqueWatchers || profile.watcher.watcherKeys;
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <MiniStat label="Watcher-Captured" value={String(profile.watcher.watcherBackedMatches)} />
-        <MiniStat label="Account Sources" value={String(watcherSourceCount)} />
-        <MiniStat label="Dual Proofs" value={String(profile.watcher.multiWatcherProofGames)} />
-        <MiniStat label="Best Proof" value={profile.watcher.bestMultiWatcherProofLabel || "—"} />
+        <MiniStat label="Account Sources" value={watcherSourceCount === null ? "Unavailable" : String(watcherSourceCount)} />
+        <MiniStat label="Dual Proofs" value={profile.watcher.multiWatcherProofGames === null ? "Unavailable" : String(profile.watcher.multiWatcherProofGames)} />
+        <MiniStat label="Best Proof" value={profile.watcher.multiWatcherProofGames === null ? "Unavailable" : profile.watcher.bestMultiWatcherProofLabel || "—"} />
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-white/8">
+      {profile.watcher.publicActivity ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MiniStat label="Published all-time events" value={String(profile.watcher.publicActivity.eventCount)} />
+          <MiniStat label="Active Watcher key" value={profile.watcher.publicActivity.hasWatcherKey ? "Present" : "None"} />
+          <MiniStat label="Published streamed games" value={String(profile.watcher.publicActivity.streamedGames)} />
+          <MiniStat label="Last published activity" value={profile.watcher.publicActivity.lastWatcherAt ? formatDate(profile.watcher.publicActivity.lastWatcherAt) : "None recorded"} />
+        </div>
+      ) : profile.watcher.coverage === "public-final-only" ? <p className="text-xs text-slate-300">Published account activity unavailable.</p> : null}
+      {profile.watcher.proofScore !== null ? <div className="h-3 overflow-hidden rounded-full bg-white/8">
         <div
           className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-sky-300"
           style={{ width: `${Math.max(5, profile.watcher.proofScore)}%` }}
         />
-      </div>
+      </div> : <p className="text-xs text-slate-300">Proof score, key count and private attempt diagnostics unavailable.</p>}
       <div className="flex flex-wrap gap-2">
         <Tag>{profile.isVerified ? "verified identity" : "claimable identity"}</Tag>
-        {profile.watcher.watcherKeys > 0 ? <Tag>{profile.watcher.watcherKeys} watcher key{profile.watcher.watcherKeys === 1 ? "" : "s"}</Tag> : null}
+        {profile.watcher.watcherKeys !== null && profile.watcher.watcherKeys > 0 ? <Tag>{profile.watcher.watcherKeys} watcher key{profile.watcher.watcherKeys === 1 ? "" : "s"}</Tag> : null}
         {profile.watcher.lastWatcherSeenAt ? <Tag>last watcher {formatDate(profile.watcher.lastWatcherSeenAt)}</Tag> : null}
       </div>
     </div>
@@ -1436,11 +1457,12 @@ function WoloRail({ profile }: { profile: PlayerProfile }) {
           <div className="mt-1 text-xs text-slate-300">claims, wagers, staking, and reward flex in one rail</div>
         </div>
       </div>
+      {profile.wolo.availability === "published-pending-only" ? <MiniStat label="Published pending claims" value={formatWolo(profile.wolo.pendingClaimWolo)} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Pending Claims + Gifts" value={formatWolo(profile.wolo.pendingClaimWolo)} />
+        {profile.wolo.availability === "published-pending-only" ? <MiniStat label="Pending Claims + Gifts" value="Unavailable (combined)" /> : <MiniStat label="Pending Claims + Gifts" value={formatWolo(profile.wolo.pendingClaimWolo)} />}
         <MiniStat label="Claimed Claims" value={formatWolo(profile.wolo.claimedClaimWolo)} />
         <MiniStat label="Wagered" value={formatWolo(profile.wolo.wageredWolo)} />
-        <MiniStat label="Payout Tx" value={String(profile.wolo.payoutTxCount)} />
+        <MiniStat label="Payout Tx" value={profile.wolo.payoutTxCount === null ? "Unavailable" : String(profile.wolo.payoutTxCount)} />
         <MiniStat label="Staked" value={formatWolo(profile.wolo.activeStakeWolo)} />
         <MiniStat label="Rewards" value={formatWolo(profile.wolo.stakingRewardsWolo)} />
       </div>
@@ -1615,7 +1637,7 @@ function formatAverageDecimal(value: number | null | undefined) {
 }
 
 function formatWolo(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value).toLocaleString()} WOLO` : "0 WOLO";
+  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value).toLocaleString()} WOLO` : "Unavailable";
 }
 
 function formatDate(value: string | null | undefined) {

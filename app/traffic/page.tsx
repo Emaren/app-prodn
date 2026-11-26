@@ -7,6 +7,7 @@ import PremiumTimeSeriesChart, {
 import {
   loadPublicTraffic,
   type PublicTrafficPoint,
+  type TrafficMetricTransition,
 } from "@/lib/publicTraffic";
 
 const SERIES: ObservatorySeries[] = [
@@ -64,11 +65,13 @@ async function ObservedTrafficSensors({
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let archiveCalculatedAt: string | null = null;
+  let metricTransition: TrafficMetricTransition | undefined;
   let failed = false;
   try {
     const report = await loadPublicTraffic();
     points = report.points;
     archiveCalculatedAt = report.archiveCalculatedAt;
+    metricTransition = report.metricTransition;
   } catch (error) {
     failed = true;
     console.error("Traffic page preload failed:", error);
@@ -112,6 +115,19 @@ export default async function TrafficPage() {
               any additional days.
             </p>
           </div>
+        {metricTransition ? (
+          <div aria-label="Traffic metric version transition" className="mb-3 rounded-xl border border-sky-300/20 bg-sky-300/[0.035] px-4 py-3 text-xs leading-relaxed text-slate-300">
+            <span className="font-semibold text-sky-200">
+              Metric definition changes on <time dateTime={metricTransition.firstDate}>{metricTransition.firstDate}</time> UTC
+            </span>
+            <p className="mt-1">
+              From this date, V3 counts page-bearing UTC-day session slices using a frozen day-local IP model.
+              Ongoing operational sessions can contribute on successive days. Earlier values use the original
+              session-start and cumulative model definition. The series are not directly comparable across
+              this boundary; missing certified days remain gaps.
+            </p>
+          </div>
+        ) : null}
         {points.length ? (
           <PremiumTimeSeriesChart
             title="Traffic"

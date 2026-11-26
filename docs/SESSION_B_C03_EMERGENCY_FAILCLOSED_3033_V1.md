@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.c03-failclosed-emergency-3033-v1"
 title: "C03 emergency-only finance-inert 3033 fallback"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "session-b-emergency-only-no-c03-funding-or-authenticated-rollback"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # C03 emergency-only finance-inert 3033 fallback
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: session-b-emergency-only-no-c03-funding-or-authenticated-rollback. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 This is a small, independently isolated HTTP listener intended only for fail-closed public maintenance, not a functional authenticated R25 rollback and NOT qualification for C03_APP_HANDOFF=YES. It does not retain admin, nonadmin or Scribe sessions and does not query any database; never present it as authenticated continuity.
 

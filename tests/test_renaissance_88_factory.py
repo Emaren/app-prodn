@@ -21,10 +21,10 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],161)
-        # Both source additions survive: Clan text POST and Chronicle admin press-pack.
-        # Measure source_paths(), do not preserve either branch's stale 288 count.
-        self.assertEqual(p["actual_handlers"],289)
+        self.assertEqual(p["actual_templates"],166)
+        # Count every real handler, including the separate gated BAE and Atlas
+        # admin readers; neither becomes a public 88-route acceptance claim.
+        self.assertEqual(p["actual_handlers"],293)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])

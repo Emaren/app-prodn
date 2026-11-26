@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import StoragePremiumInspector from "./StoragePremiumInspector";
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import StorageTeachingHistory from "./StorageTeachingHistory";
+import StorageReviewQueue from "./StorageReviewQueue";
+import StorageReceiptTimeline from "./StorageReceiptTimeline";
+import StorageBaeViews,{BaeModeSwitch} from "./StorageBaeViews";
+import {BAE_DEFAULT_MODE,BAE_STORAGE_KEY,baeNodes,validMode,type BaeMode} from "./storageBaeEvidence";
+import StorageTransportLaneStatus from "./StorageTransportLaneStatus";
+import type {BaeTopology} from "@/lib/storageBaeReadContract";
+import {IntelColdStoragePanel} from "./IntelColdStoragePanel";
+import type {IntelColdView} from "@/lib/intelColdStorageEvidence";
+import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from "react";
 import {
   Activity,Archive,ArrowLeft,Check,Clock3,Database,HardDrive,
   Laptop2,LockKeyhole,RefreshCw,Server,ShieldAlert,ShieldCheck,SlidersHorizontal,
@@ -10,11 +19,14 @@ import {
 import type {StorageCommandCenter,StorageReading} from "@/lib/storageCommandCenterProjection";
 import type {VisualHog} from "@/lib/storageVisualPrivate";
 import type {TeachingEvent} from "@/lib/storageHogTeachingLedger";
+import {signedHogInventory,teachingSourceDeadline} from "@/lib/storageSignedFreshness";
 import {
-  teachingDisposition,type TeachingLevel,type TeachingPlane,
+  teachingDisposition,strongestRecordedProtection,BUSINESS_DOMAINS,STORAGE_LIFECYCLES,
+  type TeachingLevel,type TeachingPlane,type BusinessDomain,type StorageLifecycle,
 } from "@/lib/storageHogTeachingPolicy";
 
 const IDS:TeachingPlane[]=["mac","hel1-root","hel1-volume-105319120"];
+type ExplorerPlane=TeachingPlane|"intel";
 const COLORS=["#22d3ee","#a78bfa","#f59e0b","#2dd4bf","#60a5fa","#fb7185","#f472b6","#c4b5fd"];
 const LVLCOLORS:{[K in TeachingLevel]:string}={2:"#fbbf24",3:"#a78bfa",4:"#34d399",5:"#fb7185"};
 const LEVELS:[
@@ -54,8 +66,9 @@ function segment(start:number,end:number,inside:number,outside:number){
     b.join(" ")+" L "+c.join(" ")+" A "+inside+" "+inside+" 0 "+
     (finish-start>180?1:0)+" 0 "+d.join(" ")+" Z";
 }
-function Sunburst({hogs,selected,onSelect}:{
-  hogs:VisualHog[];selected:string|null;onSelect:(key:string)=>void;
+function Sunburst({hogs,status,selected,onSelect,native,notScanned}:{
+  hogs:VisualHog[];status:ReturnType<typeof signedHogInventory>["status"];
+  selected:string|null;onSelect:(key:string)=>void;native:boolean;notScanned:boolean;
 }){
   const sum=hogs.reduce((a,h)=>a+h.grossBytes,0);
   let cursor=0;
@@ -76,25 +89,31 @@ function Sunburst({hogs,selected,onSelect}:{
       <circle cx="130" cy="130" r="70" stroke="#27435a" strokeWidth="1" fill="#091522"/>
       <circle cx="130" cy="130" r="61" stroke="#294054" strokeWidth="1" fill="none" strokeDasharray="1 9"/>
       <text x="130" y="124" fill="#f8fafc" textAnchor="middle" fontSize="23" fontWeight="700">
-        {sum>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
+        {status==="PARTIAL"&&hogs.length>0?bytes(sum).replace(" GiB","G").replace(" MiB","M"):"—"}
       </text>
       <text x="130" y="146" fill="#839bad" textAnchor="middle" fontSize="9" letterSpacing="1.6">
-        {sum>0?"GROSS MAPPED":"AWAITING PROOF"}
+        {notScanned?"NOT SCANNED":status==="PARTIAL"?(hogs.length>0?(native?"SIGNED SAMPLE":"GROSS REPORTED"):"NO CATEGORIES"):status==="STALE"?"STALE RECEIPT":"AWAITING PROOF"}
       </text>
     </svg>
     <p className="mt-1 text-center text-[11px] leading-5 text-slate-400">
-      Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space.
+      {notScanned
+        ?"HEL1 directory allocation census is NOT SCANNED. Capacity observations are not storage-hog inventory."
+        :native
+          ?"WE2-signed bounded file samples only; incomplete directories, clones and hardlinks do not add to unique free space."
+          :"Select a wedge to inspect it. Overlapping categories, APFS clones and filesystem snapshots are not additive free space."}
     </p>
   </div>;
 }
-function Drive({reading,id,active,onSelect,topCount}:{
+function Drive({reading,id,active,onSelect,inventory}:{
   reading:StorageReading|undefined;id:TeachingPlane;active:boolean;
-  onSelect:()=>void;topCount:number;
+  onSelect:()=>void;inventory:ReturnType<typeof signedHogInventory>;
 }){
   const title=id==="mac"?"M1 · Development Mac":id==="hel1-root"?"HEL1 · Root":"HEL1 · Data volume";
   const Icon=id==="mac"?Laptop2:id==="hel1-root"?Server:Database;
   const free=reading?.status==="RECEIPT"?reading.freeBytes:null;
   const used=reading?.status==="RECEIPT"?reading.usedPercent:null;
+  const notScanned=id!=="mac"&&inventory.status==="PARTIAL"&&
+    inventory.categoryCount===0&&inventory.plane?.coverage==="PARTIAL";
   return <button type="button" onClick={onSelect} aria-pressed={active}
     className={"relative overflow-hidden rounded-3xl border p-5 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
       (active?"border-cyan-300/50 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/25")}>
@@ -105,27 +124,87 @@ function Drive({reading,id,active,onSelect,topCount}:{
       </span>
     </div>
     <div className="mt-5 flex items-end justify-between gap-3">
+      <div className="min-w-0"><div className="text-[10px] uppercase tracking-widest text-slate-300">Available</div>
+        <div className="mt-1 break-words text-xl font-black tabular-nums text-white sm:text-2xl">{bytes(free)}</div></div>
+      <div className="min-w-0 text-right"><div className="text-[11px] text-slate-300">Used · certified</div>
+        <div className="break-words text-xs font-semibold tabular-nums text-slate-200 sm:text-sm">{used===null?"Not certified":used.toFixed(1)+"%"}</div></div>
+    </div>
+    {used===null?<div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>:
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full rounded-full bg-cyan-400" style={{width:used+"%"}}/>
+      </div>}
+    <div className="mt-3 flex flex-wrap justify-between gap-2 text-[10px] text-slate-300">
+      <span>{notScanned?"Signed gross categories: 0 · NOT SCANNED FOR HOGS":
+        inventory.categoryCount===null?(inventory.status==="STALE"?"Hog inventory: STALE":"Hog inventory: UNKNOWN") :
+        inventory.categoryCount+(inventory.plane?.nativeV2Source?" signed bounded sample categories":" reported gross categories")}</span>
+      <span>{reading?.asOf ? shortTime(reading.asOf)+" OLD" : "NO SOURCE"}</span>
+    </div>
+  </button>;
+}
+function IntelDrive({snapshot,active,onSelect}:{snapshot:IntelColdView|null;active:boolean;onSelect:()=>void}){
+  const intelTime=Date.parse(snapshot?.observedAt??"");
+  const current=snapshot?.source==="SIGNED_PRIVATE_RECEIPT"&&snapshot.health==="ONLINE"&&
+    Number.isFinite(intelTime)&&intelTime<=Date.now()+60_000&&
+    Date.now()-intelTime<=15*60_000;
+  const free=current?snapshot.capacity.availableBytes:null;
+  return <button type="button" onClick={onSelect} aria-pressed={active}
+    className={"relative overflow-hidden rounded-3xl border p-5 text-left transition "+
+    (active?"border-cyan-300/50 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/25")}>
+    <div className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-2 text-sm font-bold text-white">
+        <Archive className="h-5 w-5 text-cyan-300"/>Intel · Cold vault</span>
+      <span className={"text-[10px] font-bold "+(current?"text-cyan-300":"text-amber-200")}>
+        {current?"SIGNED / CURRENT":snapshot?.health??"UNKNOWN"}</span>
+    </div>
+    <div className="mt-5 flex items-end justify-between gap-3">
       <div><div className="text-[10px] uppercase tracking-widest text-slate-400">Available</div>
-        <div className="mt-1 text-3xl font-black tabular-nums text-white">{bytes(free)}</div></div>
-      <div className="text-right"><div className="text-[11px] text-slate-400">Used</div>
-        <div className="text-xl font-semibold tabular-nums text-slate-200">{used===null?"—":used.toFixed(1)+"%"}</div></div>
+        <div className="mt-1 break-words text-xl font-black tabular-nums text-white sm:text-2xl">{bytes(free)}</div></div>
+      <div className="text-right"><div className="text-[11px] text-slate-300">Used · certified</div>
+        <div className="text-xs font-semibold text-slate-200 sm:text-sm">Not certified</div></div>
     </div>
-    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
-      <div className="h-full rounded-full bg-cyan-400" style={{width:(used??0)+"%"}}/>
-    </div>
-    <div className="mt-3 flex justify-between text-[10px] text-slate-400">
-      <span>{topCount} verified gross categories</span><span>{shortTime(reading?.asOf??null)} OLD</span>
+    <div className="mt-4 h-1.5 border-t border-dashed border-slate-600" aria-hidden="true"/>
+    <div className="mt-3 flex justify-between gap-2 text-[10px] text-slate-400">
+      <span>Archive inventory · independent source</span><span>{current?shortTime(snapshot.observedAt):"NO CURRENT PROOF"}</span>
     </div>
   </button>;
 }
 export default function StorageHogWorkbench(){
   const [data,setData]=useState<StorageCommandCenter|null>(null);
+  const [baeTopology,setBaeTopology]=useState<BaeTopology|null>(null);
+  const [intel,setIntel]=useState<IntelColdView|null>(null);
+  const [intelError,setIntelError]=useState<string|null>(null);
+  const [intelLoading,setIntelLoading]=useState(false);
+  const refreshIntel=useCallback(async()=>{
+    const abort=new AbortController();
+    const timeout=window.setTimeout(()=>abort.abort(),6000);
+    setIntelLoading(true);
+    try{
+      const r=await fetch("/api/admin/storage-os/intel",{
+        cache:"no-store",credentials:"same-origin",signal:abort.signal});
+      if(!r.ok)throw Error("SIGNED_INTEL_SOURCE_HOLD");
+      const v=await r.json() as IntelColdView;
+      if(v.schema!=="aoe2war.intel-cold.status.v1"||
+         v.authority!=="READ_ONLY_NO_CLEANUP_OR_REINSTALL")
+        throw Error("INTEL_SCHEMA_NOT_ADMITTED");
+      setIntel(v);setIntelError(null);
+    }catch(e){
+      setIntel(null);setIntelError(e instanceof Error?e.message:"INTEL_UNKNOWN");
+    }finally{window.clearTimeout(timeout);setIntelLoading(false);}
+  },[]);
+  useEffect(()=>{
+    void refreshIntel();
+    const t=window.setInterval(()=>{if(document.visibilityState==="visible")void refreshIntel();},60_000);
+    return()=>window.clearInterval(t);
+  },[refreshIntel]);
   const [events,setEvents]=useState<TeachingEvent[]>([]);
+  const [access,setAccess]=useState<{ownerBinding:string|null;mayRecord:boolean}|null>(null);
   const [ledgerStatus,setLedgerStatus]=useState("UNAVAILABLE");
   const [error,setError]=useState<string|null>(null);
-  const [active,setActive]=useState<TeachingPlane>("mac");
+  const [active,setActive]=useState<ExplorerPlane>("mac");
   const [selected,setSelected]=useState<string|null>(null);
   const [chosen,setChosen]=useState<TeachingLevel>(2);
+  const [domain,setDomain]=useState<BusinessDomain|"">("");
+  const [lifecycle,setLifecycle]=useState<StorageLifecycle|"">("");
   const [note,setNote]=useState("");
   const [confirmForever,setConfirmForever]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -136,9 +215,11 @@ export default function StorageHogWorkbench(){
     const abort=new AbortController();pending.current=abort;
     const timeout=window.setTimeout(()=>abort.abort(),7000);
     try{
-      const [a,b]=await Promise.all([
+      const [a,b,c]=await Promise.all([
         fetch("/api/admin/storage-os",{cache:"no-store",credentials:"same-origin",signal:abort.signal}),
         fetch("/api/admin/storage-os/teaching",{cache:"no-store",credentials:"same-origin",signal:abort.signal}),
+        fetch("/api/admin/storage-os/bae",{cache:"no-store",credentials:"same-origin",signal:abort.signal})
+          .catch(()=>null),
       ]);
       if(!a.ok)throw Error("STORAGE OS SOURCE UNAVAILABLE");
       const storage=await a.json() as StorageCommandCenter;
@@ -146,15 +227,28 @@ export default function StorageHogWorkbench(){
         throw Error("UNRECOGNIZED STORAGE OS SOURCE");
       if(abort.signal.aborted)return;
       setData(storage);setError(null);
+      // Supplementary current admin-only read. The bounded root receiver ACK
+      // is historical Bridge ingress proof, not source certification,
+      // copy authorization, actual transfer or measured physical reclaim.
+      if(c?.ok){
+        try{
+          const v=await c.json() as BaeTopology;
+          setBaeTopology(v.schema==="aoe2war.storage-bae.topology.v1"&&
+            v.authority==="ADMIN_READ_ONLY_NO_TRANSFER_OR_RETIREMENT" ? v:null);
+        }catch{setBaeTopology(null);}
+      }else setBaeTopology(null);
       if(b.ok){
-        const ledger=await b.json() as {schema:string;events:TeachingEvent[]};
+        const ledger=await b.json() as {schema:string;events:TeachingEvent[];ownerBinding?:string|null;mayRecord?:boolean};
         if(ledger.schema!=="aoe2war.storage-teaching-history.v1"||!Array.isArray(ledger.events))
           throw Error("TEACHING LEDGER SCHEMA HOLD");
+        if(abort.signal.aborted)return;
+        const ownerBinding=typeof ledger.ownerBinding==="string"&&/^[a-f0-9]{64}$/.test(ledger.ownerBinding)?ledger.ownerBinding:null;
+        setAccess({ownerBinding,mayRecord:!!ownerBinding&&ledger.mayRecord===true});
         setEvents(ledger.events);setLedgerStatus("VERIFIED");
-      }else{setEvents([]);setLedgerStatus("NOT ENROLLED");}
+      }else{setAccess(null);setEvents([]);setLedgerStatus("NOT ENROLLED");}
     }catch(e){
       if(!abort.signal.aborted){
-        setData(null);setEvents([]);setLedgerStatus("UNKNOWN");
+        setData(null);setBaeTopology(null);setAccess(null);setEvents([]);setLedgerStatus("UNKNOWN");
         setError(e instanceof Error?e.message:"SOURCE READ FAILED");
       }
     }finally{window.clearTimeout(timeout);if(pending.current===abort)pending.current=null;}
@@ -170,43 +264,114 @@ export default function StorageHogWorkbench(){
       window.clearInterval(tick);pending.current?.abort();pending.current=null;};
   },[refresh]);
 
-  const sourcePlane=data?.visual?.planes.find(p=>p.id===active);
-  const reading=data?.planes.find(p=>p.id===active);
-  const live=data?.visual?.source==="SIGNED_PRIVATE_RECEIPT"&&sourcePlane?.status==="RECEIPT";
+  const [,refreshClock]=useReducer((tick:number)=>tick+1,0);
+  const now=Date.now();
+  const inventories=IDS.map(id=>signedHogInventory(data?.visual,id,now));
+  const activeTeaching:TeachingPlane=active==="intel"?"mac":active;
+  const activeInventory=active==="intel"
+    ? {plane:undefined,status:"UNKNOWN" as const,categoryCount:null,currentUntil:null}
+    : inventories[IDS.indexOf(activeTeaching)];
+  const sourcePlane=activeInventory.plane;
+  const hel1HogsNotScanned=active!=="mac"&&active!=="intel"&&
+    activeInventory.status==="PARTIAL"&&activeInventory.categoryCount===0&&
+    sourcePlane?.coverage==="PARTIAL";
+  const reading=active==="intel"?undefined:data?.planes.find(p=>p.id===active);
+  const live=activeInventory.status==="PARTIAL";
+  const teachingDeadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,chosen,now) : null;
+  const l2Deadline=live ? teachingSourceDeadline(sourcePlane?.observedAt,2,now) : null;
+  const nextDeadline=Math.min(l2Deadline??Infinity,teachingDeadline??Infinity,...inventories.map(p=>p.currentUntil??Infinity));
+  useEffect(()=>{
+    if(!Number.isFinite(nextDeadline))return;
+    const timer=window.setTimeout(refreshClock,Math.max(0,nextDeadline+1-Date.now()));
+    return ()=>window.clearTimeout(timer);
+  },[nextDeadline]);
   const hogs=useMemo(()=>live?[...(sourcePlane?.hogs??[])].sort((a,b)=>b.grossBytes-a.grossBytes):[],
     [live,sourcePlane]);
   const item=hogs.find(h=>h.key===selected)??null;
-  const last=item?events.filter(e=>e.plane===active&&e.category===item.key).at(-1)??null:null;
-  const priorL5=item?events.some(e=>e.plane===active&&e.category===item.key&&e.requestedLevel===5):false;
-  const disposition=item?teachingDisposition(item.level,chosen,priorL5):null;
-  const canSave=!!live&&!!item&&ledgerStatus==="VERIFIED"&&!saving&&
-    disposition?.status==="ACCEPT"&&!priorL5&&(chosen!==5||confirmForever);
-  const choosePlane=(id:TeachingPlane)=>{setActive(id);setSelected(null);setNotice(null);};
-  const chooseItem=(key:string)=>{setSelected(key);setChosen(hogs.find(h=>h.key===key)?.level===5?5:2);setNote("");
-    setConfirmForever(false);setNotice(null);};
+  const last=item?events.filter(e=>e.plane===activeTeaching&&e.category===item.key).at(-1)??null:null;
+  const priorL5=item?events.some(e=>e.plane===activeTeaching&&e.category===item.key&&e.requestedLevel===5):false;
+  const priorFloor=item?strongestRecordedProtection(events,activeTeaching,item.key):1;
+  const effectiveFloor=item?Math.max(item.level,priorFloor):5;
+  const disposition=item?teachingDisposition(effectiveFloor,chosen,priorL5):null;
+  const canSave=teachingDeadline!==null&&!!item&&!!domain&&!!lifecycle&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!saving&&
+    chosen>=effectiveFloor&&disposition?.status==="ACCEPT"&&!priorL5&&
+    (chosen!==2||note.trim().length>0)&&(chosen!==5||confirmForever);
+  const choosePlane=(id:ExplorerPlane)=>{setActive(id);setSelected(null);setNotice(null);};
+  const chooseItem=(key:string)=>{
+    if(active==="intel")return;
+    const candidate=hogs.find(h=>h.key===key);
+    const historical=strongestRecordedProtection(events,activeTeaching,key);
+    setSelected(key);setChosen(Math.max(2,candidate?.level??2,historical) as TeachingLevel);setNote("");
+    setDomain("");setLifecycle("");
+    setConfirmForever(false);setNotice(null);
+  };
   const save=async()=>{
-    if(!item||!sourcePlane||!canSave)return;
+    if(active==="intel"||!item||!sourcePlane||!canSave)return;
+    if(teachingSourceDeadline(sourcePlane.observedAt,chosen)===null){refreshClock();return;}
     setSaving(true);setNotice(null);
     try{
       const response=await fetch("/api/admin/storage-os/teaching",{
         method:"POST",cache:"no-store",credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          plane:active,category:item.key,level:chosen,observedAt:sourcePlane.observedAt,
+          plane:activeTeaching,category:item.key,level:chosen,domain,lifecycle,observedAt:sourcePlane.observedAt,
           grossBytes:item.grossBytes,sourceFloor:item.level,overlaps:item.overlaps,
           previousId:last?.id??null,note,confirmPermanent:chosen===5&&confirmForever,
         }),
       });
-      const result=await response.json() as {detail?:string;authority?:string};
+      const result=await response.json() as {detail?:string;authority?:string;event?:TeachingEvent};
       if(!response.ok)throw Error(result.detail??"OWNER TEACHING HOLD");
-      if(result.authority!=="OWNER_FEEDBACK_ONLY_NO_DELETE")throw Error("INVALID WRITE RECEIPT");
-      setNotice("Owner classification recorded in the signed append-only intent ledger. No file was deleted.");
+      // Never claim a second write or suggest a blind retry when the server
+      // committed but its receipt is incomplete. History readback is authoritative.
+      const identity=result.event?.id&&/^[a-f0-9-]{36}$/.test(result.event.id)&&
+        /^[a-f0-9]{64}$/.test(result.event.digestSha256)
+        ? result.event.id+" · "+result.event.digestSha256 : null;
+      setNotice(result.authority==="OWNER_FEEDBACK_ONLY_NO_DELETE"&&identity
+        ? "Owner event committed: "+identity+" · feedback only, no deletion."
+        : "Write response incomplete: check the append-only history before any retry.");
       setConfirmForever(false);
       await refresh();
     }catch(e){setNotice(e instanceof Error?e.message:"SAVE FAILED");}
     finally{setSaving(false);}
   };
-  const safeCount=IDS.filter(id=>data?.planes.find(p=>p.id===id)?.status==="RECEIPT").length;
+  // Existing Basic UI remains the first, server-rendered default. Local
+  // persistence is read only after hydration to avoid a cookie/account API.
+  const [mode,setMode]=useState<BaeMode>(BAE_DEFAULT_MODE);
+  useEffect(()=>{
+    try{
+      const saved=window.localStorage.getItem(BAE_STORAGE_KEY);
+      if(validMode(saved))setMode(saved);
+    }catch{ /* private browsing / disabled storage: Basic remains default */ }
+  },[]);
+  const changeMode=(next:BaeMode)=>{
+    setMode(next);
+    try{window.localStorage.setItem(BAE_STORAGE_KEY,next);}catch{ /* UI still works */ }
+  };
+  const nodes=baeNodes(data,intel,now);
+  // This is a source-qualified CAPACITY count, not overall storage
+  // completeness. An operator estate snapshot may contain bytes but is not
+  // admitted as signed capacity; an Intel ONLINE bit needs a fresh receipt.
+  const safeCount=IDS.filter(id=>{
+    const p=data?.planes.find(x=>x.id===id);
+    return p?.status==="RECEIPT"&&
+      (p.source==="SIGNED_THREE_PLANE_RECEIPT"||p.source==="WE2_NATIVE_V2_SIGNED_PLANE");
+  }).length+(intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"&&
+    typeof intel.observedAt==="string"&&Number.isFinite(Date.parse(intel.observedAt))&&
+    Date.parse(intel.observedAt)<=now+60_000&&
+    now-Date.parse(intel.observedAt)<=15*60_000?1:0);
+  const l2Admitted=live&&l2Deadline!==null&&
+    data?.visual.contract==="WE2_NATIVE_V2_ED25519"&&
+    sourcePlane?.nativeV2Source===true&&
+    ledgerStatus==="VERIFIED"&&access?.mayRecord===true&&!!access.ownerBinding;
+  const l2CategoryReady=l2Admitted?hogs.filter(h=>h.level===2&&!h.overlaps&&
+    strongestRecordedProtection(events,activeTeaching,h.key)<=2).length:0;
+  const l2Held=live?hogs.length-l2CategoryReady:null;
+  if(mode!=="B")return <StorageBaeViews mode={mode} onModeChange={changeMode}
+    data={data} intel={intel} ledgerStatus={ledgerStatus} error={error}
+    intelError={intelError} now={now} ownerBinding={access?.ownerBinding??null}
+    topology={baeTopology}
+    onRefresh={()=>{void refresh();void refreshIntel();}}
+    onInspect={id=>{choosePlane(id);changeMode("B");}}/>;
   return <main className="min-h-screen bg-[#070e18] text-slate-100">
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_at_24%_8%,rgba(34,211,238,.12),transparent_48%),radial-gradient(ellipse_at_80%_0%,rgba(167,139,250,.07),transparent_52%)]"/>
     <div className="relative mx-auto max-w-[1550px] space-y-5 px-4 py-7 sm:px-7 lg:px-9">
@@ -218,27 +383,87 @@ export default function StorageHogWorkbench(){
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Find the biggest consumers. Teach Storage OS what to keep. Retire exact files only through a separately authorized, independently verified cleanup lane.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <BaeModeSwitch mode={mode} onChange={changeMode}/>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-[11px] font-bold text-slate-300"><LockKeyhole className="h-4 w-4"/> PRIVATE / NO AUTO-DELETE</span>
           <button type="button" onClick={()=>void refresh()} className="rounded-full border border-cyan-300/30 p-3 text-cyan-200 hover:bg-cyan-300/10" aria-label="Refresh accepted storage receipts"><RefreshCw className="h-4 w-4"/></button>
         </div>
       </header>
       {error&&<div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">{error}. Data withheld rather than fabricated.</div>}
-      <section aria-label="Three independent storage volumes" className="grid gap-3 md:grid-cols-3">
-        {IDS.map(id=><Drive key={id} id={id} active={active===id}
+      <section aria-label="Four independently verified storage planes" className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {IDS.map((id,i)=><Drive key={id} id={id} active={active===id}
           onSelect={()=>choosePlane(id)} reading={data?.planes.find(p=>p.id===id)}
-          topCount={data?.visual?.planes.find(p=>p.id===id)?.hogs.length??0}/>)}
+          inventory={inventories[i]}/>)}
+        <IntelDrive snapshot={intel} active={active==="intel"} onSelect={()=>choosePlane("intel")}/>
       </section>
+      <section aria-label="Four-surface measured versus UNKNOWN evidence" className={PANEL+" p-4 sm:p-6"}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-[10px] font-black tracking-[.24em] text-cyan-300">SOURCE-COVERAGE OPERATIONS / 3 COMPUTERS · 4 SURFACES</p>
+            <h2 className="mt-2 text-xl font-bold text-white">Why is the filesystem still UNKNOWN?</h2>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-300">Grey means unmeasured, not empty. Available bytes, gross category samples, source signer, receiver ACK and unique reclaim are separate proofs.</p></div>
+          <span className="rounded-full border border-amber-200/30 px-3 py-2 text-[10px] font-bold text-amber-100">FULL BYTE COVERAGE NOT CERTIFIED</span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {nodes.map(n=><article key={n.id} className="min-w-0 rounded-2xl border border-white/10 bg-[#0a1727] p-4">
+            <h3 className="text-sm font-bold text-white">{n.name}</h3>
+            <p className="mt-2 text-[11px] text-cyan-200">Capacity: {n.capacityEvidence}</p>
+            <p className="mt-1 text-[11px] font-semibold text-amber-200">Directory coverage: {n.inventoryStatus}</p>
+            <p className="mt-2 text-[11px] leading-5 text-slate-200">Authority: {n.sourceTrust}</p>
+            <p className="mt-1 break-words text-[10px] text-slate-300">Observed: {n.observedAt??"NO ADMITTED TIMESTAMP"} · {n.ageLabel}</p>
+            <p className="mt-3 border-t border-white/10 pt-3 text-[11px] leading-5 text-white">
+              {n.inventoryStatus==="NOT SCANNED"?
+                "WHY: HEL1 signed v1 publishes no directory hog measurements. WE2 native v2 signer, mount scope and receiver ACK still required.":
+                n.inventoryStatus==="STALE"||n.status==="STALE"?
+                "WHY: Source observation expired. Re-reading this page is not a host scan.":
+                n.id==="intel"?
+                "WHY: Independent current Intel receipt/metadata is separate from a fresh full-content restore and vault-wide byte census.":
+                n.inventoryStatus==="PARTIAL / GROSS"?
+                "WHY: Reported gross categories are only a partial selection. Shared blocks, snapshots and unscanned space remain grey.":
+                "WHY: No current independently admitted directory allocation source for this surface."}
+            </p>
+            <p className="mt-2 text-[10px] leading-5 text-cyan-200">
+              {n.id==="intel"?"NEXT WE4: qualify current Intel receiver/provenance; historic restores stay dated.":
+                n.id==="mac"?"NEXT WE2: source-sign fresh M1 Pulse coverage and account for APFS shared blocks.":
+                "NEXT WE2: admit bounded native ROOT/DATA scan with exact UUID, signer and ACK."}
+            </p>
+          </article>)}
+        </div>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200/20 bg-amber-200/[.04] p-4" aria-label="Level 2 category teaching versus exact-file authority">
+          <div><p className="text-xs font-black text-amber-100">LEVEL 2 · OWNER TEACHING READINESS</p>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-200">Select a measured category below, inspect source minimum protection, enter business domain, lifecycle and your reason. Category feedback is NOT an exact-file source identity or deletion permit.</p></div>
+          <div className="flex flex-wrap gap-4 text-[11px] text-slate-200">
+            <span>Category teaching ready <strong className="block text-xl text-white">{live?l2CategoryReady:"UNKNOWN"}</strong></span>
+            <span>Category held <strong className="block text-xl text-white">{l2Held??"UNKNOWN"}</strong></span>
+            <span>Exact-file retirement ready <strong className="block text-xl text-rose-200">0</strong></span>
+          </div>
+          <p className="w-full text-[10px] leading-5 text-amber-100">Reason: {!live?"NO CURRENT SIGNED CATEGORY RECEIPT":
+            !sourcePlane?.nativeV2Source?"NATIVE SOURCE SIGNER/RECEIVER NOT ADMITTED":
+            ledgerStatus!=="VERIFIED"||!access?.mayRecord?"OWNER LEARNING WITNESS NOT ENROLLED":
+            "OWNER CATEGORY REVIEW ONLY; NO EXACT ITEM RETIREMENT"} · L4 HUMAN ONLY · L5 NEVER DELETE.</p>
+        </div>
+      </section>
+      {baeTopology?.receipts.lastDurableAck?
+        <p className="rounded-xl border border-cyan-300/15 bg-cyan-300/[.035] p-3 text-xs text-slate-200">
+          Last authenticated Bridge ingress ACK: {baeTopology.receipts.lastDurableAck.receivedAt}
+          {" · "}{baeTopology.receipts.lastDurableAck.evidence}
+          {" · NOT a file-copy authorization or live storage-census scan"}
+        </p>:null}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{safeCount}/3 drives with current capacity receipts · Individual file coverage: NOT ADMITTED</span>
-        <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):"UNKNOWN / STALE"} · Owner learning ledger: {ledgerStatus}</span>
+        <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-300"/>{data?safeCount+"/4 planes with source-qualified current capacity":"Current capacity receipts unknown"} · Individual file coverage: NOT ADMITTED</span>
+        <span>Gross hog source: {live?"SIGNED · "+shortTime(sourcePlane?.observedAt??null):activeInventory.status} · Owner learning ledger: {ledgerStatus}</span>
       </div>
+      {active==="intel"?
+        <IntelColdStoragePanel snapshot={intel} loading={intelLoading} error={intelError}
+          onRefresh={()=>void refreshIntel()}/>:
+        <>
       <section className="grid gap-4 xl:grid-cols-[.96fr_1.04fr]" aria-label="Interactive capacity anatomy">
         <div className={PANEL+" p-5 sm:p-7"}>
           <div className="flex items-center justify-between gap-3">
             <div><p className="text-[10px] font-black tracking-[.26em] text-cyan-300">CAPACITY MAP</p><h2 className="mt-2 text-2xl font-bold text-white">{reading?.label??active}</h2></div>
             <HardDrive className="h-6 w-6 text-cyan-300"/>
           </div>
-          <div className="mt-2"><Sunburst hogs={hogs} selected={selected} onSelect={chooseItem}/></div>
+          <div className="mt-2"><Sunburst hogs={hogs} status={activeInventory.status} selected={selected}
+            onSelect={chooseItem} native={sourcePlane?.nativeV2Source===true}
+            notScanned={hel1HogsNotScanned}/></div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Source observed</div>
@@ -246,10 +471,14 @@ export default function StorageHogWorkbench(){
             </div>
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
               <div className="text-[10px] uppercase tracking-wider text-slate-400">Coverage</div>
-              <div className="mt-2 text-sm font-semibold text-white">{sourcePlane?.coverage??"UNKNOWN / NOT COMPLETE"}</div>
+              <div className="mt-2 text-sm font-semibold text-white">{hel1HogsNotScanned?"NOT SCANNED FOR HOGS":sourcePlane?.coverage??"UNKNOWN / NOT COMPLETE"}</div>
             </div>
           </div>
-          <p className="mt-4 text-xs leading-5 text-amber-100/80">This map is derived exclusively from authenticated gross categories. It never guesses unmeasured files, calculates unique reclaim from overlapping buckets or scans a host from the browser.</p>
+          <p className="mt-4 text-xs leading-5 text-amber-100/80">
+            {sourcePlane?.nativeV2Source
+              ?"WE2-native V2 independently verifies the origin census and publishes only bounded sampled allocation. This is NOT the whole directory or unique reclaim."
+              :"This map is derived exclusively from authenticated gross categories. It never guesses unmeasured files, calculates unique reclaim from overlapping buckets or scans a host from the browser."}
+          </p>
         </div>
         <div className={PANEL+" p-5 sm:p-7"}>
           <div className="flex items-center justify-between gap-3">
@@ -257,16 +486,21 @@ export default function StorageHogWorkbench(){
             <SlidersHorizontal className="h-5 w-5 text-slate-400"/>
           </div>
           {hogs.length===0?<div className="mt-6 flex min-h-[330px] flex-col justify-center rounded-2xl border border-dashed border-white/15 p-6 text-sm leading-6 text-amber-100/90">
-            No current signed hog inventory for this drive. Connect the approved bounded host collector; do not substitute old screenshots or calculated guesses.
+            {hel1HogsNotScanned
+              ?"NOT SCANNED FOR HOGS. The signed HEL1 capacity observation contains zero category measurements because its producer has not run a bounded directory-allocation census. This is not an empty filesystem."
+              :live?"The signed observation reported no gross categories for this drive.":
+              activeInventory.status==="STALE"?"The last signed category inventory has expired. Awaiting a new host observation.":
+              "No current signed hog inventory for this drive."}
           </div>:
           <div className="mt-5 max-h-[610px] space-y-2 overflow-y-auto pr-1">{hogs.map((h,i)=>{
             const total=hogs.reduce((acc,x)=>acc+x.grossBytes,0);
             const pct=total>0?100*h.grossBytes/total:0;
             const isSelected=selected===h.key;
-            const past=events.filter(e=>e.plane===active&&e.category===h.key).at(-1);
+            const past=events.filter(e=>e.plane===activeTeaching&&e.category===h.key).at(-1);
             const sameSource=past&&past.sourceObservedAt===sourcePlane?.observedAt&&
               past.grossBytes===h.grossBytes&&past.sourceFloor===h.level&&past.overlaps===h.overlaps;
-            const level=past?.requestedLevel===5?5:(sameSource&&past?past.effectiveLevel:h.level);
+            const applied=past?.requestedLevel===5||sameSource;
+            const level=Math.max(h.level,strongestRecordedProtection(events,activeTeaching,h.key),applied&&past?past.effectiveLevel:1);
             return <button type="button" key={h.key} onClick={()=>chooseItem(h.key)}
               aria-pressed={isSelected} className={"w-full rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 "+
                 (isSelected?"border-cyan-300/60 bg-cyan-300/[.08]":"border-white/10 bg-white/[.025] hover:border-white/20")}>
@@ -274,20 +508,24 @@ export default function StorageHogWorkbench(){
                 <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">#{i+1} · {h.overlaps?"OVERLAP":"GROSS ALLOCATION"}</div>
                   <div className="mt-1 truncate text-sm font-semibold text-white">{h.label}</div></div>
                 <div className="shrink-0 text-right"><div className="font-mono text-sm font-bold text-white">{bytes(h.grossBytes)}</div>
-                  <div className="mt-1 text-[10px] font-bold" style={{color:level>1?LVLCOLORS[level as TeachingLevel]:"#22d3ee"}}>L{level} {past?"· taught":"· source"}</div></div>
+                  <div className="mt-1 text-[10px] font-bold" style={{color:level>1?LVLCOLORS[level as TeachingLevel]:"#22d3ee"}}>L{level} {applied?"· taught":"· source"}</div></div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full" style={{width:pct+"%",background:COLORS[i%COLORS.length]}}/></div>
             </button>;
           })}</div>}
         </div>
       </section>
-      <StoragePremiumInspector visual={data?.visual} activeId={active}/>
+      <StorageReviewQueue plane={activeTeaching} observedAt={sourcePlane?.observedAt??null}
+        hogs={hogs} events={events} ownerBinding={access?.ownerBinding??null}
+        admitted={live&&ledgerStatus==="VERIFIED"&&access?.mayRecord===true}
+        onInspect={chooseItem} now={now}/>
+      <StoragePremiumInspector inventorySource={activeInventory} activeId={activeTeaching}/>
       <section className={PANEL+" p-5 sm:p-7"} aria-label="Owner classification studio">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-[10px] font-black tracking-[.25em] text-amber-300">OWNER CLASSIFICATION · NEXT PHASE L2</p>
             <h2 className="mt-2 text-2xl font-bold text-white">{item?item.label:"Choose a storage consumer"}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              {item?bytes(item.grossBytes)+" reported gross · "+item.key+" · source L"+item.level:
+              {item?bytes(item.grossBytes)+(sourcePlane?.nativeV2Source?" signed bounded sample · ":" reported gross · ")+item.key+" · source L"+item.level:
                 "Select a ranked category or radial wedge to review what belongs in L2, L3, L4 or permanent L5."}
             </p></div>
           <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 px-3 py-2 text-[10px] font-bold text-amber-200">
@@ -296,7 +534,7 @@ export default function StorageHogWorkbench(){
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {LEVELS.map(l=><button type="button" key={l.id}
-            disabled={!item||priorL5}
+            disabled={!item||priorL5||l.id<effectiveFloor}
             onClick={()=>{setChosen(l.id);setConfirmForever(false);setNotice(null);}}
             aria-pressed={chosen===l.id}
             className={"rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-40 "+
@@ -305,9 +543,28 @@ export default function StorageHogWorkbench(){
             <div className="mt-2 text-xs leading-5 text-slate-400">{l.description}</div>
           </button>)}
         </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2" aria-label="Owner-selected independent classification dimensions">
+          <label className="text-xs font-semibold text-slate-300">Business domain
+            <select aria-label="Business domain" value={domain} disabled={!item||priorL5}
+              onChange={e=>setDomain(e.target.value as BusinessDomain|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose business domain</option>
+              {BUSINESS_DOMAINS.map(d=><option key={d} value={d}>{d.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-slate-300">Lifecycle
+            <select aria-label="Lifecycle" value={lifecycle} disabled={!item||priorL5}
+              onChange={e=>setLifecycle(e.target.value as StorageLifecycle|"")}
+              className="mt-2 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white disabled:opacity-40">
+              <option value="">Choose lifecycle</option>
+              {STORAGE_LIFECYCLES.map(l=><option key={l} value={l}>{l.replaceAll("_"," ")}</option>)}
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-amber-100/80">These are owner-selected descriptions, not inherited source facts. Correction appends a new event. Source protections L1–L5 remain authoritative.</p>
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (optional owner learning note, no passwords or secrets)</label>
+            <label htmlFor="storage-owner-note" className="text-xs font-semibold text-slate-300">Why? (Level 2 requires an owner explanation; no passwords or secrets)</label>
             <textarea id="storage-owner-note" rows={3} maxLength={160} value={note}
               disabled={!item||priorL5} onChange={e=>setNote(e.target.value)}
               placeholder="Historical release archive; preserve until restored on Intel…"
@@ -318,12 +575,14 @@ export default function StorageHogWorkbench(){
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300"><Clock3 className="h-4 w-4"/> Classification evidence</div>
             {item?<div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
               <div>Requested: <strong className="text-white">L{chosen}</strong> · effective policy: <strong className="text-white">{disposition?.effectiveLevel?"L"+disposition.effectiveLevel:"HOLD"}</strong></div>
-              <div>Previous owner record: <strong className="text-white">{last?"L"+last.requestedLevel+" · "+last.at:"NONE"}</strong></div>
-              <div>Source protection: <strong className="text-amber-200">L{item.level} floor; permanent L5 cannot be withdrawn</strong></div>
+              <div>Source protection: <strong className="text-amber-200">L{item.level} source · historical minimum L{priorFloor}; stronger owner protection cannot be downgraded</strong></div>
               <div>Unique reclaim and exact-file admission: <strong className="text-amber-200">NOT VERIFIED</strong></div>
             </div>:<p className="mt-3 text-xs text-slate-400">No category selected.</p>}
           </div>
         </div>
+        {item&&sourcePlane&&access&&ledgerStatus==="VERIFIED"&&<StorageTeachingHistory
+          events={events} plane={activeTeaching} item={item} observedAt={sourcePlane.observedAt}
+          ownerBinding={access.ownerBinding} now={now}/>}
         {chosen===5&&item&&!priorL5&&<label className="mt-4 flex items-start gap-3 rounded-xl border border-rose-300/25 bg-rose-300/[.04] p-4 text-sm text-rose-100">
           <input type="checkbox" checked={confirmForever} onChange={e=>setConfirmForever(e.target.checked)} className="mt-1"/>
           I understand L5 is permanent protection and cannot be downgraded or approved for software deletion.
@@ -335,12 +594,32 @@ export default function StorageHogWorkbench(){
           </button>
           <div role="status" className="min-w-0 flex-1 text-xs leading-5 text-slate-400">
             {notice??(priorL5?"This category has permanent owner L5 protection.":
+              chosen<effectiveFloor?"A stronger signed source or historical owner floor blocks this classification.":
+              chosen===2&&!note.trim()?"Enter a written explanation before saving Level 2.":
+              (!domain||!lifecycle)?"Choose both business domain and lifecycle to record your decision.":
               ledgerStatus!=="VERIFIED"?"Learning ledger not admitted: choices remain unsaved previews.":
-              !live?"Signed source missing: saving disabled.":
+              !access?.ownerBinding?"Recording requires enrollment of the owner's app account.":
+              !access.mayRecord?"Only the enrolled owner account can record a classification.":
+              !live?"Saving requires a current signed observation.":
+              teachingDeadline===null?"Level 2 teaching requires a signed observation from the past hour.":
               "Saves an append-only owner-intent receipt; never executes delete, archive or migration.")}
           </div>
         </div>
       </section>
+        </>}
+      <StorageReceiptTimeline events={events} ledgerStatus={ledgerStatus}
+        ownerBinding={access?.ownerBinding??null}/>
+      <StorageTransportLaneStatus
+        plane={active}
+        sourceEvidence={data?.planes.some(p=>p.id===active&&p.status==="RECEIPT"&&
+          (p.source==="SIGNED_THREE_PLANE_RECEIPT"||p.source==="WE2_NATIVE_V2_SIGNED_PLANE"))
+          ?"SIGNED_CAPACITY_ONLY":
+          activeInventory.status==="STALE"?"STALE":"UNAVAILABLE"}
+        observedAt={active==="intel"?null:sourcePlane?.observedAt??null}
+        intelEvidence={intel?.source==="SIGNED_PRIVATE_RECEIPT"&&intel.health==="ONLINE"
+          ?"SIGNED_CAPACITY_ONLY":"UNAVAILABLE"}
+        ownerLedgerVerified={ledgerStatus==="VERIFIED"&&!!access?.ownerBinding}
+      />
       <section className="grid gap-4 md:grid-cols-3" aria-label="Execution boundaries">
         <div className={PANEL+" p-5"}><ShieldCheck className="h-6 w-6 text-emerald-300"/>
           <h3 className="mt-4 font-bold text-white">L1 / previous phase</h3>

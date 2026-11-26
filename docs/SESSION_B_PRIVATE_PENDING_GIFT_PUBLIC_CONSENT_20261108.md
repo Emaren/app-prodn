@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "source-only-public-consent-no-production-db-ddl-or-financial-release"
-reviewed_at: "2026-11-16"
+reviewed_at: "2026-11-24"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -146,3 +146,15 @@ Review basis: the retained original document and the current canonical App main 
 Public consent/aggregate source and its negative tests remain retained. A source-only visibility correction is not proof that a protected database view, C03 financial writer, actual user gift or production leak was migrated or authorized; those claims remain excluded from B scope.
 
 Disposition: **B-owned nonfinancial/source-history review only.** Original dated release and CI evidence remains historic; this review is not a new physical acceptance, privileged B release permit, protected Steam/FINANCIAL admission, or authorization for the pending Ember Reign campaign singleton. Preserve the source/receipt distinction.
+
+## 2026-11-24 -- WE2 source review in Atlas production era
+
+Actual evidence comparison: historical dated document versus exact canonical main `f14bf4625ed124beafe80dc34188dcb7da16daa0`; physically accepted Atlas is distinct source `ed4b0ac878725eeb62c86b79ae416511da903e7d`. This is a source review, NOT an owner-native signer, new browser login, financial release, database migration, renewed permit or new site deployment.
+
+- `lib/publicPlayerDirectory.ts`: current canonical-main blob `725896cc7b1b1264a9a7ee762049a007fdd14e31`
+- `lib/playerProfile.ts`: current canonical-main blob `b41ed6b30b274ffcd5deca02ce04226fd13e6aef`
+- `tests/private-pending-gift-public-consent.test.mts`: current canonical-main blob `7e539472c5672f887e8ead88bf1435d18ee745b2`
+
+**Current finding:** Consent projection and negative test source remain unchanged; no live financial or private database migration is inferred.
+
+**Scope restriction:** Original historic evidence retained. A code blob change requires new exact source qualification; prior release receipts and physical T10 evidence are immutable. No inference of a newly admitted ninth Factory invocation.

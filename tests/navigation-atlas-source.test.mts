@@ -26,9 +26,12 @@ const WORK_BOARD = "/admin/central-command/work-board";
 const LANES = "/admin/central-command/lanes";
 const UMBRELLA = "/admin/aoe2war-os/umbrella-tree";
 const STORAGE_EXPLORER = "/admin/storage-os/explorer";
+const STORAGE_ATLAS = ["/admin/storage-os/atlas","/admin/storage-os/atlas/hel1-root",
+  "/admin/storage-os/atlas/hel1-data","/admin/storage-os/atlas/m1",
+  "/admin/storage-os/atlas/intel"] as const;
 const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES] as const;
 
-test("all 39 approved static admin pages have an exact authenticated navigation edge", () => {
+test("all 44 approved static admin pages have an exact authenticated navigation edge", () => {
   assert.equal(topLevel.length, 33, "Unexpected top-level admin source changes must be reviewed");
   assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
@@ -51,8 +54,17 @@ test("all 39 approved static admin pages have an exact authenticated navigation 
     "The Storage Explorer independently enforces admin auth");
   assert.equal(ADMIN_ATLAS_ROUTES.filter(route=>route.href===STORAGE_EXPLORER && route.visibility==="admin").length,1,
     "Exactly one authenticated Storage Explorer navigation edge is allowed");
-  const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES,UMBRELLA,STORAGE_EXPLORER].sort();
-  assert.equal(approvedStaticRoutes.length, 39);
+  for (const href of STORAGE_ATLAS) {
+    assert.ok(existsSync(new URL("app"+href+"/page.tsx",root)),
+      "New Atlas private admin route physically absent: "+href);
+    assert.match(src("app"+href+"/page.tsx"),/await requireServerAdmin\(\)/,
+      "Atlas private server auth required before visual page: "+href);
+    assert.equal(ADMIN_ATLAS_ROUTES.filter(row=>row.href===href && row.visibility==="admin").length,1,
+      "Every new Atlas private page needs exactly one authenticated navigation edge");
+  }
+  const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES,
+    UMBRELLA,STORAGE_EXPLORER,...STORAGE_ATLAS].sort();
+  assert.equal(approvedStaticRoutes.length,44);
   for(const href of ["/admin/backup-os","/admin/code-health","/admin/documents-os",
                       "/admin/storage-transfer","/admin/system-composer"]) {
     assert.ok(staticAdminPaths.includes(href), "real B3/B4 source page missing: "+href);

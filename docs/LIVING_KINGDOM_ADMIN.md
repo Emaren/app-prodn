@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
 authority: "admin-journey-read-projection"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Living Kingdom Admin Observatory
+
+> **November 25, 2026 — documentation disposition (source only).** Current source review of both admin Living Kingdom API handlers confirms requireAdmin and private/no-store headers. Original #888 implementation counts and fixture requirements remain dated, not new authenticated browser evidence. Use the exact current checkout for verification; no production access, privacy or nonmutation acceptance is asserted here.
+
 
 *Source review trail: issue/PR #888; this is admin-only, not public Index certification.*
 

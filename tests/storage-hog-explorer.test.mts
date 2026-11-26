@@ -10,6 +10,50 @@ import {
 import {
   appendTeachingEvent,readTeachingEvents,observedHogFingerprint,
 } from "../lib/storageHogTeachingLedger.ts";
+import {signedHogInventory,teachingSourceDeadline} from "../lib/storageSignedFreshness.ts";
+import type {StorageVisualView} from "../lib/storageVisualPrivate.ts";
+
+test("missing, stale and freshly empty host inventories have distinct counts",()=>{
+  const at="2026-11-20T12:00:00.000Z",now=Date.parse(at);
+  const visual:StorageVisualView={
+    source:"SIGNED_PRIVATE_RECEIPT",authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY",
+    planes:[{id:"mac",observedAt:at,status:"RECEIPT",coverage:"PARTIAL",events:[],hogs:[]}],
+  };
+  const empty=signedHogInventory(visual,"mac",now);
+  assert.equal(empty.status,"PARTIAL");
+  assert.equal(empty.categoryCount,0);
+  assert.equal(empty.currentUntil,now+36*3_600_000);
+  for(const inventory of [
+    signedHogInventory(undefined,"mac",now),
+    signedHogInventory({...visual,source:"NONE"},"mac",now),
+    signedHogInventory(visual,"hel1-root",now),
+    signedHogInventory(visual,"mac",now-60_001),
+  ]){
+    assert.equal(inventory.status,"UNKNOWN");
+    assert.equal(inventory.categoryCount,null);
+  }
+  visual.planes[0].hogs.push({key:"DOWNLOADS",label:"Downloads",level:2,grossBytes:0,overlaps:true});
+  assert.equal(signedHogInventory(visual,"mac",empty.currentUntil!).categoryCount,1);
+  const expired=signedHogInventory(visual,"mac",empty.currentUntil!+1);
+  assert.equal(expired.status,"STALE");
+  assert.equal(expired.categoryCount,null);
+  assert.equal(expired.plane?.observedAt,at);
+  visual.planes[0].status="STALE";
+  assert.equal(signedHogInventory(visual,"mac",now).status,"STALE");
+});
+
+test("owner teaching expires at the same inclusive deadline in the browser and route",()=>{
+  const at="2026-11-20T12:00:00.000Z",now=Date.parse(at);
+  for(const level of [2,3,4,5] as const){
+    const end=now+(level===2?1:36)*3_600_000;
+    assert.equal(teachingSourceDeadline(at,level,now-60_000),end);
+    assert.equal(teachingSourceDeadline(at,level,now-60_001),null);
+    assert.equal(teachingSourceDeadline(at,level,end),end);
+    assert.equal(teachingSourceDeadline(at,level,end+1),null);
+    assert.equal(teachingSourceDeadline(undefined,level,now),null);
+    assert.equal(teachingSourceDeadline("invalid",level,now),null);
+  }
+});
 
 test("L2 to L5 choices never override immutable source protection",()=>{
   assert.equal(isTeachingLevel(1),false);
@@ -53,7 +97,7 @@ test("append-only owner categories bind HMAC, chronology, exact source, and L5 f
     const at="2026-11-17T01:00:00Z";
     const base={plane:"mac" as const,category:"DOWNLOADS",sourceObservedAt:at,
       sourceFingerprint:"f".repeat(64),grossBytes:2048,sourceFloor:2 as const,
-      overlaps:false,note:"Inspect downloaded assets"};
+      overlaps:false,note:"Inspect downloaded assets",ownerBinding:"1".repeat(64)};
     const first=await appendTeachingEvent({
       ...base,requestedLevel:2,previousId:null,
     });

@@ -1,9 +1,31 @@
+import type {TeachingEvent} from "./storageHogTeachingLedger.ts";
+import {teachingSourceDeadline} from "./storageSignedFreshness.ts";
+
 /**
  * Storage OS owner-teaching semantics. This module never produces a deletion permit.
  * Signed source policy sets a minimum protection level; owner may only strengthen it.
  * A requested L2 on an L3/L4 item is recorded as feedback, not a downgrade.
  */
 export const STORAGE_TEACHING_SCHEMA = "aoe2war.storage-owner-teaching.v1" as const;
+export const CATEGORY_REVIEW_VERSION = "category-review-v1" as const;
+// Source-bound category teaching V2. These owner-selected labels are independent
+// of the signed protection floor; neither label grants retirement authority.
+export const CLASSIFICATION_REVIEW_VERSION = "category-review-v2" as const;
+export const BUSINESS_DOMAINS = [
+  "REPLAY_VAULT","ASSETS","WATCHERS","WEBSITE_PWA","WOLOCHAIN","TRAFFIC",
+  "FACTORY","RECOVERY","DEVELOPER_TOOLS","SIDE_PROJECTS","SYSTEM","OTHER",
+] as const;
+export type BusinessDomain = typeof BUSINESS_DOMAINS[number];
+export const STORAGE_LIFECYCLES = [
+  "ACTIVE","ROLLBACK","WARM","HISTORICAL","REGENERABLE","COLD_ARCHIVE","UNKNOWN",
+] as const;
+export type StorageLifecycle = typeof STORAGE_LIFECYCLES[number];
+export function isBusinessDomain(value:unknown):value is BusinessDomain{
+  return typeof value==="string" && BUSINESS_DOMAINS.includes(value as BusinessDomain);
+}
+export function isStorageLifecycle(value:unknown):value is StorageLifecycle{
+  return typeof value==="string" && STORAGE_LIFECYCLES.includes(value as StorageLifecycle);
+}
 export const TEACHING_LEVELS = [2, 3, 4, 5] as const;
 export type TeachingLevel = typeof TEACHING_LEVELS[number];
 export type ProtectionLevel = 1 | TeachingLevel;
@@ -43,4 +65,64 @@ export function sourceMatchesRequest(
     typeof requested.grossBytes==="number" && Number.isSafeInteger(requested.grossBytes) &&
     requested.grossBytes===observed.grossBytes &&
     requested.sourceFloor===observed.level && requested.overlaps===observed.overlaps;
+}
+
+type ReviewScope = {
+  plane:TeachingPlane; category:string; observedAt:string;
+  sourceFloor:ProtectionLevel; overlaps:boolean;
+};
+/** Permanent review ceiling across *all* signed owner events for a plane/category.
+ * There is intentionally NO downgrade/reclassification executor in this release.
+ * Historic L3/L4 decisions and signed inherited floors survive later L2 feedback.
+ * This is a conservative category policy, never an exact-item deletion rule.
+ */
+export function strongestRecordedProtection(
+  events: readonly TeachingEvent[], plane:TeachingPlane, category:string,
+):ProtectionLevel {
+  let floor:ProtectionLevel = 1;
+  for (const event of events) {
+    if(event.plane !== plane || event.category !== category)continue;
+    // Only call on readTeachingEvents()-verified ledger entries.
+    if(!isProtectionLevel(event.sourceFloor) || !isProtectionLevel(event.effectiveLevel) ||
+       !isTeachingLevel(event.requestedLevel))return 5; // corruption must never grant L2
+    floor=Math.max(floor,event.sourceFloor,event.effectiveLevel,event.requestedLevel) as ProtectionLevel;
+  }
+  return floor;
+}
+
+type ReviewFinding = "PROTECTED" | "ALREADY_REVIEWED" | "NEEDS_EXAMPLES" | "REVIEW_SUGGESTED" | "EXPIRED";
+
+/** The input ledger is in verified append order. Comparable past category
+ * observations can prioritize a manual review, never an individual file. */
+export function categoryReviewEvidence(events:readonly TeachingEvent[], scope:ReviewScope,
+  ownerBinding:string|null, now=Date.now()):{finding:ReviewFinding; examples:TeachingEvent[]} {
+  const history = events.filter(e => e.plane === scope.plane && e.category === scope.category);
+  // Signed inherited floors and all stronger decisions are sticky: an old
+  // L4 followed by two L2 notes is NEVER evidence for an L2 recommendation.
+  // A future separately authenticated reclassification must introduce a
+  // versioned, independently reviewed authority; this release has none.
+  if (scope.sourceFloor !== 2 ||
+      strongestRecordedProtection(history,scope.plane,scope.category) > 2)
+    return {finding:"PROTECTED", examples:[]};
+  if (teachingSourceDeadline(scope.observedAt,2,now) === null)
+    return {finding:"EXPIRED", examples:[]};
+  const examples:TeachingEvent[] = [];
+  const observed = new Set<number>();
+  const current = Date.parse(scope.observedAt);
+  for (const event of history.reverse()) {
+    // Changed provenance, overlap, floor or owner intent ends the streak.
+    if (!ownerBinding || event.ownerBinding !== ownerBinding ||
+        (event.reviewVersion !== CATEGORY_REVIEW_VERSION &&
+         event.reviewVersion !== CLASSIFICATION_REVIEW_VERSION) || event.sourceFloor !== scope.sourceFloor ||
+        event.overlaps !== scope.overlaps) break;
+    const at = Date.parse(event.sourceObservedAt);
+    if (at === current) return {finding:"ALREADY_REVIEWED", examples:[]};
+    if (!Number.isFinite(at) || at > current || event.effectiveLevel !== 2 ||
+        event.requestedLevel !== 2 || !event.note.trim()) break;
+    if (!observed.has(at)) {
+      examples.push(event);
+      observed.add(at);
+    }
+  }
+  return {finding:examples.length >= 2 ? "REVIEW_SUGGESTED" : "NEEDS_EXAMPLES", examples};
 }

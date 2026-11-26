@@ -342,11 +342,15 @@ class ApprovalTests(unittest.TestCase):
             def fake_ssh(cmd, **kwargs):
                 calls.append(("ssh", cmd))
                 if cmd.startswith("df -B1 "):
-                    return str(9 * 1024**3)
+                    return str(32 * 1024**3 if "HC_Volume" in cmd else 16*1024**3)
+                if cmd.startswith("python3 -B -c ") and "PASS_BOUND_DATA_SOURCE_MOUNT_OWNER_STICKY_DIR" in cmd:
+                    return "PASS_BOUND_DATA_SOURCE_MOUNT_OWNER_STICKY_DIR"
+                if cmd.startswith("python3 -B -c ") and "PASS_DATA_STAGE_FILES_AND_DIRECTORY_FSYNCED" in cmd:
+                    return "PASS_DATA_STAGE_FILES_AND_DIRECTORY_FSYNCED"
                 if cmd.startswith("if test -f ") or cmd.startswith("if test -e "):
                     return ""
                 if cmd.startswith("umask 077; mkdir "):
-                    return "1000:1000:700"
+                    return "2064:1000:1000:700"
                 if cmd.startswith("set -e; test ! -L "):
                     self.assertIn("chmod 600 ", cmd)
                     self.assertIn("stat -c '%u:%h'", cmd)
@@ -370,6 +374,8 @@ class ApprovalTests(unittest.TestCase):
                  patch.object(R,"event",return_value=None):
                 remote = R.deliver(self.approval,stage,proof,stage/"ledger.jsonl")
             self.assertTrue(remote.endswith("-run-4351"))
+            self.assertTrue(remote.startswith(R.DATA_STAGE_ROOT))
+            self.assertTrue(all(R.DATA_STAGE_ROOT in x[1][-1] for x in calls if x[0]=="rsync"))
             self.assertEqual(len([x for x in calls if x[0]=="rsync"]),2)
             self.assertEqual(len([x for x in calls if x[0]=="ssh" and
                                   x[1].startswith("set -e; test ! -L ")]),2)
