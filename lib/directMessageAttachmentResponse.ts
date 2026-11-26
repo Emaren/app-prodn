@@ -4,6 +4,8 @@ import { loadDirectMessageAttachmentContent } from "@/lib/directMessageAttachmen
 import { isRestrictedImageReference, readRestrictedImage } from "@/lib/restrictedDirectImageStorage.mjs";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import {usesNonfinancialProductionAuth} from "@/lib/productionAuth";
+import {restrictedDirectRead,privateDirectError,RestrictedDirectReadError} from "@/lib/restrictedDirectInbox";
 
 function privateJson(detail: string, status: number) {
   return NextResponse.json({detail}, {status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
@@ -84,7 +86,7 @@ function buildContentDisposition({
 }
 
 export async function readPrivateDirectAttachment(
-  request: NextRequest
+  request: NextRequest, legacyMessageId?:string
 ) {
   try {
     const sessionUid = await getSessionUid(request);
@@ -92,13 +94,30 @@ export async function readPrivateDirectAttachment(
       return privateJson("No active session", 401);
     }
 
-    const ids=request.nextUrl.searchParams.getAll("attachmentMessageId");
+    const ids=legacyMessageId===undefined?request.nextUrl.searchParams.getAll("attachmentMessageId"):[legacyMessageId];
+    if(usesNonfinancialProductionAuth()&&[...request.nextUrl.searchParams.keys()].some(k=>legacyMessageId!==undefined||k!=="attachmentMessageId"))return privateJson("Invalid attachment request",400);
     const messageId = ids.length===1 && /^[1-9]\d{0,9}$/.test(ids[0]) && Number(ids[0])<=2147483647
       ? parseMessageId(ids[0]) : null;
     if (!messageId) {
       return privateJson("Invalid attachment id", 400);
     }
 
+    if(usesNonfinancialProductionAuth()){
+      try{
+        const row=await restrictedDirectRead(request,{op:"attachment",messageId});
+        const ref=row.storageRef,mime=row.mimeType,name=row.name;
+        if(row.messageId!==messageId||typeof ref!=="string"||!isRestrictedImageReference(ref)||
+           typeof mime!=="string"||!["image/png","image/jpeg","image/webp"].includes(mime)||
+           (name!==null&&typeof name!=="string"))throw new RestrictedDirectReadError(503);
+        const decoded=await readRestrictedImage(process.env.SOCIAL_DIRECT_IMAGE_READ_ROOT,ref,mime);
+        if(!decoded)return privateJson("Attachment is unreadable",422);
+        return new NextResponse(decoded.buffer,{headers:{
+          "Content-Type":mime,"Content-Length":String(decoded.buffer.length),
+          "Content-Disposition":buildContentDisposition({name:name as string|null,mimeType:mime,kind:"image"}),
+          "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Content-Security-Policy":"sandbox",
+        }});
+      }catch(error){return privateDirectError(error);}
+    }
     const prisma = getPrisma();
     const viewer = await prisma.user.findUnique({
       where: { uid: sessionUid },
