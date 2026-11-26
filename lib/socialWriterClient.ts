@@ -67,6 +67,9 @@ export async function callSocialDeliveryWriter(signedSession:string,input:Record
 export async function callSocialDirectReader(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/direct/read",signedSession,input,MAX_BYTES,4_000,2*1024*1024);
 }
+export async function callSocialClanReader(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/clan/read",signedSession,input,MAX_BYTES,4_000,2*1024*1024);
+}
 async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number,replyLimit=8192):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");
