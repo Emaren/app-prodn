@@ -530,7 +530,7 @@ function mergeClanHallSnapshot(
   incoming: ClanHallSnapshot,
 ): ClanHallSnapshot {
   if (!incoming.access.canReadChat) return incoming;
-  if (current.clan.chatAudiencePolicy !== incoming.clan.chatAudiencePolicy) {
+  if (current.clan.slug !== incoming.clan.slug || current.viewer.uid !== incoming.viewer.uid || current.clan.chatAudiencePolicy !== incoming.clan.chatAudiencePolicy) {
     return incoming;
   }
 
@@ -636,6 +636,7 @@ export default function ClanHallClient({
   const restrictedHall = snapshot.access.restrictedMemberHall === true;
   const restrictedImageAvailable = snapshot.access.restrictedImageAvailable === true;
   const clanImageKeys = useRef(new WeakMap<File,string>());
+  const restrictedReadEpoch = useRef(0);
   const historyEndpoint = restrictedHall ? `/api/social/clan-hall?slug=${encodeURIComponent(snapshot.clan.slug)}` : endpoint;
   const historySeparator = restrictedHall ? "&" : "?";
   const presenceEndpoint = `${endpoint}/presence`;
@@ -667,39 +668,49 @@ export default function ClanHallClient({
     });
   }, []);
 
+  const clearRestrictedRead = useCallback((notice:string)=>{
+    restrictedReadEpoch.current++;
+    setSnapshot(current=>({...current,messages:[],roster:[],allowedAudiences:[],messagePage:{kind:"latest",hasMore:false,beforeMessageId:null},viewer:{...current.viewer,isMember:false,canManage:false},access:{...current.access,canReadChat:false,canPost:false,restrictedImageAvailable:false,notice}}));
+    setPendingMessages([]);
+  },[]);
   const refresh = useCallback(async (options?: { stickToBottom?: boolean }) => {
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
+    const epoch=restrictedReadEpoch.current;
 
     try {
       const response = await fetch(historyEndpoint, { cache: "no-store" });
       if (!response.ok) {
-        if(restrictedHall){setSnapshot(current=>({...current,messages:[],roster:[],allowedAudiences:[],viewer:{...current.viewer,isMember:false,canManage:false},access:{...current.access,canReadChat:false,canPost:false,notice:response.status===401?"Sign in to access member chat.":response.status===404?"Active clan membership required.":"Clan Hall temporarily unavailable."}}));setPendingMessages([]);}
+        if(restrictedHall)clearRestrictedRead(response.status===401?"Sign in to access member chat.":response.status===404?"Active clan membership required.":"Clan Hall temporarily unavailable.");
         return;
       }
       const payload = (await response.json()) as ClanHallSnapshot;
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
       setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       if (options?.stickToBottom) settleChatToBottom();
     } catch (refreshError) {
+      if(restrictedHall)clearRestrictedRead("Clan Hall temporarily unavailable.");
       console.warn("Failed to refresh clan hall:", refreshError);
     } finally {
       requestInFlightRef.current = false;
     }
-  }, [historyEndpoint, restrictedHall, settleChatToBottom]);
+  }, [historyEndpoint, restrictedHall, settleChatToBottom,clearRestrictedRead]);
 
   const refreshFocusedMessage = useCallback(async (messageId: number) => {
+    const epoch=restrictedReadEpoch.current;
     try {
       const response = await fetch(
         `${historyEndpoint}${historySeparator}focusMessageId=${encodeURIComponent(String(messageId))}`,
         { cache: "no-store" },
       );
-      if (!response.ok) return;
+      if (!response.ok) {if(restrictedHall&&response.status===401)clearRestrictedRead("Sign in to access member chat.");return;}
       const payload = (await response.json()) as ClanHallSnapshot;
-      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
+      setSnapshot((current) => restrictedHall&&!current.access.canReadChat?current:mergeClanHallSnapshot(current, payload));
     } catch (refreshError) {
       console.warn("Failed to refresh Clan Hall message:", refreshError);
     }
-  }, [historyEndpoint, historySeparator]);
+  }, [historyEndpoint, historySeparator,restrictedHall,clearRestrictedRead]);
 
   const loadOlderMessages = useCallback(async () => {
     if (
@@ -714,6 +725,7 @@ export default function ClanHallClient({
     if (!viewport) return;
 
     const beforeMessageId = snapshot.messagePage.beforeMessageId;
+    const epoch=restrictedReadEpoch.current;
     historyLoadInFlightRef.current = true;
     historyPrependAnchorRef.current = {
       beforeMessageId,
@@ -727,9 +739,10 @@ export default function ClanHallClient({
         `${historyEndpoint}${historySeparator}beforeMessageId=${encodeURIComponent(String(beforeMessageId))}`,
         { cache: "no-store" },
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {if(restrictedHall&&response.status===401)clearRestrictedRead("Sign in to access member chat.");throw new Error(`HTTP ${response.status}`);}
       const payload = (await response.json()) as ClanHallSnapshot;
-      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
+      setSnapshot((current) => restrictedHall&&!current.access.canReadChat?current:mergeClanHallSnapshot(current, payload));
     } catch (historyError) {
       historyPrependAnchorRef.current = null;
       console.warn("Failed to prefetch older Clan Hall messages:", historyError);
@@ -737,7 +750,7 @@ export default function ClanHallClient({
       historyLoadInFlightRef.current = false;
       setHistoryLoading(false);
     }
-  }, [historyEndpoint, historySeparator, snapshot.messagePage.beforeMessageId, snapshot.messagePage.hasMore]);
+  }, [historyEndpoint, historySeparator, restrictedHall,clearRestrictedRead,snapshot.messagePage.beforeMessageId, snapshot.messagePage.hasMore]);
 
   useLayoutEffect(() => {
     const anchor = historyPrependAnchorRef.current;
@@ -1158,6 +1171,7 @@ export default function ClanHallClient({
     attachmentFiles: File[] = [],
     remoteMediaUrls: string[] = [],
   ) {
+    const epoch=restrictedReadEpoch.current;
     // A stale optimistic retry must obey the current server-admitted capability.
     if(restrictedHall&&(attachmentFiles.length||remoteMediaUrls.length)&&(!restrictedImageAvailable||attachmentFiles.length!==1||remoteMediaUrls.length!==0||draft.trim()||draftAudience!=="clan")){setError("Choose one admitted local image, without caption.");return;}
     const requestScribe = requestedScribe && hallScribeEnabled;
@@ -1220,6 +1234,7 @@ export default function ClanHallClient({
         );
       }
 
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current){setMessage("");if(attachmentFiles.length)clearComposerAttachments();setNotice("Post saved; refresh after signing in again.");return;}
       setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       shouldStickToBottomRef.current = true;
       if (pendingId) {
