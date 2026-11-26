@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dda8a9d5256bf3892d702e246537143975851dc7ba62885fd05822de8d290c6e",
+      "sha256": "9c80de5d91ec6dc655f593c51a620a7f915d145254f4d5ee6b01eccda18c93c0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1649,7 +1649,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-21",
       "sensitivity": "internal",
-      "sha256": "2110dea5cde66306cfb0ca6c484fde5d6e12c985b128096015231cf1f87e97ba",
+      "sha256": "785389a414baf982e5b33de8608342a5537b0c4b7746e6635e7043804c595927",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-matchups-profile-repair-20261124",
-    "commit": "90cb086e912e16ce9b24cc937db8c1f8fa39ca73"
+    "branch": "codex/factory-zip-proof-20261120",
+    "commit": "db855e8db4fc12f254072f5e9c4c002ed023f867"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
