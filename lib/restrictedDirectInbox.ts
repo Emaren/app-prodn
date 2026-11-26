@@ -5,7 +5,8 @@ import {mapRestrictedInbox,selectRestrictedTarget,restrictedSyncMarker} from "@/
 import {NONFINANCIAL_PRODUCTION_PROFILE} from "@/lib/productionAuth";
 export const DIRECT_PRIVATE_HEADERS={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"};
 export class RestrictedDirectReadError extends Error {
- constructor(public readonly status:number){super("DIRECT_READ_UNAVAILABLE");}
+ readonly status:number;
+ constructor(status:number){super("DIRECT_READ_UNAVAILABLE");this.status=status;}
 }
 export function privateDirectError(error:unknown){
  const status=error instanceof RestrictedDirectReadError?error.status:503;
