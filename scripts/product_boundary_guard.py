@@ -349,7 +349,16 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
+# Proposed exact nonfinancial R25 Chat source admission (PR #1510).
+# Source-only; review of this policy itself is mandatory. No host/SQL authority.
+EXACT_WE2_R25_CHAT_BRANCH = "we2/r25-chat-media-exact-20261124"
+EXACT_WE2_R25_CHAT_BASE = "861795e9caba793eaacc76b2dd8550a06253aa23"
+EXACT_WE2_R25_CHAT_PINS = {'scripts/r25_b_guard_production_v1.cjs': '9f45ceac2c3b40d6d2245b1474d16449b6f240e444f5ba0b24f51c67aa01f4cc', 'tests/test_r25_production_node_guard.py': 'cb1f80759881a3e49656b2bd6882b6b264280f312043d99d203ab2592138dd03', 'tests/r25_chat_native_node22.test.cjs': '547f5158c782a008671d269be0438de003784ba9e5905a7f082c6c775cf14e55', 'tests/test_product_boundary_guard.py': '6a01b0c585703a9de96306cfb8eea20ff5171ba9c3d68e56bd2170c13da87521', 'tests/test_we2_r25_chat_exact_admission.py': 'e46b9cf12d30b8affd530c45c9a78a48d0187686c3f11425dacf6fd47e65addc'}
+EXACT_WE2_R25_CHAT_CHANGED = frozenset(EXACT_WE2_R25_CHAT_PINS) | {
+    "scripts/product_boundary_guard.py", "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|we2/r25-chat-media-exact-20261124|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -1249,6 +1258,103 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+def exact_we2_r25_chat_blob(checkout: Path, raw: str) -> str:
+    if raw not in EXACT_WE2_R25_CHAT_CHANGED:
+        raise BoundaryHold("R25_CHAT_UNREVIEWED_PATH")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("R25_CHAT_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid()
+            or st.st_nlink != 1 or stat.S_IMODE(st.st_mode) & 0o022
+            or not 1 <= st.st_size <= 4_000_000):
+        raise BoundaryHold("R25_CHAT_SOURCE_CUSTODY")
+    def ident(x):
+        return (x.st_dev,x.st_ino,x.st_mode,x.st_nlink,x.st_uid,
+                x.st_size,x.st_mtime_ns,x.st_ctime_ns)
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if ident(os.fstat(fd)) != ident(st):
+            raise BoundaryHold("R25_CHAT_SOURCE_CHANGED")
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            data = handle.read(st.st_size + 1)
+        if ident(os.fstat(fd)) != ident(st) or ident(target.lstat()) != ident(st):
+            raise BoundaryHold("R25_CHAT_SOURCE_CHANGED")
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size:
+        raise BoundaryHold("R25_CHAT_SOURCE_SIZE")
+    expected = EXACT_WE2_R25_CHAT_PINS.get(raw)
+    if expected is not None and hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("R25_CHAT_SOURCE_SHA")
+    return raw
+
+
+def check_we2_r25_chat_rows(rows):
+    if (any(len(row) != 2 or row[0] not in ("A", "M") for row in rows)
+            or len(rows) != len(EXACT_WE2_R25_CHAT_CHANGED)
+            or {row[1] for row in rows} != EXACT_WE2_R25_CHAT_CHANGED):
+        raise BoundaryHold("R25_CHAT_EXACT_CHANGED_SCOPE")
+
+
+def check_exact_we2_r25_chat_context(checkout: Path, repo: str, branch: str,
+                                       base: str, sha: str, *, ci: bool):
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_R25_CHAT_BASE:
+        raise BoundaryHold("R25_CHAT_REPO_OR_BASE")
+    if branch not in (EXACT_WE2_R25_CHAT_BRANCH, "main"):
+        raise BoundaryHold("R25_CHAT_BRANCH")
+    if git(checkout, "merge-base", base, sha) != base:
+        raise BoundaryHold("R25_CHAT_BASE_ANCESTRY")
+    if ci:
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+        if branch == EXACT_WE2_R25_CHAT_BRANCH:
+            pr = event.get("pull_request", {})
+            h,b = pr.get("head",{}),pr.get("base",{})
+            if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
+                    or event.get("number") != 1510
+                    or (h.get("repo") or {}).get("full_name") != repo
+                    or (b.get("repo") or {}).get("full_name") != repo
+                    or h.get("ref") != branch or h.get("sha") != sha
+                    or b.get("ref") != "main" or b.get("sha") != base):
+                raise BoundaryHold("R25_CHAT_PR_IDENTITY")
+        else:
+            if (os.environ.get("GITHUB_EVENT_NAME") != "push"
+                    or event.get("ref") != "refs/heads/main"
+                    or event.get("before") != base or event.get("after") != sha
+                    or (event.get("repository") or {}).get("full_name") != repo):
+                raise BoundaryHold("R25_CHAT_MAIN_EVENT")
+            parents=git(checkout,"rev-list","--parents","-n","1",sha).split()
+            if len(parents)!=3 or parents[:2]!=[sha,base]:
+                raise BoundaryHold("R25_CHAT_MAIN_MERGE")
+            if git(checkout,"rev-parse",sha+"^{tree}") != git(checkout,"rev-parse",parents[2]+"^{tree}"):
+                raise BoundaryHold("R25_CHAT_MAIN_TREE")
+    elif branch == "main":
+        raise BoundaryHold("R25_CHAT_MAIN_CI_REQUIRED")
+    candidate = parents[2] if branch == "main" else sha
+    frozen = "b90a9c036ae78d1a1c8055818be640e0c164a8a6"
+    if git(checkout,"merge-base",frozen,candidate) != frozen:
+        raise BoundaryHold("R25_CHAT_REVIEW_ANCESTRY")
+    prior = "7b84eb85eadd01592905d974800a1390babb29a1"
+    if git(checkout,"merge-base",prior,candidate) != prior:
+        raise BoundaryHold("R25_CHAT_PRIOR_REVIEW_ANCESTRY")
+    if git(checkout,"merge-base",base,candidate) != base:
+        raise BoundaryHold("R25_CHAT_CANDIDATE_BASE")
+
+
+def exact_we2_r25_chat_changes(checkout: Path, base: str) -> list[str]:
+    rows=[line.split("\t") for line in
+          git(checkout,"diff","--name-status","--no-renames",base,"HEAD","--").splitlines()]
+    check_we2_r25_chat_rows(rows)
+    for _,raw in rows:
+        exact_we2_r25_chat_blob(checkout,raw)
+        mode=git(checkout,"ls-files","--stage","--",raw)
+        if not mode.startswith("100644 ") or len(mode.splitlines())!=1:
+            raise BoundaryHold("R25_CHAT_INDEX_MODE")
+    return [row[1] for row in rows]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1262,7 +1368,13 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if (branch == EXACT_B_WATCHER_BRANCH or
+        if (branch == EXACT_WE2_R25_CHAT_BRANCH or
+                (branch == "main" and base == EXACT_WE2_R25_CHAT_BASE
+                 and "scripts/r25_b_guard_production_v1.cjs" in
+                 git(checkout,"diff","--name-only",base,"HEAD","--").splitlines())):
+            check_exact_we2_r25_chat_context(checkout,repo_name,branch,base,sha,ci=ci)
+            receipt["changed_files"] = exact_we2_r25_chat_changes(checkout,base)
+        elif (branch == EXACT_B_WATCHER_BRANCH or
                 (branch == "main" and base == EXACT_B_WATCHER_BASE
                  and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
                          for p in EXACT_B_WATCHER_SQL))):
