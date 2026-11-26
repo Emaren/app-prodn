@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,14 +23,20 @@ class CPrismaReviewedDocTests(unittest.TestCase):
         (self.root/"tests").mkdir()
         (self.root/"scripts").mkdir()
         (self.root/"docs").mkdir()
+        historical_base="861795e9caba793eaacc76b2dd8550a06253aa23"
+        def original(path, expected):
+            data=subprocess.check_output(["git","-C",str(ROOT),"show",
+                                          historical_base+":"+path],timeout=15)
+            self.assertEqual(hashlib.sha256(data).hexdigest(),expected)
+            return data
         for reviewed in policy.EXACT_C_PRISMA_WE3_DOC_SHA256:
             target=self.root/reviewed
             target.parent.mkdir(parents=True,exist_ok=True)
-            target.write_bytes((ROOT/reviewed).read_bytes())
+            target.write_bytes(original(reviewed,policy.EXACT_C_PRISMA_WE3_DOC_SHA256[reviewed]))
         self.doc=self.root/"prisma/README.md"
-        self.doc.write_bytes((ROOT/"prisma/README.md").read_bytes())
+        self.doc.write_bytes(original("prisma/README.md",policy.EXACT_C_PRISMA_DOC_SHA256))
         self.testfile=self.root/"tests/test_c_prisma_doc_admission.py"
-        self.testfile.write_bytes((ROOT/"tests/test_c_prisma_doc_admission.py").read_bytes())
+        self.testfile.write_bytes(original("tests/test_c_prisma_doc_admission.py",policy.EXACT_C_PRISMA_DOC_TEST_SHA256))
         self.branch=mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":policy.EXACT_C_PRISMA_DOC_BRANCH})
         self.branch.start()
         self.addCleanup(self.branch.stop)

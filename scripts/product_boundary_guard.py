@@ -264,6 +264,37 @@ EXACT_WE2_FACTORY_V3_RECEIPT_CHANGED = (
 
 # WE2 separately reviewed public V3 invocation projection. Retain historic
 # exact DATA and ninth-root pins; this is source review only, never ROOT install.
+# Exact acceptance-truth source proposal, no host or release authority.
+EXACT_WE2_ACCEPTANCE_BRANCH = "we2/factory-acceptance-truth-20261126"
+EXACT_WE2_ACCEPTANCE_BASE = "861795e9caba793eaacc76b2dd8550a06253aa23"
+EXACT_WE2_ACCEPTANCE_PINS = {
+    'DEPLOY.md': '7bb3a2f3a2b176dfcc7b275a84b831c225bcadb22bebcea15333c14b654421de',
+    'app/factory/FactoryConsole.tsx': '255c2052b86cb63c942d7fe52fa5e070795599c252fcaaa00bf0e9d7924ac088',
+    'docs/release/artifacts/aoe2war_factory_public_status_v2.py': 'c72c24d7fd729742a017b76d92e6493aa8354f6999077a3fbbc12fedc8ff819c',
+    'tests/factory-visual-contract.test.mts': 'a87082f17544c6b12e95fd3567d1dc8793be78a00adcaa396997ea2f2f9b376b',
+    'tests/test_c_prisma_doc_admission.py': 'cd5e3865ca4dcb7009183b1b874d2ee2aa7d6018436e42bca7fefa8750f47eb1',
+    'tests/test_factory_public_status_v2.py': '9b64db0a4977e57d85022c4ff65cbd72ca06187094ce0a690e17a9dc3fae18fb',
+    'tests/test_product_boundary_guard.py': 'd433d278cf6c6c8321eea115a2489cdcbed5fae075a88f6a7106202e24237e45',
+    'tests/test_product_factory_publication.py': '08bdd96034ef61b790475c3b18ac974d84dc6940db1afc8764c57ab6a470f027',
+    'tests/test_we2_factory_v3_public_publisher_reconcile.py': '2a87d844fa0cae5942d9a07d7bc7678271162762078e5e0bcda72241dbb520ec',
+}
+EXACT_WE2_ACCEPTANCE_BLOB_OIDS = {
+    'DEPLOY.md': '9de67a56068f85f36faade729c8793912658db76',
+    'app/factory/FactoryConsole.tsx': '26f60f934afafdd89c413dcd61534365b574c5ff',
+    'docs/release/artifacts/aoe2war_factory_public_status_v2.py': '36824984a638084869232aaf4c5e616f3e545c42',
+    'tests/factory-visual-contract.test.mts': '2f14e53641d7ee85a143a85f11ae62e84d9e75f4',
+    'tests/test_c_prisma_doc_admission.py': 'c774f873c0f6b595351b7b6af1daeef4a87f983b',
+    'tests/test_factory_public_status_v2.py': 'a92fe9e58eba7c2e3365bd4a04e1e87a198c7be2',
+    'tests/test_product_boundary_guard.py': '5e4560cb998feb5385e27c9daf808a24a066656e',
+    'tests/test_product_factory_publication.py': 'b3e6d9d856016d8644226facbcba1267212c9ba9',
+    'tests/test_we2_factory_v3_public_publisher_reconcile.py': '7736d3199b484ffa8ff1e15410e40bdd5c294fc0',
+}
+EXACT_WE2_ACCEPTANCE_CHANGED = frozenset(EXACT_WE2_ACCEPTANCE_PINS) | {
+    "scripts/product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+
 EXACT_WE2_V3_PUBLIC_BRANCH = 'we2/factory-v3-public-publisher-source-20261124'
 EXACT_WE2_V3_PUBLIC_BASE = 'd7797cf7e34b230031193c563e7505b3c2b55c64'
 EXACT_WE2_V3_PUBLIC_PINS = {
@@ -349,7 +380,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|we2/factory-acceptance-truth-20261126|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -1025,6 +1056,43 @@ def exact_we2_v3_public_blob(checkout: Path, raw: str) -> str:
     return raw
 
 
+def check_exact_we2_acceptance_source(checkout: Path, repo: str,
+                                      branch: str, base: str,
+                                      changes: list[str]) -> None:
+    if branch != EXACT_WE2_ACCEPTANCE_BRANCH:
+        return
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_ACCEPTANCE_BASE:
+        raise BoundaryHold("WE2_ACCEPTANCE_BASE_OR_REPO")
+    if (len(changes) != len(EXACT_WE2_ACCEPTANCE_CHANGED) or
+            frozenset(changes) != EXACT_WE2_ACCEPTANCE_CHANGED):
+        raise BoundaryHold("WE2_ACCEPTANCE_CHANGED_SCOPE")
+    for raw, expected in EXACT_WE2_ACCEPTANCE_PINS.items():
+        path = checkout
+        for part in relative_path(raw).parts:
+            path = path / part
+            if path.is_symlink():
+                raise BoundaryHold("WE2_ACCEPTANCE_SYMLINK")
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or
+                st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or
+                not 1 <= st.st_size <= 250000):
+            raise BoundaryHold("WE2_ACCEPTANCE_FILE_AUTHORITY")
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            live = os.fstat(fd)
+            data = os.read(fd, 250001)
+            after = os.fstat(fd)
+            final = path.lstat()
+            key = lambda v: (v.st_dev,v.st_ino,v.st_uid,v.st_mode,v.st_nlink,
+                             v.st_size,v.st_mtime_ns,v.st_ctime_ns)
+            if key(st) != key(live) or key(live) != key(after) or key(after) != key(final):
+                raise BoundaryHold("WE2_ACCEPTANCE_INODE_RACE")
+        finally:
+            os.close(fd)
+        if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != expected:
+            raise BoundaryHold("WE2_ACCEPTANCE_SHA")
+
+
 def check_exact_we2_v3_public_source(checkout: Path, repo: str,
                                      branch: str, base: str,
                                      changes: list[str]) -> None:
@@ -1277,6 +1345,8 @@ def main() -> int:
         check_exact_we2_factory_data_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_factory_v3_receipt_source(
+            checkout,repo_name,branch,base,receipt["changed_files"])
+        check_exact_we2_acceptance_source(
             checkout,repo_name,branch,base,receipt["changed_files"])
         check_exact_we2_v3_public_source(
             checkout,repo_name,branch,base,receipt["changed_files"])

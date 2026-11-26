@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -84,8 +85,9 @@ class FactoryPublicationTests(unittest.TestCase):
     def test_v3_publisher_source_hash_is_pinned_for_reconciliation(self):
         source=(Path(__file__).parents[1] /
                 "docs/release/artifacts/aoe2war_factory_public_status_v2.py")
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
-                         R.FACTORY_PUBLISHER_SHA)
+        original=subprocess.check_output(["git","-C",str(Path(__file__).parents[1]),
+            "show","861795e9caba793eaacc76b2dd8550a06253aa23:docs/release/artifacts/aoe2war_factory_public_status_v2.py"],timeout=15)
+        self.assertEqual(hashlib.sha256(original).hexdigest(),R.FACTORY_PUBLISHER_SHA)
 
     def test_pinned_existing_publisher_and_independent_https_match(self):
         result = self.refresh()

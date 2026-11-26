@@ -24,12 +24,14 @@ class PublicV3OneFileTests(unittest.TestCase):
         original=subprocess.check_output([
             "git","-C",str(ROOT),"show",
             M.MAIN_SOURCE_BASE+":docs/release/artifacts/aoe2war_factory_public_status_v2.py"])
-        corrected=(ROOT/"docs/release/artifacts/aoe2war_factory_public_status_v2.py").read_bytes()
+        corrected=subprocess.check_output(["git","-C",str(ROOT),"show",
+            "861795e9caba793eaacc76b2dd8550a06253aa23:docs/release/artifacts/aoe2war_factory_public_status_v2.py"],timeout=15)
         self.assertEqual(hashlib.sha256(original).hexdigest(),M.OLD_SHA)
         self.assertEqual(hashlib.sha256(corrected).hexdigest(),M.NEW_SHA)
         self.stage=self.base/"stage"
         self.stage.mkdir(mode=0o700)
         self.stage_file=self.stage/"aoe2war_factory_public_status_v2.py"
+        self.corrected=corrected
         self.stage_file.write_bytes(corrected)
         self.stage_file.chmod(0o600)
         self.publisher=self.base/"publisher.py"
@@ -127,7 +129,7 @@ class PublicV3OneFileTests(unittest.TestCase):
         self.stage_file.write_bytes(b"bad-candidate")
         with self.assertRaisesRegex(M.Hold,"EXACT_REVIEWED_PUBLIC_SOURCE"):
             M.preflight()
-        self.stage_file.write_bytes((ROOT/"docs/release/artifacts/aoe2war_factory_public_status_v2.py").read_bytes())
+        self.stage_file.write_bytes(self.corrected)
         self.publisher.write_bytes(b"drift")
         with self.assertRaisesRegex(M.Hold,"ROOT_PUBLISHER_CAS_PREIMAGE"):
             M.preflight()
