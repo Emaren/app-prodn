@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/factory-zip-proof-20261120` at `8e54e952c74d02a26b4fc02978c31a24dc4bbbb0`
+Implementation baseline: `codex/factory-zip-proof-20261120` at `0d650cae74a331731df3b6f8b738cfdabbb2f936`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
