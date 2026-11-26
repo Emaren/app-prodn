@@ -298,8 +298,62 @@ class DeploymentInvocation:
         }
 
 
+def normalized_cache(approval, work):
+    """Review candidate: reuse a previously verified normalized runtime.
+    Live GitHub exact-source qualification remains mandatory in run_main.
+    No owner authorization is derived from local cache evidence.
+    """
+    stage = Path(work) / approval["sourceSha"][:12]
+    marker = stage / "m1-cache-normalization.json"
+    if not marker.exists() and not marker.is_symlink():
+        return None
+    transport.private_dir(work)
+    transport.private_dir(stage)
+    transport.private_dir(stage / "independent-verification")
+    archive = stage / "runtime.tar.gz"
+    proof_path = stage / "b-linux-independent-review-v2.json"
+    proof_zip = stage / "independent-verification" / "download.zip"
+    for p in (marker, archive, proof_path, proof_zip):
+        need(stat.S_IMODE(transport.checked_file(p).st_mode) == 0o600,
+             "NORMALIZED_CACHE_EXACT_FILE_MODE")
+    need(marker.stat().st_size <= 16384 and proof_path.stat().st_size <= 16384,
+         "NORMALIZED_CACHE_RECEIPT_SIZE")
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, "NORMALIZED_CACHE_DUPLICATE_KEY")
+            result[key] = value
+        return result
+    receipt = json.loads(marker.read_bytes(), object_pairs_hook=unique)
+    need(type(receipt) is dict, "NORMALIZED_CACHE_RECEIPT_OBJECT")
+    need(receipt.get("schema") == "aoe2war.m1.verified-download-envelope-cleanup.v1"
+         and receipt.get("source") == approval["sourceSha"]
+         and receipt.get("github_artifact_id") == approval["artifactId"]
+         and receipt.get("outer_zip_sha256") == approval["artifactSha256"]
+         and receipt.get("duplicate_download_envelope_removed") is True
+         and receipt.get("deployment_authorized") is False
+         and receipt.get("runtime_retained") == str(archive)
+         and receipt.get("independent_receipt_retained") == str(proof_path),
+         "NORMALIZED_CACHE_RECEIPT_BINDING")
+    need(proof_zip.stat().st_size == approval["proofArtifactBytes"]
+         and transport.sha(proof_zip) == approval["proofArtifactSha256"],
+         "NORMALIZED_CACHE_PROOF_ZIP")
+    transport.member(proof_zip, "b-linux-independent-review-v2.json",
+                     proof_path, approval["proofSha256"], limit=16384)
+    proof = transport.validate_proof(proof_path, approval["sourceSha"],
+                                     approval["buildId"], approval["runId"], archive)
+    need(proof.get("github_artifact_id") == approval["artifactId"]
+         and proof.get("github_artifact_zip_bytes") == approval["artifactBytes"]
+         and proof.get("github_artifact_zip_sha256") == approval["artifactSha256"]
+         and proof.get("runtime_archive_sha256") == receipt.get("archive_sha256"),
+         "NORMALIZED_CACHE_ARTIFACT_BINDING")
+    return stage, proof
+
+
 def verified_local_cache(approval, work):
-    """Classify only complete approved ZIPs; partial downloads are not warm."""
+    """Classify complete approved ZIPs or exact normalized runtime."""
+    if normalized_cache(approval, work) is not None:
+        return True
     cache = Path(work) / "cache"
     if not cache.exists():
         return False
@@ -742,6 +796,16 @@ def event(path, approval, name, state="pass", extra=None, at="NOW"):
 
 
 def prepare_artifacts(approval, work, log, invocation=None):
+    normalized = normalized_cache(approval, work)
+    if normalized is not None:
+        stage, proof = normalized
+        event(log, approval, "T4", extra={"proofSha256": approval["proofSha256"]})
+        if invocation is not None:
+            invocation.artifact_sha = proof["runtime_archive_sha256"]
+            invocation.runtime_bytes = proof["runtime_archive_bytes"]
+            invocation.record("ARTIFACT VERIFIED", proof=approval["proofSha256"])
+        print("PASS_NORMALIZED_RUNTIME_CACHE_NO_REDOWNLOAD", flush=True)
+        return stage, proof
     cache = transport.private_dir(work / "cache")
     stage = transport.private_dir(work / approval["sourceSha"][:12])
     event(log, approval, "download", "running",
