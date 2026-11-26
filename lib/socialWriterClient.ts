@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 import { PRODUCTION_WEB_ORIGIN } from "@/lib/productionAuth";
 
-// Nonfinancial text only. Never pass database credentials, SQL, or client sender IDs.
+// Restricted nonfinancial operations. Never pass database credentials, SQL, or client sender IDs.
 export const SOCIAL_WRITER_SOCKET = "/run/aoe2war-social-writer/social.sock";
 export type SocialScope = "clan" | "direct" | "lobby";
 const MAX_BYTES = 4096;
@@ -56,9 +56,21 @@ export async function callSocialWriter(
   signedSession: string,
   input: Record<string,unknown>,
 ): Promise<{status:number;body:Record<string,unknown>}> {
+  return callSocialSocket(scope==="clan"?"/v1/clan/text":scope==="direct"?"/v1/direct/text":"/v1/lobby/text",signedSession,input,MAX_BYTES,TIMEOUT);
+}
+export async function callSocialImageWriter(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/image",signedSession,input,13_400_000,8_000);
+}
+export async function callSocialDeliveryWriter(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/delivered",signedSession,input,MAX_BYTES,TIMEOUT);
+}
+export async function callSocialDirectReader(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/read",signedSession,input,MAX_BYTES,4_000,2*1024*1024);
+}
+async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number,replyLimit=8192):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");
-  if (!signedSession || signedSession.length > 4096 || size > MAX_BYTES || size < 2)
+  if (!signedSession || signedSession.length > 4096 || size > limit || size < 2)
     return {status:400,body:{detail:"INVALID_SOCIAL_TEXT_REQUEST"}};
   return new Promise(resolve=>{
     let done=false;
@@ -67,8 +79,8 @@ export async function callSocialWriter(
     };
     const req=http.request({
       socketPath:SOCIAL_WRITER_SOCKET,
-      path:scope==="clan"?"/v1/clan/text":scope==="direct"?"/v1/direct/text":"/v1/lobby/text",
-      method:"POST",timeout:TIMEOUT,
+      path:endpoint,
+      method:"POST",timeout,
       headers:{
         "Content-Type":"application/json",
         "Content-Length":size,
@@ -79,7 +91,7 @@ export async function callSocialWriter(
       const chunks:Buffer[]=[];let bytes=0;
       res.on("data",(chunk:Buffer)=>{
         bytes+=chunk.length;
-        if(bytes>8192){req.destroy();finish({status:503,body:{detail:"SOCIAL_WRITER_REPLY_UNAVAILABLE"}});}
+        if(bytes>replyLimit){req.destroy();finish({status:503,body:{detail:"SOCIAL_WRITER_REPLY_UNAVAILABLE"}});}
         else chunks.push(chunk);
       });
       res.on("end",()=>{
@@ -93,7 +105,7 @@ export async function callSocialWriter(
       });
     });
     req.on("timeout",()=>req.destroy());
-    req.on("error",()=>finish({status:503,body:{detail:"SOCIAL_SEND_STATUS_UNKNOWN_CHECK_HISTORY_BEFORE_RETRY"}}));
+    req.on("error",()=>finish({status:503,body:{detail:endpoint==="/v1/direct/read"?"DIRECT_READ_UNAVAILABLE":"SOCIAL_SEND_STATUS_UNKNOWN_CHECK_HISTORY_BEFORE_RETRY"}}));
     req.end(payload);
   });
 }

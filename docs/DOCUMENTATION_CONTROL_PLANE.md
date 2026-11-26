@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-matchups-profile-repair-20261124` at `90cb086e912e16ce9b24cc937db8c1f8fa39ca73`
+Implementation baseline: `session-c/we3-direct-inbox-reader-20261126` at `63d2e57e8b4ed401729de8b7bdec7e2daa7a1d26`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **160**
+- Authoritative repository documents: **161**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 28
 - `reference`: 85
-- `runbook`: 35
+- `runbook`: 36
 - `working`: 6
 
 ### Lifecycle
 
 - `active`: 93
-- `draft`: 35
+- `draft`: 36
 - `generated`: 1
 - `historical`: 28
 - `superseded`: 3
@@ -211,6 +211,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
 | [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
+| [Restricted Direct Chat release regression contract](../tests/restricted-direct-reader-fixture/README.md) | `runbook` | `draft` | `source-only-restricted-direct-chat-regression` |
 
 ## Canonical commands
 
