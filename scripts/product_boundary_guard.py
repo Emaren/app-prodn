@@ -349,7 +349,16 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
+# PR1434 source-only admission; no main merge or deployment authority.
+EXACT_WE2_FACTORY1434_BRANCH = "codex/factory-zip-proof-20261120"
+EXACT_WE2_FACTORY1434_BASE = "861795e9caba793eaacc76b2dd8550a06253aa23"
+EXACT_WE2_FACTORY1434_REVIEWED = "0bd11fcf1196b08bef25ff680f470837019034ac"
+EXACT_WE2_FACTORY1434_PINS = {'scripts/aoe2_product_release.py': '585062335c9e281d029c4b510c3ea2bf5bd81924fca5e2a7bd2cf3893c1a2808', 'tests/test_normalized_cache.py': '92395b54409f007796e5a5aabee857be86268f862c5b6648ea33c5bc7cfb5b58', 'tests/test_product_boundary_guard.py': '7fbb90bbdaf3400870e5b12b9bcf33b342f2c66af3ccd13e61ca967f52b75309', 'tests/test_product_release.py': '09ff4d9299a184658632a19c81a141ac0c9f6207d43a83b84e019a50a4e16852', 'docs/RELEASE_ENGINEERING.md': '876015364251f91b2e9068bf24f2cd3436bd78e64cee1e3f9c9de4d2a355112c', 'tests/test_we2_factory1434_exact_admission.py': '7ade39b6cb0a80211df64ff1415c474efb21eb711250a9bad33d685055c6ec03'}
+EXACT_WE2_FACTORY1434_CHANGED = frozenset(EXACT_WE2_FACTORY1434_PINS) | {
+    "scripts/product_boundary_guard.py", "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|codex/factory-zip-proof-20261120|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -1249,6 +1258,81 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+def exact_we2_factory1434_blob(checkout: Path, raw: str) -> str:
+    if raw not in EXACT_WE2_FACTORY1434_CHANGED:
+        raise BoundaryHold("FACTORY1434_UNREVIEWED_PATH")
+    target = checkout
+    for part in relative_path(raw).parts:
+        target = target / part
+        if target.is_symlink():
+            raise BoundaryHold("FACTORY1434_SYMLINK")
+    st = target.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid()
+            or st.st_nlink != 1 or stat.S_IMODE(st.st_mode) & 0o022
+            or not 1 <= st.st_size <= 4_000_000):
+        raise BoundaryHold("FACTORY1434_SOURCE_CUSTODY")
+    def ident(x):
+        return (x.st_dev,x.st_ino,x.st_mode,x.st_nlink,x.st_uid,
+                x.st_size,x.st_mtime_ns,x.st_ctime_ns)
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        if ident(os.fstat(fd)) != ident(st):
+            raise BoundaryHold("FACTORY1434_SOURCE_CHANGED")
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            data = handle.read(st.st_size + 1)
+        if ident(os.fstat(fd)) != ident(st) or ident(target.lstat()) != ident(st):
+            raise BoundaryHold("FACTORY1434_SOURCE_CHANGED")
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size:
+        raise BoundaryHold("FACTORY1434_SOURCE_SIZE")
+    expected = EXACT_WE2_FACTORY1434_PINS.get(raw)
+    if expected is not None and hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("FACTORY1434_SOURCE_SHA")
+    return raw
+
+
+def check_we2_factory1434_rows(rows):
+    if (any(len(row) != 2 or row[0] not in ("A", "M") for row in rows)
+            or len(rows) != len(EXACT_WE2_FACTORY1434_CHANGED)
+            or {row[1] for row in rows} != EXACT_WE2_FACTORY1434_CHANGED):
+        raise BoundaryHold("FACTORY1434_EXACT_CHANGED_SCOPE")
+
+
+def check_exact_we2_factory1434_context(checkout: Path, repo: str, branch: str,
+                                         base: str, sha: str, *, ci: bool):
+    if repo != "Emaren/app-prodn" or base != EXACT_WE2_FACTORY1434_BASE:
+        raise BoundaryHold("FACTORY1434_REPO_OR_BASE")
+    if branch != EXACT_WE2_FACTORY1434_BRANCH:
+        raise BoundaryHold("FACTORY1434_BRANCH")
+    for ancestor in (base, EXACT_WE2_FACTORY1434_REVIEWED):
+        if git(checkout,"merge-base",ancestor,sha) != ancestor:
+            raise BoundaryHold("FACTORY1434_ANCESTRY")
+    if ci:
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+        pr = event.get("pull_request", {})
+        h,b = pr.get("head",{}),pr.get("base",{})
+        if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
+                or event.get("number") != 1434
+                or (h.get("repo") or {}).get("full_name") != repo
+                or (b.get("repo") or {}).get("full_name") != repo
+                or h.get("ref") != branch or h.get("sha") != sha
+                or b.get("ref") != "main" or b.get("sha") != base):
+            raise BoundaryHold("FACTORY1434_PR_IDENTITY")
+
+
+def exact_we2_factory1434_changes(checkout: Path, base: str) -> list[str]:
+    rows=[line.split("\t") for line in
+          git(checkout,"diff","--name-status","--no-renames",base,"HEAD","--").splitlines()]
+    check_we2_factory1434_rows(rows)
+    for _,raw in rows:
+        exact_we2_factory1434_blob(checkout,raw)
+        mode=git(checkout,"ls-files","--stage","--",raw)
+        if not mode.startswith("100644 ") or len(mode.splitlines())!=1:
+            raise BoundaryHold("FACTORY1434_INDEX_MODE")
+    return [row[1] for row in rows]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1262,7 +1346,14 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if (branch == EXACT_B_WATCHER_BRANCH or
+        if branch == EXACT_WE2_FACTORY1434_BRANCH:
+            check_exact_we2_factory1434_context(checkout,repo_name,branch,base,sha,ci=ci)
+            receipt["changed_files"] = exact_we2_factory1434_changes(checkout,base)
+        elif (branch == "main" and base == EXACT_WE2_FACTORY1434_BASE
+              and "scripts/aoe2_product_release.py" in
+              git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
+            raise BoundaryHold("FACTORY1434_MAIN_REQUIRES_SEPARATE_RECONCILIATION")
+        elif (branch == EXACT_B_WATCHER_BRANCH or
                 (branch == "main" and base == EXACT_B_WATCHER_BASE
                  and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
                          for p in EXACT_B_WATCHER_SQL))):
