@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import {restrictedDirectRead,privateDirectError,RestrictedDirectReadError} from "@/lib/restrictedDirectInbox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,18 +16,16 @@ export async function GET(request: NextRequest) {
     return new Response("No active session", { status: 401 });
   }
 
-  const prisma = getPrisma();
-  const viewer = await prisma.user.findUnique({
-    where: { uid: sessionUid },
-    select: { id: true, uid: true },
-  });
-  if (!viewer) {
-    return new Response("Viewer not found", { status: 404 });
-  }
-
-  // A restricted production stream must not mutate delivery receipts on connect.
-  // The signed-session text writer publishes committed message IDs separately.
-  if (!usesNonfinancialProductionAuth() && !isLiveProductionReadOnlyPreview()) {
+  if(usesNonfinancialProductionAuth()){
+    try{
+      const response=await restrictedDirectRead(request,{op:"summary"});
+      if((response.viewer as {uid?:unknown}|undefined)?.uid!==sessionUid)throw new RestrictedDirectReadError(401);
+    }catch(error){return privateDirectError(error);}
+  }else{
+    const prisma=getPrisma();
+    const viewer=await prisma.user.findUnique({where:{uid:sessionUid},select:{id:true,uid:true}});
+    if(!viewer)return new Response("Viewer not found",{status:404});
+    if (!isLiveProductionReadOnlyPreview()) {
     const memberships = await prisma.directConversationParticipant.findMany({
       where: { userId: viewer.id },
       select: { conversationId: true },
@@ -112,7 +111,7 @@ export async function GET(request: NextRequest) {
       }
 
       unsubscribe = subscribeToDirectMessageEvents(
-        viewer.uid,
+        sessionUid,
         send,
       );
       heartbeat = setInterval(() => {
