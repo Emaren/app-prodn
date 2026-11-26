@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/factory-acceptance-truth-20261126` at `ef180844885b5f81bd614939357e35fce6c12a75`
+Implementation baseline: `we2/factory-acceptance-truth-20261126` at `842a4d2d1627d12ef8b27182f9d10b06e785d86f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
