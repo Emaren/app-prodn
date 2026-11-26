@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import {usesNonfinancialProductionAuth} from "@/lib/productionAuth";
+import {restrictedDirectRead,privateDirectError,RestrictedDirectReadError,DIRECT_PRIVATE_HEADERS} from "@/lib/restrictedDirectInbox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +12,17 @@ export async function GET(request: NextRequest) {
   const sessionUid = await getSessionUid(request);
   if (!sessionUid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
+  if(usesNonfinancialProductionAuth()){
+    try{
+      const p=request.nextUrl.searchParams;
+      if([...p.keys()].some(k=>!["user","q"].includes(k)||p.getAll(k).length!==1))throw new RestrictedDirectReadError(400);
+      const targetUid=p.get("user"),query=p.get("q")?.trim();
+      if(!targetUid||!query||query.length<2)return NextResponse.json({results:[]},{headers:DIRECT_PRIVATE_HEADERS});
+      if(!/^[A-Za-z0-9_.:-]{1,100}$/.test(targetUid)||targetUid===sessionUid||query.length>120)throw new RestrictedDirectReadError(400);
+      const response=await restrictedDirectRead(request,{op:"search",targetUid,query});
+      return NextResponse.json({results:response.results},{headers:DIRECT_PRIVATE_HEADERS});
+    }catch(error){return privateDirectError(error);}
+  }
   const targetUid = request.nextUrl.searchParams.get("user")?.trim();
   const query = request.nextUrl.searchParams.get("q")?.trim().slice(0, 120);
   if (!targetUid || !query || query.length < 2) {
