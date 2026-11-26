@@ -14,6 +14,43 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_chat_policy_exact_literal_routes_and_negative_grammar(self):
+        import hashlib
+        root=GUARD.parent.parent
+        self.assertEqual(len(policy.EXACT_CHAT_POLICY_ROUTE_PINS),3)
+        with tempfile.TemporaryDirectory() as tmp:
+            frozen=Path(tmp)
+            for name,digest in policy.EXACT_CHAT_POLICY_ROUTE_PINS.items():
+                raw=subprocess.check_output(["git","-C",str(root),"show",
+                                             policy.EXACT_CHAT_POLICY_FROZEN+":"+name])
+                self.assertEqual(hashlib.sha256(raw).hexdigest(),digest)
+                target=frozen/name;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_bytes(raw)
+                policy.exact_chat_route_blob(frozen,name)
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.authorize_source(name)
+        for name in ("app/api/clans/[other]/route.ts","app/../clans/[slug]/page.tsx",
+                     "app/api/admin/wolo/[slug]/route.ts"):
+            with self.assertRaises(policy.BoundaryHold):
+                policy.exact_chat_route_blob(root,name)
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture=Path(tmp)
+            name=next(iter(policy.EXACT_CHAT_POLICY_ROUTE_PINS))
+            target=fixture/name;target.parent.mkdir(parents=True)
+            target.write_text("unreviewed")
+            with self.assertRaisesRegex(policy.BoundaryHold,"CHAT_DYNAMIC_SHA"):
+                policy.exact_chat_route_blob(fixture,name)
+            target.unlink();target.symlink_to(fixture/"unreviewed")
+            with self.assertRaisesRegex(policy.BoundaryHold,"CHAT_DYNAMIC_SYMLINK"):
+                policy.exact_chat_route_blob(fixture,name)
+        for repo,branch,base in (
+            ("Other/app-prodn",policy.EXACT_CHAT_POLICY_BRANCH,policy.EXACT_CHAT_POLICY_BASE),
+            ("Emaren/app-prodn","session-c/unreviewed",policy.EXACT_CHAT_POLICY_BASE),
+            ("Emaren/app-prodn",policy.EXACT_CHAT_POLICY_BRANCH,"0"*40)):
+            with self.assertRaisesRegex(policy.BoundaryHold,"CHAT_POLICY_CONTEXT"):
+                policy.exact_chat_policy_changes(root,repo,branch,base)
+
+
     def denied_source(self, value):
         with self.assertRaises(policy.BoundaryHold, msg=value):
             policy.authorize_source(value)
