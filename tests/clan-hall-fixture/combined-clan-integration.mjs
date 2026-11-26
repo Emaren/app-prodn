@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {randomBytes} from "node:crypto";
-import {mkdir,chmod,readdir,readFile} from "node:fs/promises";
+import {mkdir,chmod,readdir} from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
 import {SignJWT} from "jose";
