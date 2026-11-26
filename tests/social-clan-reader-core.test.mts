@@ -1,0 +1,13 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {executeSocialClanRead,mapClanHall} from "../lib/socialClanReaderCore.mjs";
+const token="a".repeat(64);
+const result={clan:{id:1,slug:"alpha",name:"Alpha",tagline:null,description:null,crestUrl:null,chatAudiencePolicy:"clan",memberCount:2},viewer:{uid:"alice",displayName:"Alice",role:"member"},messages:[{id:2,body:"hi",audience:"clan",createdAt:"2026-11-26T00:00:00+00:00",updatedAt:"2026-11-26T00:00:00+00:00",author:{uid:"bob",displayName:"Bob",role:"member"},attachments:[{id:1,name:"x.png",mimeType:"image/png",sizeBytes:10}],unsupportedAttachment:false}],hasMore:false,beforeMessageId:2};
+function mock(decision=result){const calls=[];return {calls,pool:{connect:async()=>({query:async(sql,args)=>{calls.push([sql,args]);return {rows:[{decision}]}},release:()=>{}})}}}
+const call=(m,input={slug:"alpha"},verifySession=async()=>"alice")=>executeSocialClanRead({pool:m.pool,verifySession,sessionToken:token,input});
+test("fixed signed member query, read only",async()=>{const m=mock();const r=await call(m);assert.equal(r.status,200);assert.equal(m.calls[0][0],"BEGIN READ ONLY");assert.deepEqual(m.calls[3][1],["alice","alpha",null,null]);assert.equal(m.calls[4][0],"COMMIT")});
+test("caller actor injection and dual cursor rejected before DB",async()=>{const m=mock();assert.equal((await call(m,{slug:"alpha",actor:"bob"})).status,400);assert.equal((await call(m,{slug:"alpha",before:1,focus:2})).status,400);assert.equal(m.calls.length,0)});
+test("invalid signed session rejected before DB",async()=>{const m=mock();assert.equal((await call(m,{slug:"alpha"},async()=>{throw Error()})).status,401);assert.equal(m.calls.length,0)});
+test("nonmember null denied; rollback",async()=>{const m=mock(null);assert.equal((await call(m)).status,404);assert.equal(m.calls.at(-1)[0],"ROLLBACK")});
+test("wrong clan, wrong actor, raw reference and invalid image audience denied",async()=>{for(const bad of [{...result,clan:{...result.clan,slug:"beta"}},{...result,viewer:{...result.viewer,uid:"bob"}},{...result,messages:[{...result.messages[0],storageRef:"file:v1:clan-x"}]},{...result,messages:[{...result.messages[0],audience:"public"}]}])assert.equal((await call(mock(bad))).status,503)});
+test("focus bound and DTO no management or raw path",async()=>{assert.equal((await call(mock(),{slug:"alpha",focus:3})).status,503);const d=mapClanHall(result,{actor:"alice",slug:"alpha"});assert.equal(d.viewer.canManage,false);assert.deepEqual(d.allowedAudiences,["clan"]);assert.equal(d.messages[0].attachments[0].url,"/api/social/clan-image?slug=alpha&attachmentId=1");assert.equal(d.access.restrictedMemberHall,true);assert.throws(()=>mapClanHall(result,{actor:"eve",slug:"alpha"}));});
