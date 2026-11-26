@@ -15,6 +15,22 @@ sensitivity: "internal"
 
 # app-prodn Deploy
 
+
+## Factory acceptance truth — November 26, 2026 (source correction)
+
+A live runtime/HTTP health PASS is not T10 acceptance. The public status
+publisher retains the existing operational identity contract; the Factory
+console labels runtime and rollback-target health separately from acceptance.
+A final acceptance duration requires a valid root seal and positive T8, T9
+and T10 evidence. Missing, held, failed or stale acceptance must never be
+represented as a newly accepted production release. Retention and publication
+authority continue to require their native signed evidence, not a green UI.
+
+Regression coverage includes missing or failed T10 and missing rollback
+proof. This source correction is not a production receipt. Do not install the
+publisher or activate a new website artifact without exact-source review,
+protected admission and the applicable real acceptance sequence.
+
 ## November 22, 2026 — WE3 source/host-scoped protected-release review
 
 **Review scope (not historical rollback recertification):** Rechecked existing
@@ -1351,3 +1367,7 @@ aoe2war finish --preserve-context-history
 This does **not** bypass the release lane. It still captures and verifies fresh context, runs the normal gate/deploy/certification/audit/Doctor sequence, and leaves Wolo observe-only. It disables only context-archive pruning for that finish transaction. Independent cache-only storage retention and certified rollback retention remain governed by their existing policies.
 
 The dry-run reports `evidence_retention` and `automatic_mutation_boundaries`, including whether context pruning and cache retention are expected. Use `--preserve-context-history` when historical context itself is part of the evidence being protected; do not use it as a substitute for Storage OS or Recovery OS.
+
+### Historical acceptance fixture integrity
+
+The Factory acceptance-truth change does not change the installed V3 publisher pin or historic Prisma admission hashes. Regression fixtures read the exact pre-change Git object at 861795e9caba793eaacc76b2dd8550a06253aa23 and verify original SHA-256 before testing. New source admission is exact WE2 branch/base/path/blob scope only. Root publisher adoption needs its own reviewed CAS install and inverse; this source correction does not authorize promotion, T10, or retirement.

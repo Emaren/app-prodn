@@ -190,7 +190,7 @@ def public_release_summary(directory,source,build,now,previous_source=None,previ
             obj.get("buildId")!=build):return base
         has_t10=any(isinstance(row,dict) and row.get("event")=="T10"
                     and row.get("state")=="pass" for row in obj.get("stages",[]))
-        root_seal_pass=not has_t10 or accepted_root_seal(
+        root_seal_pass=has_t10 and accepted_root_seal(
             directory,source,build,previous_source,previous_build,summary_raw)
         def timestamp(value):
             if not isinstance(value,str) or len(value)>40:return None
@@ -227,7 +227,8 @@ def public_release_summary(directory,source,build,now,previous_source=None,previ
         if start not in ("observed-engineering","declared-request","unknown"):start="unknown"
         base.update({"generatedAt":generated,"startKind":start,
             "firstVerifiedProductionMs":number(obj.get("firstVerifiedProductionMs")),
-            "finalAcceptedMs":number(obj.get("finalAcceptedMs")) if root_seal_pass else None,
+            "finalAcceptedMs":number(obj.get("finalAcceptedMs")) if (root_seal_pass and
+                {"T8","T9","T10"} <= {row["event"] for row in result if row["state"]=="pass"}) else None,
             "clocksUncertaintyMs":number(obj.get("clocksUncertaintyMs")),
             "stages":result,"provenanceUrl":url})
         transfer=obj.get("transfer")
@@ -570,6 +571,8 @@ def make():
                 "fail","hold","stale","running","pending","unknown") if value in values),"unknown")
     return {
        "schema":"aoe2war.factory.public.v1","generatedAt":now,
+       # These release identities attest operational health, NOT T10 acceptance.
+       # Final acceptance is derived independently from the sealed releaseOs.
        "liveRelease":{"id":source,"buildId":build,"status":"pass","verifiedAt":now},
        "candidateRelease":{"id":None,"status":"unknown","verifiedAt":None},
        "previousRelease":{"id":prev,"buildId":previous_build,"status":"pass","verifiedAt":now},

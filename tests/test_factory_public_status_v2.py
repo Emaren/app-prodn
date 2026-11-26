@@ -71,6 +71,23 @@ class FactoryPublicStatusTests(unittest.TestCase):
              patch.object(Path,"lstat",return_value=Metadata()), \
              patch.object(m,"root_file",return_value=json.dumps(obj).encode()):
             self.assertEqual(m.public_release_summary(Path("/fixture"),"f"*40,"new_build",NOW)["stages"][0]["state"],"unknown")
+    def test_unsealed_or_incomplete_acceptance_never_publishes_final_time(self):
+        for state in ("absent","hold","fail","missing_proof","missing_t8","missing_t9"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as tmp:
+                directory=Path(tmp)
+                events=("T8","T9") if state=="absent" else ("T8","T9","T10")
+                obj=self.summary(events);obj["finalAcceptedMs"]=4000
+                if state in ("hold","fail"):obj["stages"][-1]["state"]=state
+                if state=="missing_proof":obj["stages"][-1]["proofSha256"]=None
+                if state=="missing_t8":obj["stages"]=obj["stages"][1:]
+                if state=="missing_t9":obj["stages"].pop(1)
+                (directory/"release-summary-v1.json").write_text(json.dumps(obj))
+                with patch.object(m,"root_file",side_effect=lambda path,mode=None:path.read_bytes()), \
+                     patch.object(m,"accepted_root_seal",return_value=True) as seal:
+                    result=m.public_release_summary(directory,"f"*40,"new_build",NOW,"e"*40,"old_build")
+                    self.assertIsNone(result["finalAcceptedMs"])
+                    if state in ("absent","hold","fail"):seal.assert_not_called()
+
     def test_t10_requires_completed_root_seal_and_exact_receipts(self):
         obj=self.summary(("T8","T9","T10"))
         obj["finalAcceptedMs"]=4000

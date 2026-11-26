@@ -18,6 +18,45 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaises(policy.BoundaryHold, msg=value):
             policy.authorize_source(value)
 
+    def test_we2_factory_acceptance_exact_scope(self):
+        import hashlib
+        p=policy
+        checkout=GUARD.parent.parent
+        branch=p.EXACT_WE2_ACCEPTANCE_BRANCH
+        base=p.EXACT_WE2_ACCEPTANCE_BASE
+        changes=sorted(p.EXACT_WE2_ACCEPTANCE_CHANGED)
+        self.assertEqual(branch,"we2/factory-acceptance-truth-20261126")
+        self.assertEqual(base,"861795e9caba793eaacc76b2dd8550a06253aa23")
+        self.assertTrue(p.BRANCH.fullmatch(branch))
+        self.assertFalse(p.BRANCH.fullmatch("we2/factory-acceptance-truth-other"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for name,expected in p.EXACT_WE2_ACCEPTANCE_PINS.items():
+                raw=subprocess.check_output(["git","-C",str(checkout),"cat-file","blob",
+                    p.EXACT_WE2_ACCEPTANCE_BLOB_OIDS[name]],timeout=15)
+                self.assertEqual(hashlib.sha256(raw).hexdigest(),expected)
+                target=root/name
+                target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_bytes(raw)
+            p.check_exact_we2_acceptance_source(root,"Emaren/app-prodn",branch,base,changes)
+            for repo,prior,paths in (("Emaren/other",base,changes),
+                ("Emaren/app-prodn","0"*40,changes),
+                ("Emaren/app-prodn",base,changes+["scripts/unknown.py"]),
+                ("Emaren/app-prodn",base,changes[:-1]),
+                ("Emaren/app-prodn",base,changes+[changes[0]])):
+                with self.assertRaises(p.BoundaryHold):
+                    p.check_exact_we2_acceptance_source(root,repo,branch,prior,paths)
+            victim=root/"docs/release/artifacts/aoe2war_factory_public_status_v2.py"
+            original=victim.read_bytes()
+            victim.write_bytes(original+b"\n#tamper")
+            with self.assertRaises(p.BoundaryHold):
+                p.check_exact_we2_acceptance_source(root,"Emaren/app-prodn",branch,base,changes)
+            victim.write_bytes(original)
+            victim.unlink()
+            victim.symlink_to(checkout/"docs/release/artifacts/aoe2war_factory_public_status_v2.py")
+            with self.assertRaises(p.BoundaryHold):
+                p.check_exact_we2_acceptance_source(root,"Emaren/app-prodn",branch,base,changes)
+
     def test_allow_reviewed_files(self):
         for value in ("scripts/product_boundary_guard.py",
                       "tests/test_product_boundary_guard.py",
@@ -381,7 +420,17 @@ class BoundaryTests(unittest.TestCase):
     def test_we2_v3_public_exact_source_and_hostile_denials(self):
         import hashlib
         p=policy
-        root=GUARD.parent.parent
+        checkout=GUARD.parent.parent
+        work=tempfile.TemporaryDirectory()
+        self.addCleanup(work.cleanup)
+        root=Path(work.name)
+        for name,expected in p.EXACT_WE2_V3_PUBLIC_PINS.items():
+            data=subprocess.check_output(["git","-C",str(checkout),"show",
+                "861795e9caba793eaacc76b2dd8550a06253aa23:"+name],timeout=15)
+            self.assertEqual(hashlib.sha256(data).hexdigest(),expected)
+            dest=root/name
+            dest.parent.mkdir(parents=True,exist_ok=True)
+            dest.write_bytes(data)
         branch=p.EXACT_WE2_V3_PUBLIC_BRANCH
         base=p.EXACT_WE2_V3_PUBLIC_BASE
         changed=sorted(p.EXACT_WE2_V3_PUBLIC_CHANGED)

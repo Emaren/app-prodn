@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-22",
       "sensitivity": "internal",
-      "sha256": "7d4cce17f73e83257a7dc7488c11cee8a37f7be178f9e1b9de00a8641eba9b6b",
+      "sha256": "7bb3a2f3a2b176dfcc7b275a84b831c225bcadb22bebcea15333c14b654421de",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dda8a9d5256bf3892d702e246537143975851dc7ba62885fd05822de8d290c6e",
+      "sha256": "b1f5bb2a4152c2e9a62e890afa26ac2926431c7f078242cd7afdcab4643702e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3640,8 +3640,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-matchups-profile-repair-20261124",
-    "commit": "90cb086e912e16ce9b24cc937db8c1f8fa39ca73"
+    "branch": "we2/factory-acceptance-truth-20261126",
+    "commit": "842a4d2d1627d12ef8b27182f9d10b06e785d86f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
