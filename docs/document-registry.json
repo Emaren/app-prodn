@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a12706795635cea00083cb9a34d38bc0cfd0c1d22ff822407e86ce110ab29927",
+      "sha256": "31fabd8156f6ecead778de9690c85a37b7431f874a6dc964083771cacfe01caa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3687,7 +3687,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-clan-hall-reader-20261126",
-    "commit": "1e64637af1ada01577a530d06e10ba79811054f8"
+    "commit": "bf8ced9eb2ca816558d20627e1504d60936da6a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
