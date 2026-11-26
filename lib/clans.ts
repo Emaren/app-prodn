@@ -231,6 +231,8 @@ export type ClanHallSnapshot = {
     canReadChat: boolean;
     canPost: boolean;
     hallScribeRepliesAvailable?: boolean;
+    restrictedMemberHall?: boolean;
+    restrictedImageAvailable?: boolean;
     notice: string;
   };
 };
