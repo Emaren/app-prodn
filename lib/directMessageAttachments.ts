@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isRestrictedImageReference } from "./restrictedDirectImageStorage.mjs";
 
 const FILE_ATTACHMENT_PREFIX = "file:v1:";
 const DEFAULT_ATTACHMENT_DIR = path.join(
@@ -186,7 +187,7 @@ export async function persistDirectMessageAttachment(
 export async function removePersistedDirectMessageAttachment(
   reference: string | null,
 ) {
-  if (!reference?.startsWith(FILE_ATTACHMENT_PREFIX)) {
+  if (!reference?.startsWith(FILE_ATTACHMENT_PREFIX) || isRestrictedImageReference(reference)) {
     return;
   }
 
@@ -208,6 +209,8 @@ export async function removePersistedDirectMessageAttachment(
 export async function loadDirectMessageAttachmentContent(
   storedAttachment: string
 ): Promise<LoadedDirectMessageAttachment | null> {
+  // Restricted media is served only by the no-store participant-bound route.
+  if (isRestrictedImageReference(storedAttachment)) return null;
   if (storedAttachment.startsWith("data:")) {
     return decodeDataUrl(storedAttachment);
   }

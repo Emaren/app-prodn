@@ -8,9 +8,12 @@ import {
   buildClanFallbackSnapshot,
   findFoundingClanFallback,
   loadClanHallSnapshot,
+  loadClanDirectory,
   normalizeClanView,
 } from "@/lib/clans";
 import { getPrisma } from "@/lib/prisma";
+import {usesNonfinancialProductionAuth} from "@/lib/productionAuth";
+import {readRestrictedClanHall,lockedClanSnapshot,ClanReadError} from "@/lib/restrictedClanHall";
 import {
   SESSION_COOKIE_NAME,
   verifySession,
@@ -82,6 +85,15 @@ export default async function ClanHallPage({
     .toLowerCase();
   let snapshot;
 
+  if(usesNonfinancialProductionAuth()){
+    try {snapshot=await readRestrictedClanHall(cookieStore.get(SESSION_COOKIE_NAME)?.value,claims?.uid??null,normalizedSlug,null,focusMessageId);}
+    catch(e){
+      let entry=findFoundingClanFallback(normalizedSlug);
+      if(!entry)try{entry=(await loadClanDirectory(getPrisma())).find(c=>c.slug===normalizedSlug)??null;}catch{}
+      if(!entry)notFound();
+      snapshot=lockedClanSnapshot(entry,claims?.uid??null,e instanceof ClanReadError&&e.status===401?"Sign in to access member chat.":e instanceof ClanReadError&&e.status===404?"Active clan membership is required.":"Clan Hall is temporarily unavailable.");
+    }
+  }else{
   try {
     snapshot = await loadClanHallSnapshot(
       getPrisma(),
@@ -121,6 +133,7 @@ export default async function ClanHallPage({
       : null;
   }
 
+  }
   if (!snapshot) {
     notFound();
   }

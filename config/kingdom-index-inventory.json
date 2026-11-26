@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 13,
-    "routeHandlerTemplates": 293,
-    "apiHandlerTemplates": 290,
+    "routeHandlerTemplates": 295,
+    "apiHandlerTemplates": 292,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -2073,6 +2073,16 @@
     },
     {
       "entrypoint": "app/api/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/social/clan-hall/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/social/clan-image/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

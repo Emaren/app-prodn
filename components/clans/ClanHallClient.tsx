@@ -530,7 +530,7 @@ function mergeClanHallSnapshot(
   incoming: ClanHallSnapshot,
 ): ClanHallSnapshot {
   if (!incoming.access.canReadChat) return incoming;
-  if (current.clan.chatAudiencePolicy !== incoming.clan.chatAudiencePolicy) {
+  if (current.clan.slug !== incoming.clan.slug || current.viewer.uid !== incoming.viewer.uid || current.clan.chatAudiencePolicy !== incoming.clan.chatAudiencePolicy) {
     return incoming;
   }
 
@@ -633,13 +633,19 @@ export default function ClanHallClient({
   const shouldStickToBottomRef = useRef(true);
 
   const endpoint = `/api/clans/${encodeURIComponent(snapshot.clan.slug)}`;
+  const restrictedHall = snapshot.access.restrictedMemberHall === true;
+  const restrictedImageAvailable = snapshot.access.restrictedImageAvailable === true;
+  const clanImageKeys = useRef(new WeakMap<File,string>());
+  const restrictedReadEpoch = useRef(0);
+  const historyEndpoint = restrictedHall ? `/api/social/clan-hall?slug=${encodeURIComponent(snapshot.clan.slug)}` : endpoint;
+  const historySeparator = restrictedHall ? "&" : "?";
   const presenceEndpoint = `${endpoint}/presence`;
   const translationLanguage =
     resolveClanTranslationLanguage(
       selectedLanguage,
       languageLoaded,
     );
-  const realtimeEnabled = clanHallFeatureEnabled(
+  const realtimeEnabled = !restrictedHall && clanHallFeatureEnabled(
     snapshot.clan.slug,
     "realtime",
   );
@@ -647,10 +653,7 @@ export default function ClanHallClient({
     snapshot.clan.slug,
     "optimisticMessages",
   );
-  const hallScribeEnabled = clanHallFeatureEnabled(
-    snapshot.clan.slug,
-    "hallScribe",
-  );
+  const hallScribeEnabled = snapshot.access.hallScribeRepliesAvailable === true;
   const hallScribeProfile = resolveClanHallScribeProfile(
     snapshot.clan.slug,
     snapshot.clan.name,
@@ -665,36 +668,49 @@ export default function ClanHallClient({
     });
   }, []);
 
+  const clearRestrictedRead = useCallback((notice:string)=>{
+    restrictedReadEpoch.current++;
+    setSnapshot(current=>({...current,messages:[],roster:[],allowedAudiences:[],messagePage:{kind:"latest",hasMore:false,beforeMessageId:null},viewer:{...current.viewer,isMember:false,canManage:false},access:{...current.access,canReadChat:false,canPost:false,restrictedImageAvailable:false,notice}}));
+    setPendingMessages([]);
+  },[]);
   const refresh = useCallback(async (options?: { stickToBottom?: boolean }) => {
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
+    const epoch=restrictedReadEpoch.current;
 
     try {
-      const response = await fetch(endpoint, { cache: "no-store" });
-      if (!response.ok) return;
+      const response = await fetch(historyEndpoint, { cache: "no-store" });
+      if (!response.ok) {
+        if(restrictedHall)clearRestrictedRead(response.status===401?"Sign in to access member chat.":response.status===404?"Active clan membership required.":"Clan Hall temporarily unavailable.");
+        return;
+      }
       const payload = (await response.json()) as ClanHallSnapshot;
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
       setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       if (options?.stickToBottom) settleChatToBottom();
     } catch (refreshError) {
+      if(restrictedHall)clearRestrictedRead("Clan Hall temporarily unavailable.");
       console.warn("Failed to refresh clan hall:", refreshError);
     } finally {
       requestInFlightRef.current = false;
     }
-  }, [endpoint, settleChatToBottom]);
+  }, [historyEndpoint, restrictedHall, settleChatToBottom,clearRestrictedRead]);
 
   const refreshFocusedMessage = useCallback(async (messageId: number) => {
+    const epoch=restrictedReadEpoch.current;
     try {
       const response = await fetch(
-        `${endpoint}?focusMessageId=${encodeURIComponent(String(messageId))}`,
+        `${historyEndpoint}${historySeparator}focusMessageId=${encodeURIComponent(String(messageId))}`,
         { cache: "no-store" },
       );
-      if (!response.ok) return;
+      if (!response.ok) {if(restrictedHall&&response.status===401)clearRestrictedRead("Sign in to access member chat.");return;}
       const payload = (await response.json()) as ClanHallSnapshot;
-      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
+      setSnapshot((current) => restrictedHall&&!current.access.canReadChat?current:mergeClanHallSnapshot(current, payload));
     } catch (refreshError) {
       console.warn("Failed to refresh Clan Hall message:", refreshError);
     }
-  }, [endpoint]);
+  }, [historyEndpoint, historySeparator,restrictedHall,clearRestrictedRead]);
 
   const loadOlderMessages = useCallback(async () => {
     if (
@@ -709,6 +725,7 @@ export default function ClanHallClient({
     if (!viewport) return;
 
     const beforeMessageId = snapshot.messagePage.beforeMessageId;
+    const epoch=restrictedReadEpoch.current;
     historyLoadInFlightRef.current = true;
     historyPrependAnchorRef.current = {
       beforeMessageId,
@@ -719,12 +736,13 @@ export default function ClanHallClient({
 
     try {
       const response = await fetch(
-        `${endpoint}?beforeMessageId=${encodeURIComponent(String(beforeMessageId))}`,
+        `${historyEndpoint}${historySeparator}beforeMessageId=${encodeURIComponent(String(beforeMessageId))}`,
         { cache: "no-store" },
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {if(restrictedHall&&response.status===401)clearRestrictedRead("Sign in to access member chat.");throw new Error(`HTTP ${response.status}`);}
       const payload = (await response.json()) as ClanHallSnapshot;
-      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current)return;
+      setSnapshot((current) => restrictedHall&&!current.access.canReadChat?current:mergeClanHallSnapshot(current, payload));
     } catch (historyError) {
       historyPrependAnchorRef.current = null;
       console.warn("Failed to prefetch older Clan Hall messages:", historyError);
@@ -732,7 +750,7 @@ export default function ClanHallClient({
       historyLoadInFlightRef.current = false;
       setHistoryLoading(false);
     }
-  }, [endpoint, snapshot.messagePage.beforeMessageId, snapshot.messagePage.hasMore]);
+  }, [historyEndpoint, historySeparator, restrictedHall,clearRestrictedRead,snapshot.messagePage.beforeMessageId, snapshot.messagePage.hasMore]);
 
   useLayoutEffect(() => {
     const anchor = historyPrependAnchorRef.current;
@@ -862,7 +880,7 @@ export default function ClanHallClient({
   }, [endpoint, realtimeEnabled, refresh, refreshFocusedMessage, uid]);
 
   useEffect(() => {
-    if (!snapshot.viewer.authenticated || !uid) {
+    if (restrictedHall || !snapshot.viewer.authenticated || !uid) {
       setHallPresence([]);
       return;
     }
@@ -961,6 +979,7 @@ export default function ClanHallClient({
     };
   }, [
     presenceEndpoint,
+    restrictedHall,
     snapshot.viewer.authenticated,
     uid,
   ]);
@@ -994,6 +1013,7 @@ export default function ClanHallClient({
   }
 
   function addComposerRemoteImage(rawUrl: string) {
+    if(restrictedHall){setError("Remote media is not admitted in member chat.");return false;}
     const url = rawUrl.trim();
     if (posting || !remoteImageUrlLooksSupported(url)) return false;
     if (composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES) {
@@ -1025,6 +1045,10 @@ export default function ClanHallClient({
   }
 
   function addComposerFiles(files: File[]) {
+    if(restrictedHall){
+      if(!restrictedImageAvailable){setError("Clan Hall image posting is not yet admitted.");return;}
+      if(posting||files.length!==1||composerAttachments.length||!["image/png","image/jpeg","image/webp"].includes(files[0].type)||files[0].size<1||files[0].size>10_000_000){setError("Choose one PNG, JPEG or WebP up to 10 MB.");return;}
+    }
     if (posting || files.length === 0) return;
 
     const nextFiles = files.slice(0, MAX_CLAN_MEDIA_FILES);
@@ -1143,10 +1167,14 @@ export default function ClanHallClient({
     draft: string,
     draftAudience: ClanAudience,
     pendingId: string | null,
-    requestScribe: boolean,
+    requestedScribe: boolean,
     attachmentFiles: File[] = [],
     remoteMediaUrls: string[] = [],
   ) {
+    const epoch=restrictedReadEpoch.current;
+    // A stale optimistic retry must obey the current server-admitted capability.
+    if(restrictedHall&&(attachmentFiles.length||remoteMediaUrls.length)&&(!restrictedImageAvailable||attachmentFiles.length!==1||remoteMediaUrls.length!==0||draft.trim()||draftAudience!=="clan")){setError("Choose one admitted local image, without caption.");return;}
+    const requestScribe = requestedScribe && hallScribeEnabled;
     setPosting(true);
     setError(null);
     setNotice(null);
@@ -1162,7 +1190,9 @@ export default function ClanHallClient({
     }
 
     try {
-      const response = attachmentFiles.length > 0 || remoteMediaUrls.length > 0
+      const response = restrictedHall && attachmentFiles.length===1
+        ? await (()=>{const file=attachmentFiles[0];let key=clanImageKeys.current.get(file);if(!key){key=crypto.randomUUID().replaceAll("-","");clanImageKeys.current.set(file,key);}const form=new FormData();form.set("slug",snapshot.clan.slug);form.set("requestKey",key);form.set("attachment",file);return fetch("/api/social/clan-image",{method:"POST",body:form});})()
+        : attachmentFiles.length > 0 || remoteMediaUrls.length > 0
         ? await (() => {
             const formData = new FormData();
             formData.set("message", draft);
@@ -1191,7 +1221,9 @@ export default function ClanHallClient({
         setMessage("");
         if (pendingId) setPendingMessages((current) =>
           current.filter((entry) => entry.id !== pendingId));
+        if(attachmentFiles.length)clearComposerAttachments();
         setNotice("Message saved. Hall readback is unavailable; check history before retrying.");
+        void refresh();
         return;
       }
       if (!response.ok || !payload || !("clan" in payload)) {
@@ -1202,6 +1234,7 @@ export default function ClanHallClient({
         );
       }
 
+      if(restrictedHall&&epoch!==restrictedReadEpoch.current){setMessage("");if(attachmentFiles.length)clearComposerAttachments();setNotice("Post saved; refresh after signing in again.");return;}
       setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       shouldStickToBottomRef.current = true;
       if (pendingId) {
@@ -1471,6 +1504,7 @@ export default function ClanHallClient({
   }
 
   async function toggleReaction(messageId: number, emoji: ClanReaction) {
+    if(restrictedHall){setError("Reactions are not admitted in member chat.");return;}
     if (messageActionBusy || !snapshot.viewer.authenticated) return;
     rememberReactionEmoji(emoji);
     setMessageActionBusy(`reaction:${messageId}:${emoji}`);
@@ -1942,8 +1976,8 @@ export default function ClanHallClient({
                 <input
                   ref={mediaInputRef}
                   type="file"
-                  accept={CLAN_MEDIA_ACCEPT}
-                  multiple
+                  accept={restrictedHall?"image/png,image/jpeg,image/webp":CLAN_MEDIA_ACCEPT}
+                  multiple={!restrictedHall}
                   className="hidden"
                   onChange={(event) => {
                     addComposerFiles(Array.from(event.target.files || []));
@@ -1982,7 +2016,7 @@ export default function ClanHallClient({
                   <button
                     type="button"
                     onClick={() => mediaInputRef.current?.click()}
-                    disabled={posting || composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES}
+                    disabled={posting || (restrictedHall?(!restrictedImageAvailable||composerAttachments.length>=1):composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES)}
                     className="clan-chat-attach grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-35"
                     aria-label="Attach Clan Hall media"
                     title="Attach media"

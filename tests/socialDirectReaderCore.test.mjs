@@ -1,0 +1,17 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {executeSocialDirectRead} from "../lib/socialDirectReaderCore.mjs";
+const sessionToken="x".repeat(40);
+function fixture(decision,actor="alice"){
+ const calls=[];let released=false;
+ return {calls,get released(){return released},options:{verifySession:async()=>actor,sessionToken,pool:{connect:async()=>({query:async(q,p)=>{calls.push([q,p]);return p?{rows:[{decision}]}:{};},release:()=>{released=true;}})}}};
+}
+test("actor injection fails before opening DB",async()=>{const f=fixture(null);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"summary",actor:"bob"}})).status,400);assert.equal(f.calls.length,0);});
+test("unsigned fails before opening DB",async()=>{const f=fixture(null);assert.equal((await executeSocialDirectRead({...f.options,sessionToken:"",input:{op:"summary"}})).status,401);assert.equal(f.calls.length,0);});
+test("self target fails before opening DB",async()=>{const f=fixture(null);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"history",targetUid:"alice"}})).status,404);assert.equal(f.calls.length,0);});
+test("signed actor, read-only transaction, fixed SQL parameters",async()=>{const x={viewer:{uid:"alice",displayName:"Alice",isAdmin:false},summary:{threads:[],hasMore:false},defaultContact:null};const f=fixture(x);assert.deepEqual(await executeSocialDirectRead({...f.options,input:{op:"summary"}}),{status:200,body:x});assert.equal(f.calls[0][0],"BEGIN READ ONLY");assert.deepEqual(f.calls[3][1],["alice","summary",null,null,null,null]);assert.equal(f.calls.at(-1)[0],"COMMIT");assert(f.released);});
+test("denial rolls back",async()=>{const f=fixture(null);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"attachment",messageId:17}})).status,404);assert.equal(f.calls.at(-1)[0],"ROLLBACK");});
+test("wrong image extension fails closed",async()=>{const f=fixture({messageId:17,storageRef:"file:v1:dm-01234567-89ab-cdef-0123-456789abcdef.jpg",mimeType:"image/png",name:"image.png"});assert.equal((await executeSocialDirectRead({...f.options,input:{op:"attachment",messageId:17}})).status,503);});
+test("private storage metadata only admitted in attachment operation",async()=>{const x={messageId:17,storageRef:"file:v1:dm-01234567-89ab-cdef-0123-456789abcdef.png",mimeType:"image/png",name:"image.png"};const f=fixture(x);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"attachment",messageId:17}})).status,200);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"summary"}})).status,503);});
+test("invalid target, oversized page cursor and wildcard keys rejected",async()=>{for(const input of [{op:"history",targetUid:"bad uid"},{op:"history",targetUid:"bob",before:2147483648},{op:"search",targetUid:"bob",query:"ab",extra:true}]){const f=fixture(null);assert.equal((await executeSocialDirectRead({...f.options,input})).status,400);assert.equal(f.calls.length,0);}});
+test("cross-pair sender in history rejected",async()=>{const x={conversationId:1,counterpart:{uid:"bob",displayName:"Bob",isAdmin:false},messages:[{messageId:1,senderUid:"charlie",senderName:"Charlie",senderIsAdmin:false,body:"x",bodyTruncated:false,createdAt:"2026-11-26T00:00:00+00:00",deliveredAt:null,editedAt:null,replyToMessageId:null,attachment:null,unsupportedAttachment:false}],hasMore:false,beforeMessageId:null};const f=fixture(x);assert.equal((await executeSocialDirectRead({...f.options,input:{op:"history",targetUid:"bob"}})).status,503);});
