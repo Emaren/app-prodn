@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-clan-hall-reader-20261126` at `55f130970a704bf476d490f4cb89cd0a18967720`
+Implementation baseline: `we2/chat1513-exact-policy-successor-20261126` at `e598c8a146f65232f5e8cc6cba65121e3a7cb2c5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
