@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-matchups-profile-repair-20261124` at `90cb086e912e16ce9b24cc937db8c1f8fa39ca73`
+Implementation baseline: `we2/factory-acceptance-truth-20261126` at `ef180844885b5f81bd614939357e35fce6c12a75`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
