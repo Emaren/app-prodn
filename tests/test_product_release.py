@@ -1,4 +1,5 @@
 import datetime as dt
+import hashlib
 import importlib.util
 import json
 import os
@@ -8,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import urllib.error
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 SPEC = importlib.util.spec_from_file_location(
@@ -75,6 +77,65 @@ class ApprovalTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "PR_SOURCE"):
             R.qualify(self.approval, fetch)
 
+    def stage_cached_proof(self, work, **overrides):
+        cache = R.transport.private_dir(work / "cache")
+
+        def cache_zip(name, content):
+            path = cache / "fixture.zip"
+            with zipfile.ZipFile(path, "w") as bundle:
+                bundle.writestr(name, content)
+            path.chmod(0o600)
+            size, digest = path.stat().st_size, R.transport.sha(path)
+            path.rename(cache / (digest + ".zip"))
+            return size, digest
+
+        runtime = b"runtime fixture"
+        size, digest = cache_zip("runtime.tar.gz", runtime)
+        proof = {
+            "status": "PASS_INDEPENDENT_LINUX_RUNTIME_BYTES_AND_EACH_TAR_MEMBER",
+            "source_commit": self.approval["sourceSha"], "run_id": self.approval["runId"],
+            "build_id": self.approval["buildId"], "os": "linux", "arch": "x86_64",
+            "node": "v22.22.0", "runtime_entries_verified": 1001,
+            "root_stage_authorized": False, "financial_authorized": False,
+            "public_3032_activation_authorized": False, "runtime_archive_bytes": len(runtime),
+            "runtime_archive_sha256": hashlib.sha256(runtime).hexdigest(),
+            "github_artifact_id": self.approval["artifactId"],
+            "github_artifact_zip_bytes": size, "github_artifact_zip_sha256": digest,
+            **overrides,
+        }
+        raw = json.dumps(proof).encode()
+        proof_size, proof_digest = cache_zip("b-linux-independent-review-v2.json", raw)
+        return {**self.approval, "artifactBytes": size, "artifactSha256": digest,
+                "proofArtifactBytes": proof_size, "proofArtifactSha256": proof_digest,
+                "proofSha256": hashlib.sha256(raw).hexdigest()}
+
+    def test_mismatched_proof_holds_before_runtime_acquisition(self):
+        for field, value, reason in (
+            ("github_artifact_id", 22, "ID"),
+            ("github_artifact_id", float(self.approval["artifactId"]), "ID"),
+            ("github_artifact_zip_bytes", 1, "SIZE"),
+            ("github_artifact_zip_sha256", "0" * 64, "DIGEST"),
+            ("github_artifact_zip_sha256", None, "DIGEST"),
+        ):
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as temp:
+                work = Path(temp)
+                approval = self.stage_cached_proof(work, **{field: value})
+                with patch.object(R.transport, "download", wraps=R.transport.download) as download:
+                    with self.assertRaisesRegex(RuntimeError, f"PROOF_RUNTIME_ZIP_{reason}_MISMATCH"):
+                        R.prepare_artifacts(approval, work, work / "ledger")
+                    self.assertEqual([call.args[1] for call in download.call_args_list],
+                                     [approval["proofArtifactId"]])
+                self.assertEqual([e["event"] for e in R.ledger.read(work / "ledger")], ["download"])
+
+    def test_matching_proof_accepts_runtime_and_rechecks_cached_member(self):
+        work = Path(self.temp.name)
+        approval = self.stage_cached_proof(work)
+        stage, proof = R.prepare_artifacts(approval, work, work / "ledger")
+        self.assertEqual(proof["github_artifact_id"], approval["artifactId"])
+        self.assertEqual(R.prepare_artifacts(approval, work, work / "ledger"), (stage, proof))
+        (stage / "b-linux-independent-review-v2.json").write_bytes(b"modified")
+        with self.assertRaisesRegex(RuntimeError, "EXISTING_MEMBER_MISMATCH"):
+            R.prepare_artifacts(approval, work, work / "ledger")
 
     def test_public_proof_requires_expected_build_and_source_headers(self):
         source = "f" * 40

@@ -15,6 +15,11 @@ sensitivity: "internal"
 
 # AoE2WAR Release Engineering
 
+## 2026-11-26 — Factory proof-first and normalized cache (SOURCE ONLY)
+
+The existing #1434 independent ZIP proof-first change is consolidated with normalized runtime cache reuse on canonical main 861795e9. A retained runtime may be reused only with private exact-mode files, the original independently verified proof ZIP/member, exact approved source/build/run/artifact ID/size/digest, and the normalization receipt bound to the retained paths. Reuse does not confer deployment approval. Missing normalization receipts use the ordinary proof-first ZIP path; malformed, conflicting or tampered receipts HOLD. Never redownload an already verified artifact merely to reconstruct a discarded duplicate envelope. Cold downloads verify independent proof identity before requesting the large runtime ZIP. Existing root admission, live GitHub qualification and T4-T10 controls remain required. Local tests: 9 cache tests and 23 existing/proof-first regression tests PASS. Historical DATA and V3 public publisher boundary fixtures now load immutable admitted blobs from 718ee5e46c2fa989b787f66f5b363d819f6339ec and 6a86c60e15096ca873e89767e3c726dfa8ee18d9 respectively, verify every original pin, and explicitly reject current changed runner/test bytes under the old exception. Both formerly failing boundary tests now PASS locally. No policy pin, branch scope or admission rule is changed; new source review remains required. No production installation, artifact transport or physical release is claimed by this source change.
+
+
 ## 2026-11-21 UTC — bounded WE3 release-source review (NO DEPLOY PERMIT)
 
 Read-only source scope: inspected `scripts/docs_v2_check.py`, `scripts/aoe2_release_gate.py`, rollback/WOLO boundary contracts and merged WE2 protected ingress main `74a6c5c37ae68f187a76278f5b846dd31ec90fd1`. GitHub source/CI never substitutes for an actual WE2 Factory T7–T10, authenticated browser acceptance or HEL1 rollback witness. The last physically observed public BUILD_ID was `RHE-s_XmtI5heC0JuZP7r`; this review performs no root installation, new permit, database migration, custody activation or certified release transaction.

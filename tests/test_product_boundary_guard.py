@@ -14,6 +14,23 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def historical_fixture(self, commit, pins):
+        """Materialize only independently pinned historical blobs for policy tests."""
+        import hashlib
+        repo = GUARD.parent.parent
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        for name, expected in pins.items():
+            raw = subprocess.check_output(
+                ["git", "-C", str(repo), "show", commit + ":" + name],
+                timeout=15)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), expected, name)
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+            target.chmod(0o600)
+        return root
     def denied_source(self, value):
         with self.assertRaises(policy.BoundaryHold, msg=value):
             policy.authorize_source(value)
@@ -262,16 +279,18 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(p.EXACT_WE2_FACTORY_RETENTION_PINS[
             "scripts/aoe2_product_release.py"],
             "db53626c6b42944c47bffd7c6a2474a4355d8f6f5a28775c98e4214e6b689015")
-        # Historical DATA admission hashes stay frozen. Exercise its old
-        # negative fixtures against the current runner bytes *in memory*
-        # without widening the committed historical pin or new branch scope.
-        runner="scripts/aoe2_product_release.py"
-        historical=p.EXACT_WE2_FACTORY_DATA_PINS[runner]
-        self.assertEqual(historical,
+        # Do not rebind old source pins to today's runner/test bytes.
+        runner = "scripts/aoe2_product_release.py"
+        self.assertEqual(p.EXACT_WE2_FACTORY_DATA_PINS[runner],
             "59bb422dc3efaf5987dcda75b2dd48cfc7ae682adef5317a8f67f4a221d9c0ab")
-        self.addCleanup(p.EXACT_WE2_FACTORY_DATA_PINS.__setitem__,runner,historical)
-        p.EXACT_WE2_FACTORY_DATA_PINS[runner]=hashlib.sha256(
-            (root/runner).read_bytes()).hexdigest()
+        current = root
+        root = self.historical_fixture(
+            "718ee5e46c2fa989b787f66f5b363d819f6339ec",
+            {**p.EXACT_WE2_FACTORY_DATA_PINS, **p.EXACT_WE2_FACTORY_DATA_DOC_PINS})
+        for name in (runner, "tests/test_product_release.py"):
+            if hashlib.sha256((current/name).read_bytes()).hexdigest() != p.EXACT_WE2_FACTORY_DATA_PINS[name]:
+                with self.assertRaisesRegex(p.BoundaryHold, "DATA_SOURCE_SHA"):
+                    p.exact_we2_factory_data_blob(current, name)
         p.check_exact_we2_factory_data_source(root,"Emaren/app-prodn",branch,base,names)
         with mock.patch.dict(os.environ,{"BOUNDARY_BRANCH":branch}):
             for raw in p.EXACT_WE2_FACTORY_DATA_PINS:
@@ -389,6 +408,14 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(base,"d7797cf7e34b230031193c563e7505b3c2b55c64")
         self.assertEqual(len(changed),10)
         self.assertEqual(len(p.EXACT_WE2_V3_PUBLIC_PINS),6)
+        current = root
+        root = self.historical_fixture(
+            "6a86c60e15096ca873e89767e3c726dfa8ee18d9",
+            p.EXACT_WE2_V3_PUBLIC_PINS)
+        runner = "scripts/aoe2_product_release.py"
+        if hashlib.sha256((current/runner).read_bytes()).hexdigest() != p.EXACT_WE2_V3_PUBLIC_PINS[runner]:
+            with self.assertRaisesRegex(p.BoundaryHold, "WE2_V3_PUBLIC_SHA"):
+                p.exact_we2_v3_public_blob(current, runner)
         for name,sha in p.EXACT_WE2_V3_PUBLIC_PINS.items():
             self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),sha)
         p.check_exact_we2_v3_public_source(
