@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "auditors"]
 source_of_truth: "git"
 authority: "candidate-browser-diagnostics"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Renaissance 88 Public Route Evidence Factory
+
+> **November 25, 2026 — documentation disposition (source only).** Current workflow and qualification source retain exact-source planning, isolated browser/PG fixtures, immutable digests and explicit noncertification. The 1/8 pilot description and original 144/273 and 146/275 totals are historical stages; the current workflow, not those historical figures, governs route sampling and schedule. No new route/axe/production PASS or schedule execution is attested.
+
 
 *Candidate diagnostics only — this factory does not award a quality score.*
 

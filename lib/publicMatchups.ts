@@ -439,11 +439,17 @@ async function loadRecentFinalMatchupRowsFresh(
   const candidateMatches =
     await prisma.gameStats.findMany({
       where: { is_final: true },
-      orderBy: [
-        { timestamp: "desc" },
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      // The complete historical corpus is sorted deterministically below by
+      // replay played-at time and unique ID. Avoid a redundant PostgreSQL
+      // ORDER BY over wide replay JSON rows when no database LIMIT applies.
+      // Keep the original database ordering for any future bounded scan.
+      orderBy: queryTake === null
+        ? undefined
+        : [
+            { timestamp: "desc" },
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
       ...(queryTake === null
         ? {}
         : {

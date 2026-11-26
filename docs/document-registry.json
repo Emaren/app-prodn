@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "892fcacdbaff9330aba85e7663b8814f530cac69925fd3207cc4e4d97eae835a",
+      "sha256": "47a30d5926c78214572c38829c2e91697e138e3c2deee30ca32a968a04cce67e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1169,9 +1169,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LIVING_KINGDOM_ADMIN.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "58d300b9640136940e8526dfd0c48e17edc8458fe798103a97b5cbd9c41f33b7",
+      "sha256": "efb95646b12e23c8113c90e560781f9bfe6c95ff442657a32bbc6a6b4415739e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1715,9 +1715,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RENAISSANCE_88_FACTORY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "b4c89389b477b50bcac4aece4de0f3657642c968863feb56a161714706fe439e",
+      "sha256": "975536dbfca6945bef11330f041e7044bf64a4cb0b73d35cdd964bc852b2ad8c",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1737,9 +1737,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RENAISSANCE_88_ROUND4.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "5983de95f9cab776bfd51d8c838d172560bd3e115a45ea4d8a1c13c42ea9919c",
+      "sha256": "4a9f769d9501989ca7c1b5d60c6a8ce84e134dabce08fc07f3911fbb74941ee3",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1784,9 +1784,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "ec382f2354cd43ffd540faf7c7dc7ddb1659f76a114c7eed648838c7e826ee2b",
+      "sha256": "c83e65ac4a6a24fdb730469fb9d2b9852928c722a330130feeed6a6442fb9354",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1806,9 +1806,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RENAISSANCE_TABD_FORGE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "83bd648ee82fb7127d5acc822960ddcd9f066ae63a20eb33ca837b48e4c9ddba",
+      "sha256": "9adfc5c13798c53280bdc0b04ab7dbcd7ebdaa5db774d30bdb2f6f7e23cad8bf",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2051,21 +2051,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "session-b-emergency-only-no-c03-funding-or-authenticated-rollback",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.c03-failclosed-emergency-3033-v1",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_B_C03_EMERGENCY_FAILCLOSED_3033_V1.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "631bc0af249b8f121e94877ae918a165fa084e546e58d30c047cf15ad3d3831d",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "b02b6bb9da907138b080e5997d814d9e91e0c2509ac2b298ece6db78f0e4242b",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "C03 emergency-only finance-inert 3033 fallback",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3129,22 +3129,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "nonfunded source-only App transport parity; Chain finance owner retains execution",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c02-source-parity-r25-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "b337f8fe53fb0ee1ffcc22eaa794efc5e291af220be67547717f726119b10218",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "a83b9d7d6d158a34b2deab04d4ff9278f25343843dedbfe7f78d9e2d5d0f491b",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "C02 exact native-8094 forward-only App transport source parity in R25",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3174,21 +3174,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "nonfinancial HTTP classification only, no SQL/financial role changes",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c03-prisma-crossrealm-42501-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "public",
-      "sha256": "da8e031d6153c99740ddda2b8be8a0b6d5b051c3a178e0e136c91dfe1b06a74c",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "e8b84d3e45c659257cf2bb5793ddd86eb48ccea1b1f7d1ddbb1d0a47af4c6467",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "C03 known Prisma SQLSTATE 42501 financial read denial across JS realms",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3196,21 +3196,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-only exact-identity fail-closed App release; no funding",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c03-protecthome-steam-v16-recovery-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "173522cc7991a672bce2f5e0a637bca6e6d2b328e68be9a3fd51b8214bf07b51",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "1b8ccfe5e956dcc71de3a9c3160e9aa8660d230c77f7600e7a500c470a4c17f3",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "C03 restricted Steam V16 ProtectHome source evidence and second rollback",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3218,21 +3218,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "App-only public read projection; finance execution denied",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c03-public-live-direct-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "public",
-      "sha256": "c12bd807c57c572f6db9110f6db02f0eaf4106d4ffe529fce64090f08ef8838c",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "80b2759ea3d44d99bd5826c567eff9e7259bbd31bcab8174bd533c8a713b050e",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "C03 explicit approved public-live endpoint without financial authority",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3240,22 +3240,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "root-only one-use candidate admission, finance-quarantined",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c03-r25-single-slot-exact-promotion-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "66dc5c7747e3431ba8b404325194290830a40173bbfe88f967709c23f885a2e0",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "5897dc752c6d5682fa73ecab9543e2b857fd69c94d4288e2c26bd4e0b8327ee1",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "C03 exact restricted 3032 R25 promotion and automatic rollback",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3263,21 +3263,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-only, finance-restricted, requires physical acceptance",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c03-same-slot-dropin-pin-v2-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "1de7c93e006bb0af223a8432a4c3fdd38a8f31726b6f6f1a372c54a3d4ffa6cf",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "86494122798e4a8425543356d2ae7f8b39f63877717546e16f3f6c5f2897c3d8",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "C03: source-pinned same-slot rollback with existing systemd memory drop-in",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3285,22 +3285,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "steam-source-bound-readonly",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c04-masked-steam-v10-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "c0ad33e51fbda9bb77bb96473fef5c52826e44229db1c2593f7c30b9decbf34e",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "b99bd24a690c2acaf8fb5c5080056e248416ad491544248e954f83da263a40cf",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "Session B \u2014 Versioned C04-Masked Steam V10",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3308,22 +3308,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "steam-source-bound-readonly",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c04-steam-sandbox-v11-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "internal",
-      "sha256": "847144db022dfba8b9a9c08ab26d94c3038f144dae09f35d408919fea6e14156",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "50337a5ab0961b484c866ed84fa0bd7eabb4464f5981e41dd73b007276505a4c",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "Session B \u2014 C04 Steam Sandbox V11",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3331,22 +3331,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "steam-source-bound-readonly-c04-masks-not-financial-release",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-c04-steam-v14-recvq-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "0bce4ffbcf9925b0b317ee4652ac4a70f624b7d77ff984325d0408d531171341",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "d174580d8bf4a0e821871555ab6bc6d788bcd19f41e21ebbcc3a8388602ed34d",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "Steam V14 C04 identity-only receive queue normalization",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3420,21 +3420,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "nonfinancial App SELECT on already-approved public v9 view only",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-public-v9-live-market-fallback-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "public",
-      "sha256": "2fa135707a9adb66e34d765c20edc4ac80e8912fa229bbbb0cc893b55c5d6efd",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "6deb3c9e5a345b5913cd49b0ea0c0339c04d1d4c8e1de19d757e7d75490ec819",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "R25 finance-restricted published v9 current market preview",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3442,22 +3442,22 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-staged-fail-closed-cold-rollback-no-production-financial-change",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-r25-c03-same-slot-cold-rollback-v1-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "29084b960b36bbf4351d774b27700012cd0450818a7a6533366c0e6ee0257c76",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "a7da7b3fb0d44f70c4d94162857bfed54b0ef89977ee55e2c9fbc8224e07f26f",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
       "title": "Session B C03 same-slot finance-restricted cold rollback",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3465,21 +3465,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-only-nonfinancial-r25-memory-guard",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-r25-corpus-heap-pressure-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "74d59b802c6379f9a84993503a40ba739e50a50926b0e019202400cead5a4f75",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "1353e93ba64f1916eb32e32c97ee3e6a65d6d34558013980a5a29a291a81f9bb",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "Session B R25 generation-aware replay corpus pressure repair",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3487,21 +3487,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-only, two exact restricted 3032 process profiles, no Chain permission",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-r25-steam-v15-gc-final-build-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "37347bae3229bef2ffc1cc75976374ccf4addfd6922be36af4bfab2b4b6a5786",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "b9cef39dd98fea057d436531def3967646d934fc9f9d3a0d592dce7be0f6e76e",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3509,21 +3509,21 @@
         "operators",
         "ai-agents"
       ],
-      "authority": "source-only reviewed App release with physical production acceptance required",
+      "authority": "dated incident evidence only; no current operational authority",
       "id": "aoe2war.app-prodn.session-b-steam-v17-exact-c01-inert-delta-20261109",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-17",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-25",
       "sensitivity": "restricted",
-      "sha256": "ecfaaea2709ac74cf87cdfa5b5e912c8f5b3112f74c461fb9737f1a2f5c65b5f",
-      "source_of_truth": "git",
-      "status": "draft",
+      "sha256": "e4cc35e330e580c4180611aedf5ecd1fc76188e9aba3967dd8ca868dbaddd5d0",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
       "title": "Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery",
-      "type": "runbook"
+      "type": "historical"
     },
     {
       "audience": [
@@ -3641,7 +3641,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "we2/r25-chat-media-exact-20261124",
-    "commit": "41813ee6698c450c7cdede8736b6d85b13817e77"
+    "commit": "7b84eb85eadd01592905d974800a1390babb29a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

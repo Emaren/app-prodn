@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { loadPlayerProfileMatchPage, type PlayerProfileIdentity } from "@/lib/playerProfile";
+import { applyProfileViewerMembership, loadPlayerProfileMatchPage, type PlayerProfileIdentity } from "@/lib/playerProfile";
 import { getPrisma } from "@/lib/prisma";
+import { getSessionUid } from "@/lib/session";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const runtime = "nodejs";
@@ -52,10 +54,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ detail: "Player not found." }, { status: 404 });
     }
 
-    return NextResponse.json(page, {
+    const responsePage = isNonfinancialPublicReadProfile()
+      ? await applyProfileViewerMembership(getPrisma(), page, await getSessionUid(request))
+      : page;
+    return NextResponse.json(responsePage, {
       headers: {
         "Cache-Control":
-          "no-store, no-cache, must-revalidate, max-age=0",
+          "private, no-store, no-cache, must-revalidate, max-age=0",
         Pragma: "no-cache",
         Expires: "0",
       },

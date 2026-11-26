@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["engineers", "auditors", "operators"]
 source_of_truth: "git"
 authority: "candidate-fixture-observation"
-reviewed_at: "2026-10-25"
+reviewed_at: "2026-11-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Round Four: Disposable Browser Dependencies and A11y Triage
+
+> **November 25, 2026 — documentation disposition (source only).** Current candidate workflow still invokes the isolated PostgreSQL fixture, captures before/after evidence and uses local browser diagnostics. Original #899 counts, source IDs, accessibility findings and assignments are historical, not current production defects or completion claims. No new fixture or browser run is asserted by this review.
+
 
 *Historical Tab D provenance: #899; these are candidate observations, not production certification.*
 

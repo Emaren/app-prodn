@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-r25-steam-v15-gc-final-build-20261109"
 title: "Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "source-only, two exact restricted 3032 process profiles, no Chain permission"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: source-only, two exact restricted 3032 process profiles, no Chain permission. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 Original V14 is installed and operating but its two exact process enrollments do not include the source-staged #1266 heap-repaired candidate dd00367a9d648e66ebbe9f56e17f323efbdaca6f. A real V14 refresh HOLD at 2026-11-09 15:44:05 UTC occurred with LEASE_EXPIRY_UNOBSERVABLE_OR_DIFFERENT_UNITS. No actual offending nft value was logged in that refresh: a zero-second GC-edge counter is one possible cause, not proven fact. A later 240-read real nft observation covering 720 lease counters found zero anomalies, so do not erase the earlier HOLD.
 

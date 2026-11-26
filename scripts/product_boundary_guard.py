@@ -352,7 +352,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
 # Proposed exact nonfinancial R25 Chat source admission (PR #1510).
 # Source-only; review of this policy itself is mandatory. No host/SQL authority.
 EXACT_WE2_R25_CHAT_BRANCH = "we2/r25-chat-media-exact-20261124"
-EXACT_WE2_R25_CHAT_BASE = "9eca0d03fb8d7238a42e1f9363214b68907656ce"
+EXACT_WE2_R25_CHAT_BASE = "861795e9caba793eaacc76b2dd8550a06253aa23"
 EXACT_WE2_R25_CHAT_PINS = {'scripts/r25_b_guard_production_v1.cjs': '9f45ceac2c3b40d6d2245b1474d16449b6f240e444f5ba0b24f51c67aa01f4cc', 'tests/test_r25_production_node_guard.py': 'cb1f80759881a3e49656b2bd6882b6b264280f312043d99d203ab2592138dd03', 'tests/r25_chat_native_node22.test.cjs': '547f5158c782a008671d269be0438de003784ba9e5905a7f082c6c775cf14e55', 'tests/test_product_boundary_guard.py': '6a01b0c585703a9de96306cfb8eea20ff5171ba9c3d68e56bd2170c13da87521', 'tests/test_we2_r25_chat_exact_admission.py': 'e46b9cf12d30b8affd530c45c9a78a48d0187686c3f11425dacf6fd47e65addc'}
 EXACT_WE2_R25_CHAT_CHANGED = frozenset(EXACT_WE2_R25_CHAT_PINS) | {
     "scripts/product_boundary_guard.py", "docs/DOCUMENTATION_CONTROL_PLANE.md",
@@ -1336,6 +1336,9 @@ def check_exact_we2_r25_chat_context(checkout: Path, repo: str, branch: str,
     frozen = "b90a9c036ae78d1a1c8055818be640e0c164a8a6"
     if git(checkout,"merge-base",frozen,candidate) != frozen:
         raise BoundaryHold("R25_CHAT_REVIEW_ANCESTRY")
+    prior = "7b84eb85eadd01592905d974800a1390babb29a1"
+    if git(checkout,"merge-base",prior,candidate) != prior:
+        raise BoundaryHold("R25_CHAT_PRIOR_REVIEW_ANCESTRY")
     if git(checkout,"merge-base",base,candidate) != base:
         raise BoundaryHold("R25_CHAT_CANDIDATE_BASE")
 

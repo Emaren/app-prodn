@@ -1,19 +1,22 @@
 ---
 id: "aoe2war.app-prodn.session-b-c03-r25-single-slot-exact-promotion-20261109"
 title: "C03 exact restricted 3032 R25 promotion and automatic rollback"
-type: "runbook"
-status: "draft"
+type: "historical"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
-source_of_truth: "git"
-authority: "root-only one-use candidate admission, finance-quarantined"
-reviewed_at: "2026-11-17"
-review_interval_days: 7
+source_of_truth: "historical-evidence"
+authority: "dated incident evidence only; no current operational authority"
+reviewed_at: "2026-11-25"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # C03 exact restricted 3032 R25 promotion and automatic rollback
+
+> **November 25, 2026 — documentation disposition (source only).** Historical disposition: preserve the original November incident record and its subsequent source review verbatim. Prior authority label: root-only one-use candidate admission, finance-quarantined. All process IDs, receipts, commands, source pins and deployment claims below refer to their original observation only. Do not execute old controllers or treat this record as current admission; use the current Factory and separate financial authority. No renewed operational approval or physical attestation.
+
 
 This source-only controller is a narrowly reviewed, separate forward action to the #1267/#1269 rollback. The original finance-restricted production website remains the only full Next.js runtime, and promotion cold-stops that unit, swaps its four exact runtime paths, and cold-starts the CI-staged heap repair on the same port 3032, using the original root-held auth/database environment, OS identity, root-owned media bindings, resource limits and Nginx routing.
 
