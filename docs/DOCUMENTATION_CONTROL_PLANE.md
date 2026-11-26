@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-clan-hall-reader-20261126` at `bf8ced9eb2ca816558d20627e1504d60936da6a1`
+Implementation baseline: `session-c/we3-clan-hall-reader-20261126` at `3d2dfb4b9399b5463db0581bd1ef4295b0c2b236`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

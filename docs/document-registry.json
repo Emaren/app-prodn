@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "31fabd8156f6ecead778de9690c85a37b7431f874a6dc964083771cacfe01caa",
+      "sha256": "4dc2e91eaa6e34f5ec3ac330f1d3c9b2c31db772ab8e0def212e14dfaa419352",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3650,7 +3650,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-26",
       "sensitivity": "internal",
-      "sha256": "865640bf40517f82bee35243bf6a205ab9e4bb73667aa19e6a90e18fbd53b5f2",
+      "sha256": "0d562dce64633c8b39231be5b8bcf68f27419b35e1e8db1e38f88ba9ce14a628",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3687,7 +3687,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-clan-hall-reader-20261126",
-    "commit": "bf8ced9eb2ca816558d20627e1504d60936da6a1"
+    "commit": "3d2dfb4b9399b5463db0581bd1ef4295b0c2b236"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
