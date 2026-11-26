@@ -26,33 +26,34 @@ export async function GET(request: NextRequest) {
     const viewer=await prisma.user.findUnique({where:{uid:sessionUid},select:{id:true,uid:true}});
     if(!viewer)return new Response("Viewer not found",{status:404});
     if (!isLiveProductionReadOnlyPreview()) {
-    const memberships = await prisma.directConversationParticipant.findMany({
-      where: { userId: viewer.id },
-      select: { conversationId: true },
-    });
-    const conversationIds = memberships.map((membership) => membership.conversationId);
-    if (conversationIds.length > 0) {
-    const pendingSenders = await prisma.directMessage.findMany({
-      where: {
-        conversationId: { in: conversationIds },
-        senderUserId: { not: viewer.id },
-        deliveredAt: null,
-      },
-      distinct: ["senderUserId"],
-      select: { sender: { select: { uid: true } } },
-    });
-    const deliveredAt = new Date();
-    await prisma.directMessage.updateMany({
-      where: {
-        conversationId: { in: conversationIds },
-        senderUserId: { not: viewer.id },
-        deliveredAt: null,
-      },
-      data: { deliveredAt },
-    });
-    for (const row of pendingSenders) {
-      publishDirectMessageEvent(row.sender.uid, { type: "receipt", targetUid: viewer.uid });
-    }
+      const memberships = await prisma.directConversationParticipant.findMany({
+        where: { userId: viewer.id },
+        select: { conversationId: true },
+      });
+      const conversationIds = memberships.map((membership) => membership.conversationId);
+      if (conversationIds.length > 0) {
+        const pendingSenders = await prisma.directMessage.findMany({
+          where: {
+            conversationId: { in: conversationIds },
+            senderUserId: { not: viewer.id },
+            deliveredAt: null,
+          },
+          distinct: ["senderUserId"],
+          select: { sender: { select: { uid: true } } },
+        });
+        const deliveredAt = new Date();
+        await prisma.directMessage.updateMany({
+          where: {
+            conversationId: { in: conversationIds },
+            senderUserId: { not: viewer.id },
+            deliveredAt: null,
+          },
+          data: { deliveredAt },
+        });
+        for (const row of pendingSenders) {
+          publishDirectMessageEvent(row.sender.uid, { type: "receipt", targetUid: viewer.uid });
+        }
+      }
     }
   }
 
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "private, no-store, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },
