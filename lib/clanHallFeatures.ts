@@ -53,3 +53,11 @@ export function clanHallFeatureEnabled(
 ) {
   return getClanHallFeatures(slug)[feature];
 }
+
+// The restricted production writer admits human text, not Scribe replies.
+export function clanHallScribeRepliesEnabled(
+  slug: string,
+  restrictedProductionChat: boolean,
+): boolean {
+  return !restrictedProductionChat && clanHallFeatureEnabled(slug, "hallScribe");
+}

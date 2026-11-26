@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dda8a9d5256bf3892d702e246537143975851dc7ba62885fd05822de8d290c6e",
+      "sha256": "e69e8c300a4f7c549875e1888932dbb5edff4ca07b7625c8fc25f5dd7c3e7833",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3636,12 +3636,58 @@
       ],
       "title": "Prisma Schema and Migration Reference",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-clan-hall-regression",
+      "id": "aoe2war.app-prodn.clan-hall-restricted-regression",
+      "owner": "aoe2war-web",
+      "path": "tests/clan-hall-fixture/README.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-26",
+      "sensitivity": "internal",
+      "sha256": "09869f47f0314d07b416bde194e4d342ba10bc43f348e92da24e5cf6eb64b54a",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war",
+        "app-prodn"
+      ],
+      "title": "Restricted Clan Hall combined regression and native release gates",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-restricted-direct-chat-regression",
+      "id": "aoe2war.app-prodn.restricted-direct-reader-fixture",
+      "owner": "aoe2war-web",
+      "path": "tests/restricted-direct-reader-fixture/README.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-26",
+      "sensitivity": "internal",
+      "sha256": "21747fa8e2244282c4ad97a7df96f671eae923bd1210568a94de4e8510fcf4d9",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war",
+        "app-prodn"
+      ],
+      "title": "Restricted Direct Chat release regression contract",
+      "type": "runbook"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-matchups-profile-repair-20261124",
-    "commit": "90cb086e912e16ce9b24cc937db8c1f8fa39ca73"
+    "branch": "session-c/we3-clan-hall-reader-20261126",
+    "commit": "55f130970a704bf476d490f4cb89cd0a18967720"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

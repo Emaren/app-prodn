@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { clanHallScribeRepliesEnabled } from "@/lib/clanHallFeatures";
 
 import { isClanHallScribeSystemUid } from "@/lib/internalSystemAccounts";
 import { isReactionEmoji } from "@/lib/reactionEmoji";
@@ -151,6 +152,7 @@ export function buildClanFallbackSnapshot(
     access: {
       canReadChat: true,
       canPost: authenticated,
+      hallScribeRepliesAvailable: clanHallScribeRepliesEnabled(clan.slug, usesNonfinancialProductionAuth()),
       notice: authenticated
         ? "Choose who can see each post before you send it."
         : "You are seeing public clan posts. Sign in to join the conversation.",
@@ -228,6 +230,9 @@ export type ClanHallSnapshot = {
   access: {
     canReadChat: boolean;
     canPost: boolean;
+    hallScribeRepliesAvailable?: boolean;
+    restrictedMemberHall?: boolean;
+    restrictedImageAvailable?: boolean;
     notice: string;
   };
 };
@@ -717,6 +722,7 @@ export async function loadClanHallSnapshot(
     access: {
       canReadChat,
       canPost: allowedAudiences.length > 0,
+      hallScribeRepliesAvailable: clanHallScribeRepliesEnabled(clan.slug, usesNonfinancialProductionAuth()),
       notice,
     },
   };
