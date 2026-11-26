@@ -11,6 +11,7 @@ import { executeSocialImageWrite, MAX_IMAGE_RPC_BYTES } from "../lib/socialImage
 import { executeSocialDeliveryWrite } from "../lib/socialDeliveryWriterCore.mjs";
 import { executeSocialDirectRead } from "../lib/socialDirectReaderCore.mjs";
 import { executeSocialClanRead } from "../lib/socialClanReaderCore.mjs";
+import {executeSocialClanImageWrite,executeSocialClanImageRead} from "../lib/socialClanImageCore.mjs";
 
 const SOCKET = "/run/aoe2war-social-writer/social.sock";
 const ROLE = "aoe2war_social_writer";
@@ -82,14 +83,18 @@ const server = http.createServer(async(req,res)=>{
   const isDelivery=req.url==="/v1/direct/delivered";
   const isRead=req.url==="/v1/direct/read";
   const isClanRead=req.url==="/v1/clan/read";
-  if(req.method!=="POST"||(!scope&&!isImage&&!isDelivery&&!isRead&&!isClanRead)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
+  const isClanImage=req.url==="/v1/clan/image";
+  const isClanImageRead=req.url==="/v1/clan/image-read";
+  if(req.method!=="POST"||(!scope&&!isImage&&!isDelivery&&!isRead&&!isClanRead&&!isClanImage&&!isClanImageRead)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
   if(req.headers["content-type"]!=="application/json"){finish(415,{detail:"JSON_ONLY"});return;}
   const token=req.headers["x-social-signed-session"];
   if(typeof token!=="string"||token.length<32||token.length>SESSION_MAX_BYTES){
     finish(401,{detail:"SIGNED_SESSION_REQUIRED"});return;
   }
-  if(isImage){
-    if(!process.env.SOCIAL_DIRECT_IMAGE_ROOT){finish(503,{detail:"SOCIAL_IMAGE_NOT_ADMITTED"});return;}
+  if(isImage||isClanImage){
+    const root=isClanImage?process.env.SOCIAL_CLAN_IMAGE_ROOT:process.env.SOCIAL_DIRECT_IMAGE_ROOT;
+    if(isClanImage&&root===process.env.SOCIAL_DIRECT_IMAGE_ROOT){finish(503,{detail:"CLAN_IMAGE_ROOT_NOT_DISTINCT"});return;}
+    if(!root){finish(503,{detail:"SOCIAL_IMAGE_NOT_ADMITTED"});return;}
     if(imageActive){res.setHeader("Connection","close");finish(429,{detail:"SOCIAL_IMAGE_BUSY_RETRY_SAME_KEY"});return;}
     // Claim the bounded slot before awaiting verification to prevent concurrent admission.
     imageActive=true;
@@ -98,8 +103,9 @@ const server = http.createServer(async(req,res)=>{
       try{await verifySocialSignedSession(token,secret);}catch{finish(401,{detail:"INVALID_SIGNED_SESSION"});return;}
       let input;
       try{input=await readBoundedJson(req,MAX_IMAGE_RPC_BYTES);}catch{finish(400,{detail:"INVALID_SOCIAL_IMAGE_JSON"});return;}
-      const result=await executeSocialImageWrite({pool,sessionToken:token,input,
-        root:process.env.SOCIAL_DIRECT_IMAGE_ROOT,verifyImage,
+      const execute=isClanImage?executeSocialClanImageWrite:executeSocialImageWrite;
+      const result=await execute({pool,sessionToken:token,input,
+        root,verifyImage,
         verifySession:(t)=>verifySocialSignedSession(t,secret),
         onError:(code)=>process.stderr.write("SOCIAL_IMAGE_FAIL_CLOSED code="+code+"\n")});
       finish(result.status,result.body);
@@ -108,6 +114,11 @@ const server = http.createServer(async(req,res)=>{
   }
   let input;
   try{input=await readBoundedJson(req);}catch{finish(400,{detail:"INVALID_SOCIAL_JSON"});return;}
+  if(isClanImageRead){
+    if(!process.env.SOCIAL_CLAN_IMAGE_ROOT||process.env.SOCIAL_CLAN_IMAGE_ROOT===process.env.SOCIAL_DIRECT_IMAGE_ROOT){finish(503,{detail:"CLAN_IMAGE_NOT_ADMITTED"});return;}
+    const result=await executeSocialClanImageRead({pool,sessionToken:token,input,verifySession:t=>verifySocialSignedSession(t,secret),onError:code=>process.stderr.write("SOCIAL_CLAN_IMAGE_READ_FAIL_CLOSED code="+code+"\n")});
+    finish(result.status,result.body);return;
+  }
   if(isClanRead){
     const result=await executeSocialClanRead({pool,sessionToken:token,input,verifySession:t=>verifySocialSignedSession(t,secret),onError:code=>process.stderr.write("SOCIAL_CLAN_READ_FAIL_CLOSED code="+code+"\n")});
     finish(result.status,result.body);return;
