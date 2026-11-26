@@ -64,7 +64,10 @@ export async function callSocialImageWriter(signedSession:string,input:Record<st
 export async function callSocialDeliveryWriter(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/direct/delivered",signedSession,input,MAX_BYTES,TIMEOUT);
 }
-async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number):Promise<{status:number;body:Record<string,unknown>}> {
+export async function callSocialDirectReader(signedSession:string,input:Record<string,unknown>) {
+  return callSocialSocket("/v1/direct/read",signedSession,input,MAX_BYTES,4_000,2*1024*1024);
+}
+async function callSocialSocket(endpoint:string,signedSession:string,input:Record<string,unknown>,limit:number,timeout:number,replyLimit=8192):Promise<{status:number;body:Record<string,unknown>}> {
   const payload = JSON.stringify(input);
   const size=Buffer.byteLength(payload,"utf8");
   if (!signedSession || signedSession.length > 4096 || size > limit || size < 2)
@@ -88,7 +91,7 @@ async function callSocialSocket(endpoint:string,signedSession:string,input:Recor
       const chunks:Buffer[]=[];let bytes=0;
       res.on("data",(chunk:Buffer)=>{
         bytes+=chunk.length;
-        if(bytes>8192){req.destroy();finish({status:503,body:{detail:"SOCIAL_WRITER_REPLY_UNAVAILABLE"}});}
+        if(bytes>replyLimit){req.destroy();finish({status:503,body:{detail:"SOCIAL_WRITER_REPLY_UNAVAILABLE"}});}
         else chunks.push(chunk);
       });
       res.on("end",()=>{
@@ -102,7 +105,7 @@ async function callSocialSocket(endpoint:string,signedSession:string,input:Recor
       });
     });
     req.on("timeout",()=>req.destroy());
-    req.on("error",()=>finish({status:503,body:{detail:"SOCIAL_SEND_STATUS_UNKNOWN_CHECK_HISTORY_BEFORE_RETRY"}}));
+    req.on("error",()=>finish({status:503,body:{detail:endpoint==="/v1/direct/read"?"DIRECT_READ_UNAVAILABLE":"SOCIAL_SEND_STATUS_UNKNOWN_CHECK_HISTORY_BEFORE_RETRY"}}));
     req.end(payload);
   });
 }
