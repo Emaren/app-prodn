@@ -16,6 +16,8 @@ import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import {usesNonfinancialProductionAuth} from "@/lib/productionAuth";
+import {restrictedClanResponse} from "@/lib/restrictedClanHall";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
 import { maybeCreateClanHallScribeReply } from "@/lib/clanHallScribe";
 import {
@@ -119,6 +121,7 @@ export async function GET(
   try {
     const slug = await readSlug(context);
     const viewerUid = await getSessionUid(request);
+    if(usesNonfinancialProductionAuth())return restrictedClanResponse(request,viewerUid,slug);
     const focusMessageId = parseMessageId(
       request.nextUrl.searchParams.get("focusMessageId"),
     );
