@@ -685,7 +685,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "7be5ea2f18a8c6d02061431167ef46fd7794e1507231e2231f22129afaab7aaa",
+      "sha256": "1d7e09cd9916f4dabf2bfe8899373b855d18983b37624d19edcdbed793d1a2a6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "769676608610b561056b9b7b737396a62bc69293848ff69567975103c68ccb68",
+      "sha256": "d466f90c0b947cf9f685dee5d942b3233bcf34305d1e3122f9e3d02acf28b804",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3686,8 +3686,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "we3/chat1515-legacy-mutation-gate-20261127",
-    "commit": "09ef0aee78f034c424d695ae2a1a3caf8b7859f1"
+    "branch": "fix/chat1518-persistent-read-ack-20261127",
+    "commit": "e23be89addc53b6ab13d6e2ef1f8f767931cc8db"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

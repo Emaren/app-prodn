@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we3/chat1515-legacy-mutation-gate-20261127` at `09ef0aee78f034c424d695ae2a1a3caf8b7859f1`
+Implementation baseline: `fix/chat1518-persistent-read-ack-20261127` at `e23be89addc53b6ab13d6e2ef1f8f767931cc8db`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
