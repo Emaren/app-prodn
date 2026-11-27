@@ -96,11 +96,13 @@ test("read-only fetch preserves HTTP failures; no observed fake zero",async()=>{
   }finally{globalThis.fetch=previous;}
 });
 
-test("server-side Traffic UI keeps the original certified chart and excludes observational substitute",()=>{
+test("server-side Traffic UI keeps the original certified chart distinct from observed activity",()=>{
   const page=readFileSync(new URL("../app/traffic/page.tsx",import.meta.url),"utf8");
   const component=readFileSync(new URL("../components/traffic/ProvisionalDailyTraffic.tsx",import.meta.url),"utf8");
   assert.match(page,/loadPublicTraffic/);
   assert.match(page,/ObservedTrafficSensors/);
+  assert.match(page,/loadProvisionalTraffic\(lastPublishedDay\)/);
+  assert.match(page,/<ProvisionalActivity points=\{activity.points\}/);
   assert.doesNotMatch(page,/ObservedDailyTraffic|RecentObservedActivity/);
   assert.match(page,/Canonical Traffic series/);
   assert.equal((page.match(/<PremiumTimeSeriesChart/g)||[]).length,1);
