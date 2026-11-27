@@ -28,6 +28,12 @@ RESERVE = 6 * GIB
 PINS_SCHEMA = "aoe2war.product.retention-pins.v1"
 PLAN_SCHEMA = "aoe2war.product.artifact-retention-plan.v1"
 RECEIPT_SCHEMA = "aoe2war.product.artifact-retention-receipt.v1"
+COPY_ONLY_SCHEMA = "aoe2war.product.compressed-archive-copy-only-receipt.v1"
+COPY_ONLY_PURPOSE = "HEL1_HISTORICAL_FACTORY_COMPRESSED_ARCHIVE_COPY_ONLY"
+RETIRE_PURPOSE = "HEL1_HISTORICAL_FACTORY_COMPRESSED_ARCHIVE_ONE_ITEM_RETIRE"
+# Source-only source-class protection; never infer the 50b T8 predecessor's
+# independent recovery and human ROOT retirement from a root-owned boolean.
+DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE = "dbceb5df20f98ff783a2af1a83d79cf17abae035"
 PLAN_FIELDS = {
     "schema", "pins_sha256", "created_at", "destination", "storage_identity", "items",
     "root_free_bytes_before", "volume_free_bytes_before",
@@ -193,14 +199,15 @@ def load_pins(path, expected_sha):
     need(p.get("controller_sha256") == CONTROLLER_SHA, "CONTROLLER_SHA")
     need(sha(p.get("manifest_sha256")) and sha(p.get("journal_sha256")),
          "ROOT_EVIDENCE_DIGEST")
-    for key in ("active", "previous"):
+    for key in ("active", "previous", "hot2"):
         r = p[key]
         need(type(r) is dict and set(r) == {"source", "build", "runtime"}
              and re.fullmatch("[0-9a-f]{40}", r["source"])
              and re.fullmatch("[A-Za-z0-9_-]{8,64}", r["build"])
              and r["runtime"] == "/var/lib/aoe2war-web-prod-" + r["source"][:12],
              "PIN_IDENTITY")
-    need(p["active"]["source"] != p["previous"]["source"], "DUPLICATE_PIN")
+    need(len({p[x]["source"] for x in ("active", "previous", "hot2")}) == 3,
+         "DUPLICATE_HOT_PIN")
     need(type(p.get("candidates")) is list and 0 < len(p["candidates"]) <= 16,
          "CANDIDATE_BOUND")
     for row in p["candidates"]:
@@ -226,7 +233,8 @@ def live_identity(p):
 def candidate(row, p):
     path = validate_classification(row)
     directory(path.parent)
-    need(row["source"] not in (p["active"]["source"], p["previous"]["source"]),
+    need(row["source"] not in
+         (p["active"]["source"], p["previous"]["source"], p["hot2"]["source"]),
          "PINNED_SOURCE")
     snap = regular(path, OWNER)
     need(snap["bytes"] == row["archive_bytes"]
@@ -344,7 +352,100 @@ def retained_rows(q, qsha, dest):
     return rows
 
 
+def copy_only(q, qsha, p, pinsha):
+    """DATA-only copy and fsynced receipt; never rename/unlink ROOT originals.
+
+    The separate owner-attested one-use COPY class is required. This receipt
+    deliberately does not satisfy any later ROOT retirement/restore permission.
+    """
+    need(type(p) is dict and p.get("purpose") == COPY_ONLY_PURPOSE
+         and p.get("copy_authorized") is True
+         and p.get("retirement_authorized") is False
+         and p.get("open_files_verified") is True,
+         "COPY_ONLY_OWNER_CLASS_OR_OPEN_FD_ATTESTATION")
+    need(set(q) == PLAN_FIELDS and q["schema"] == PLAN_SCHEMA
+         and digest(raw(q)) == qsha and q["pins_sha256"] == pinsha
+         and q["financial_authorized"] is False and q["runtime_mutation"] is False
+         and q["unchanged_v3_minimum_bytes"] == RESERVE,
+         "COPY_ONLY_PLAN_IDENTITY")
+    need(type(q["items"]) is list and len(q["items"]) == 1
+         and len(p.get("candidates", [])) == 1, "COPY_ONLY_EXACT_ONE_ITEM")
+    dest = directory(q["destination"])
+    need(dest == VOLUME and storage_identity(dest) == q["storage_identity"],
+         "COPY_ONLY_STORAGE_IDENTITY_CHANGED")
+    live_identity(p)
+    entry = q["items"][0]
+    c = entry["classification"]
+    need(c.get("source") != DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE,
+         "DBCEB_OWNER_COPY_VERIFIER_AND_DURABLE_NONCE_LEDGER_NOT_ENROLLED")
+    need(c in p["candidates"] and candidate(c, p) == entry,
+         "COPY_ONLY_SOURCE_PROOF_DRIFT")
+    need(free(dest) >= c["archive_bytes"] + GIB, "COPY_ONLY_VOLUME_HEADROOM")
+    target = dest / "objects" / (c["source"] + "-" + c["archive_sha256"] + ".tar.gz")
+    receipts = dest / "receipts"
+    for d in (target.parent, receipts):
+        if not d.exists():
+            d.mkdir(mode=0o700)
+            fsync_dir(dest)
+        directory(d)
+    receipt = receipts / ("copy-only-" + qsha + ".json")
+    original = Path(c["path"])
+    before_root = free(STAGE)
+    row = {"original": str(original), "retained": str(target),
+           "classification": c, "snapshot": entry["snapshot"]}
+    if receipt.exists():
+        prior = read_json(receipt, OWNER, mode=0o600)
+        need(prior.get("schema") == COPY_ONLY_SCHEMA
+             and prior.get("plan_sha256") == qsha
+             and prior.get("pins_sha256") == pinsha
+             and prior.get("item") == row
+             and prior.get("source_retired") is False
+             and prior.get("independent_restoration_verified") is False
+             and prior.get("retirement_authorized") is False,
+             "COPY_ONLY_RECEIPT_IDENTITY")
+    if target.exists():
+        regular(target, OWNER, 0o600)
+        need(hashfile(target) == c["archive_sha256"],
+             "COPY_ONLY_RETAINED_HASH_MISMATCH")
+    else:
+        copy_verified(original, target, c["archive_sha256"], entry["snapshot"])
+    # Recheck both files after fsynced, independent-filesystem DATA publication.
+    need(candidate(c, p) == entry and original.exists(),
+         "COPY_ONLY_ROOT_ORIGINAL_CHANGED")
+    regular(target, OWNER, 0o600)
+    need(hashfile(target) == c["archive_sha256"], "COPY_ONLY_POST_COPY_SHA")
+    live_identity(p)
+    if not receipt.exists():
+        seal(receipt, {"schema": COPY_ONLY_SCHEMA,
+                       "plan_sha256": qsha, "pins_sha256": pinsha,
+                       "item": row, "sealed_at": utc().isoformat(),
+                       "source_retired": False, "retirement_authorized": False,
+                       "independent_restoration_verified": False,
+                       "financial_authorized": False, "runtime_mutation": False})
+    return {"status": "PASS_COMPRESSED_ARCHIVE_DATA_COPY_ONLY_NO_RETIRE",
+            "receipt": str(receipt), "receipt_sha256": hashfile(receipt),
+            "root_free_bytes_before": before_root,
+            "root_free_bytes_after": free(STAGE),
+            "source_retired": False, "retirement_authorized": False,
+            "independent_restoration_verified": False}
+
+
 def apply(q, qsha, p, pinsha):
+    # The original 50b T8 predecessor has a distinct recovery floor.  Neither
+    # the COPY-only receipt nor self-asserted root pin booleans are authentic
+    # owner-retirement grants; this source cannot retire dbceb until a distinct
+    # original cryptographic verifier/nonce ledger is genuinely installed.
+    if type(q) is dict and type(q.get("items")) is list:
+        for item in q["items"]:
+            if type(item) is dict and type(item.get("classification")) is dict:
+                need(item["classification"].get("source") !=
+                     DBCEB_PROTECTED_T8_PREDECESSOR_SOURCE,
+                     "DBCEB_SIGNED_RETIRE_AND_RESTORE_RECEIPT_VERIFIER_ABSENT")
+    need(p.get("purpose") == RETIRE_PURPOSE
+         and p.get("retirement_authorized") is True
+         and p.get("independent_restoration_verified") is True
+         and len(p.get("candidates", [])) == 1,
+         "SEPARATE_EXACT_RETIRE_AND_RESTORE_AUTHORITY_REQUIRED")
     need(set(q) == PLAN_FIELDS and q["schema"] == PLAN_SCHEMA
          and digest(raw(q)) == qsha and q["pins_sha256"] == pinsha
          and q["financial_authorized"] is False and q["runtime_mutation"] is False
@@ -472,7 +573,7 @@ def restore(receipt_path, receipt_sha):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="action", required=True)
-    for name in ("plan", "apply"):
+    for name in ("plan", "copy-only", "apply"):
         s = sub.add_parser(name)
         s.add_argument("--pins", required=True)
         s.add_argument("--pins-sha", required=True)
@@ -500,7 +601,9 @@ def main():
                       "release_capacity_ready": q["pre_stage_capacity_expected_pass"]}
         else:
             q = read_json(a.plan, OWNER, a.plan_sha, 0o600)
-            result = apply(q, a.plan_sha, p, a.pins_sha)
+            result = (copy_only(q, a.plan_sha, p, a.pins_sha)
+                      if a.action == "copy-only"
+                      else apply(q, a.plan_sha, p, a.pins_sha))
     print(json.dumps(result, sort_keys=True, indent=2))
 
 
