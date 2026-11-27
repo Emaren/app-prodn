@@ -1129,6 +1129,59 @@ def release(approval, remote, proof, log, work, invocation=None):
         publish_invocation(invocation, approval, work, journal)
 
 
+
+FACTORY_RETENTION_HANDOFF_SCHEMA = "aoe2war.factory.post-t10-retention-handoff.review-only.v1"
+
+def post_t10_factory_retention_handoff(approval, seal, last_event):
+    """Source-bound read-only eligibility handoff from the ORIGINAL Factory.
+
+    It runs only when explicitly requested AFTER an actual T10 root acceptance.
+    This is NOT an L1/2/L3/L4 permit, installer, archive or retention timer.
+    Every missing external hot/cold/original-source proof stays a HOLD.
+    """
+    for key in ("sourceSha", "buildId", "artifactSha256", "proofArtifactSha256"):
+        need(isinstance(approval.get(key), str), "RETENTION_APPROVAL_IDENTITY")
+    need(re.fullmatch(r"[0-9a-f]{40}", approval["sourceSha"]) is not None
+         and re.fullmatch(r"[0-9a-f]{64}", approval["artifactSha256"]) is not None
+         and re.fullmatch(r"[0-9a-f]{64}", approval["proofArtifactSha256"]) is not None
+         and re.fullmatch(r"[A-Za-z0-9_-]{8,64}", approval["buildId"]) is not None,
+         "RETENTION_SOURCE_ARTIFACT_DIGEST")
+    need(isinstance(seal, dict)
+         and seal.get("schema") == "aoe2war.product.release-seal.v1"
+         and seal.get("sourceSha") == approval["sourceSha"]
+         and seal.get("buildId") == approval["buildId"]
+         and seal.get("financialAuthorized") is False
+         and re.fullmatch(r"[0-9a-f]{64}", str(seal.get("ledgerSha256", ""))) is not None
+         and re.fullmatch(r"[0-9a-f]{64}", str(seal.get("summarySha256", ""))) is not None,
+         "RETENTION_T10_ROOT_SEAL")
+    need(isinstance(last_event, dict)
+         and last_event.get("event") == "T10"
+         and last_event.get("state") == "pass"
+         and last_event.get("eventHash") == seal.get("lastEventHash"),
+         "RETENTION_LAST_EVENT_MUST_BE_T10")
+    return {
+        "schema": FACTORY_RETENTION_HANDOFF_SCHEMA,
+        "status": "HOLD_SOURCE_ADMITTED_HOT_COLD_AND_EXACT_ORIGINAL_AUTHORITY",
+        "current_source_sha": approval["sourceSha"],
+        "current_BUILD_ID": approval["buildId"],
+        "immutable_artifact_zip_sha256": approval["artifactSha256"],
+        "immutable_proof_zip_sha256": approval["proofArtifactSha256"],
+        "original_factory_t10_ledger_sha256": seal["ledgerSha256"],
+        "original_factory_t10_summary_sha256": seal["summarySha256"],
+        "original_factory_t10_last_event_hash": seal["lastEventHash"],
+        "KEEP_current_release": True,
+        "KEEP_two_source_admitted_hot_generations": True,
+        "KEEP_three_independently_restored_cold_checkpoints": True,
+        "KEEP_3030_3033_appearance_social_and_originals": True,
+        "exact_original_L4_decision": "NOT_GRANTED",
+        "original_source_retirement_eligibility": "NOT_PROVEN",
+        "one_item_copy_authority": "NOT_VALIDATED",
+        "retention_nomination_status": "NOT_AUTHORIZED_WITHOUT_SIGNED_SOURCE_PINS",
+        "new_factory_zips": 0, "new_transfers": 0, "new_deletions": 0,
+        "auto_age_expiry": False, "apply": False,
+    }
+
+
 def seal_acceptance(approval, log, work, journal, invocation=None):
     """Finish/repair a local T10 seal, including missing exact root copies."""
     source = approval["sourceSha"]
@@ -1184,6 +1237,12 @@ def seal_acceptance(approval, log, work, journal, invocation=None):
         "firstVerifiedProductionMs": summary.get("firstVerifiedProductionMs"),
         "finalAcceptedMs": summary.get("finalAcceptedMs"),
     }), flush=True)
+    # Opt-in plan-only handoff; default release and T10 receipts remain exactly
+    # unchanged. No source or environment flag can authorize deletion.
+    if os.environ.get("AOE2WAR_FACTORY_RETENTION_REVIEW_ONLY") == "1":
+        print(json.dumps(
+            post_t10_factory_retention_handoff(approval, receipt, events[-1]),
+            sort_keys=True), flush=True)
 
 
 
