@@ -349,7 +349,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|we2/chat1513-exact-policy-successor-20261126|we3/chat1515-legacy-mutation-gate-20261127|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|we2/chat1513-exact-policy-successor-20261126|we3/chat1515-legacy-mutation-gate-20261127|fix/chat1518-persistent-read-ack-20261127|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -1397,6 +1397,80 @@ def exact_chat_fix_changes(checkout: Path, repo: str, branch: str, base: str) ->
     return sorted(changed)
 
 
+# Exact source-only successor; no native socket, database or release admission.
+EXACT_CHAT_ACK_BRANCH = "fix/chat1518-persistent-read-ack-20261127"
+EXACT_CHAT_ACK_FROZEN = "fbf57db3bd97d56d1e2ed4e405d59c90635634d9"
+EXACT_CHAT_ACK_CANDIDATE = "8015caa354aa735e4e12e3943146c491a8994d56"
+EXACT_CHAT_ACK_PINS = {
+    'app/api/contact-emaren/route.ts': '5d6d90f18cfaa009b189c0729529e1800c85279aba66d18aa81c78406ebd4b06',
+    'bin/social-writer.mjs': '064cf564ea56a30a1722efcd24a90d747692427eb10114f7c9b637508aa812ad',
+    'components/contact/ContactEmarenWorkspace.tsx': '47b2492d5bdc8ccba3c5ec5c6a99cd84679e2cab37597d94752cf7049946d66d',
+    'components/contact/HeaderInboxControl.tsx': '2762ceedfc098d1ea2c2fcc302275721abf392124355346565f6f11ef16b21d2',
+    'components/contact/acknowledgeVisibleRead.d.mts': 'cfe3056605c227e41bfc7cebbb4b5bcaad1d5a128fd11e5cba845743a6abb460',
+    'components/contact/acknowledgeVisibleRead.mjs': 'be1edd1dfdee9c3713f1b2224ebc07f65619c4c7a6845ce73463e77ec27a27eb',
+    'docs/DIRECT_CHAT.md': '1d7e09cd9916f4dabf2bfe8899373b855d18983b37624d19edcdbed793d1a2a6',
+    'lib/socialReadAckCore.mjs': '8cf37cad4bdb75accdfb409aad1c277e8d59c6bb4f46faa4067e36dfbe56a558',
+    'lib/socialWriterClient.ts': '2a3c67931872738b9006a3c84a3680a6ae2243b8d51b718508d12d674e34a389',
+    'tests/acknowledgeVisibleRead.test.mjs': '2e3325f2ebfac14e710d6468045e4f38225d396d0cb1d81d0dad5caff0d5ffd6',
+    'tests/social-writer-boundary.test.mjs': '3629383e68d65331a5185e4475de9be0a56b46ea469e8760132b4d043354846c',
+    'tests/socialReadAckCore.test.mjs': 'ea810172e89db10232d4dec656fae1df880d42bd0b679dd9b501c2202f974c9c',
+}
+EXACT_CHAT_ACK_POLICY = frozenset({"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py", "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json"})
+
+
+def exact_chat_ack_changes(checkout: Path, repo: str, branch: str, base: str) -> list[str]:
+    if repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE or branch not in (EXACT_CHAT_ACK_BRANCH, "main"):
+        raise BoundaryHold("CHAT_ACK_CONTEXT")
+    def names(start, end):
+        result = set()
+        for row in git(checkout, "diff", "--name-status", "--no-renames", start, end, "--").splitlines():
+            parts = row.split("\t")
+            if len(parts) != 2 or parts[0] not in ("A", "M") or parts[1] in result:
+                raise BoundaryHold("CHAT_ACK_NONREGULAR_DELTA")
+            result.add(parts[1])
+        return result
+    git(checkout, "merge-base", "--is-ancestor", base, EXACT_CHAT_ACK_FROZEN)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_ACK_FROZEN, EXACT_CHAT_ACK_CANDIDATE)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_ACK_CANDIDATE, "HEAD")
+    inherited = names(base, EXACT_CHAT_ACK_FROZEN)
+    if len(inherited) != 80 or names(EXACT_CHAT_ACK_FROZEN, EXACT_CHAT_ACK_CANDIDATE) != set(EXACT_CHAT_ACK_PINS):
+        raise BoundaryHold("CHAT_ACK_FROZEN_SCOPE")
+    policy = names(EXACT_CHAT_ACK_CANDIDATE, "HEAD")
+    if not {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"} <= policy or not policy <= EXACT_CHAT_ACK_POLICY:
+        raise BoundaryHold("CHAT_ACK_POLICY_SCOPE")
+    changed = names(base, "HEAD")
+    if changed != inherited | set(EXACT_CHAT_ACK_PINS) | policy:
+        raise BoundaryHold("CHAT_ACK_CHANGED_SCOPE")
+    for name in changed:
+        mode = git(checkout, "ls-files", "--stage", "--", name)
+        if len(mode.splitlines()) != 1 or not mode.startswith(("100644 ", "100755 ")):
+            raise BoundaryHold("CHAT_ACK_FILE_MODE")
+        if name in EXACT_CHAT_POLICY_ROUTE_PINS:
+            exact_chat_route_blob(checkout, name)
+        elif name in EXACT_CHAT_ACK_PINS:
+            path = checkout
+            for part in relative_path(name).parts:
+                path = path / part
+                if path.is_symlink():
+                    raise BoundaryHold("CHAT_ACK_SYMLINK")
+            st = path.lstat()
+            if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022 or not 1 <= st.st_size <= 250000:
+                raise BoundaryHold("CHAT_ACK_SOURCE_AUTHORITY")
+            key = lambda v: (v.st_dev,v.st_ino,v.st_uid,v.st_mode,v.st_nlink,v.st_size,v.st_mtime_ns,v.st_ctime_ns)
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                live = os.fstat(fd); data = os.read(fd,250001); after = os.fstat(fd); final = path.lstat()
+                if not key(st) == key(live) == key(after) == key(final):
+                    raise BoundaryHold("CHAT_ACK_INODE_RACE")
+            finally:
+                os.close(fd)
+            if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != EXACT_CHAT_ACK_PINS[name]:
+                raise BoundaryHold("CHAT_ACK_SHA")
+        else:
+            authorize_changed_source(checkout, base, name)
+    return sorted(changed)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1410,7 +1484,9 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if (branch == EXACT_CHAT_FIX_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "tests/direct-chat-legacy-mutation-gate.test.mts" in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines())):
+        if branch == EXACT_CHAT_ACK_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
+            receipt["changed_files"] = exact_chat_ack_changes(checkout,repo_name,branch,base)
+        elif (branch == EXACT_CHAT_FIX_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "tests/direct-chat-legacy-mutation-gate.test.mts" in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines())):
             receipt["changed_files"] = exact_chat_fix_changes(checkout, repo_name, branch, base)
         elif (branch == EXACT_CHAT_POLICY_BRANCH or
                 (branch == "main" and base == EXACT_CHAT_POLICY_BASE

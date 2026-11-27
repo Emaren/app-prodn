@@ -14,6 +14,18 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_chat_ack_exact_branch_and_pinned_source(self):
+        import hashlib
+        root=GUARD.parent.parent
+        self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_CHAT_ACK_BRANCH))
+        self.assertIsNone(policy.BRANCH.fullmatch("fix/arbitrary"))
+        for name,digest in policy.EXACT_CHAT_ACK_PINS.items():
+            raw=subprocess.check_output(["git","-C",str(root),"show",policy.EXACT_CHAT_ACK_CANDIDATE+":"+name])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),digest)
+        for repo,branch,base in (("Other/app-prodn",policy.EXACT_CHAT_ACK_BRANCH,policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn","fix/arbitrary",policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn",policy.EXACT_CHAT_ACK_BRANCH,"0"*40)):
+            with self.assertRaisesRegex(policy.BoundaryHold,"CHAT_ACK_CONTEXT"):
+                policy.exact_chat_ack_changes(root,repo,branch,base)
+
     def test_chat_fix_exact_branch_and_pinned_delta(self):
         root=GUARD.parent.parent
         self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_CHAT_FIX_BRANCH))
