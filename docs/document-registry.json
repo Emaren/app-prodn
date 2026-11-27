@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d466f90c0b947cf9f685dee5d942b3233bcf34305d1e3122f9e3d02acf28b804",
+      "sha256": "f79e9052c01f65e8b0861b787b897fde806eb5ad99261a3f93d7d2b115a2fe00",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3686,8 +3686,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/chat1518-persistent-read-ack-20261127",
-    "commit": "e23be89addc53b6ab13d6e2ef1f8f767931cc8db"
+    "branch": "session-c/we3-traffic-observed-20261127",
+    "commit": "3b9dc2cdc8e87b51bebab860d3eef1114ee62ac8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

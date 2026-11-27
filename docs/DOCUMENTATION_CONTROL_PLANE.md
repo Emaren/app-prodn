@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/chat1518-persistent-read-ack-20261127` at `e23be89addc53b6ab13d6e2ef1f8f767931cc8db`
+Implementation baseline: `session-c/we3-traffic-observed-20261127` at `3b9dc2cdc8e87b51bebab860d3eef1114ee62ac8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
