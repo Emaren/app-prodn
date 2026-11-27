@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f79e9052c01f65e8b0861b787b897fde806eb5ad99261a3f93d7d2b115a2fe00",
+      "sha256": "c5c9c6afa7e4b07c86e53dbb8f3af43af2ae331c2f17346fea778a0b578f6012",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3687,7 +3687,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/we3-traffic-observed-20261127",
-    "commit": "3b9dc2cdc8e87b51bebab860d3eef1114ee62ac8"
+    "commit": "bade2d8bafb76f408c43eb0ab8cac3d5c1535730"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
