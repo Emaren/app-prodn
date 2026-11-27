@@ -14,6 +14,20 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_traffic_single_exact_frozen_successor(self):
+        root = GUARD.parent.parent
+        self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_SINGLE_PREDECESSOR+"^{tree}"),policy.EXACT_TRAFFIC_SINGLE_PREDECESSOR_TREE)
+        self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_SINGLE_CANDIDATE+"^{tree}"),policy.EXACT_TRAFFIC_SINGLE_TREE)
+        self.assertEqual(policy._traffic_ui_modified_paths(root,policy.EXACT_TRAFFIC_SINGLE_PREDECESSOR,policy.EXACT_TRAFFIC_SINGLE_CANDIDATE),policy.EXACT_TRAFFIC_SINGLE_PATHS)
+        for repo, branch, base in (("Other/app-prodn",policy.EXACT_TRAFFIC_SINGLE_BRANCH,policy.EXACT_CHAT_POLICY_BASE),
+                                  ("Emaren/app-prodn","session-c/unreviewed",policy.EXACT_CHAT_POLICY_BASE),
+                                  ("Emaren/app-prodn",policy.EXACT_TRAFFIC_SINGLE_BRANCH,"0"*40)):
+            with self.assertRaisesRegex(policy.BoundaryHold,"TRAFFIC_SINGLE_CONTEXT"):
+                policy.exact_traffic_single_changes(root,repo,branch,base)
+        for bad in ("app/api/clans/[slug]/route.ts","../app/traffic/page.tsx"):
+            with self.assertRaises(policy.BoundaryHold):
+                policy.relative_path(bad)
+
     def test_traffic_ui_exact_immutable_successor(self):
         root=GUARD.parent.parent
         self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_UI_PREDECESSOR+"^{tree}"),policy.EXACT_TRAFFIC_UI_PREDECESSOR_TREE)

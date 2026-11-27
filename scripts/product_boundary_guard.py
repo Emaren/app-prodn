@@ -1509,14 +1509,18 @@ def exact_traffic_ui_changes(checkout: Path, repo: str, branch: str, base: str) 
     if (repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE
             or branch not in (EXACT_TRAFFIC_UI_BRANCH, "main")):
         raise BoundaryHold("TRAFFIC_UI_CONTEXT")
+    return _exact_traffic_ui_snapshot(checkout, base, "HEAD")
+
+
+def _exact_traffic_ui_snapshot(checkout: Path, base: str, endpoint: str) -> list[str]:
     if (git(checkout, "rev-parse", EXACT_TRAFFIC_UI_PREDECESSOR + "^{tree}") != EXACT_TRAFFIC_UI_PREDECESSOR_TREE
             or git(checkout, "rev-parse", EXACT_TRAFFIC_UI_CANDIDATE + "^{tree}") != EXACT_TRAFFIC_UI_TREE):
         raise BoundaryHold("TRAFFIC_UI_TREE_PIN")
     git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_UI_PREDECESSOR, EXACT_TRAFFIC_UI_CANDIDATE)
-    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_UI_CANDIDATE, "HEAD")
+    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_UI_CANDIDATE, endpoint)
     if _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_UI_PREDECESSOR, EXACT_TRAFFIC_UI_CANDIDATE) != EXACT_TRAFFIC_UI_PATHS:
         raise BoundaryHold("TRAFFIC_UI_FROZEN_SCOPE")
-    policy = _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_UI_CANDIDATE, "HEAD")
+    policy = _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_UI_CANDIDATE, endpoint)
     if policy != EXACT_TRAFFIC_UI_POLICY_PATHS:
         raise BoundaryHold("TRAFFIC_UI_POLICY_SCOPE")
     # Re-run the prior exact Chat checks on its immutable endpoint, with all
@@ -1552,6 +1556,52 @@ def exact_traffic_ui_changes(checkout: Path, repo: str, branch: str, base: str) 
     return sorted(inherited | EXACT_TRAFFIC_UI_PATHS | policy)
 
 
+# Exact successor admission, source-only. Original path grammar and inherited
+# protected-route readbacks remain unchanged; no broader branch exemption.
+EXACT_TRAFFIC_SINGLE_BRANCH = "session-c/we3-traffic-single-canonical-20261127"
+EXACT_TRAFFIC_SINGLE_PREDECESSOR = "0d1f1cc3a7e0437740cc3623c29b9e2b28ec2cfc"
+EXACT_TRAFFIC_SINGLE_PREDECESSOR_TREE = "212c7829158c0ad13d49826b4fc4d855ed1a9aeb"
+EXACT_TRAFFIC_SINGLE_CANDIDATE = "a385b33b434ab834e6ad406b625d5a2fcc8167f5"
+EXACT_TRAFFIC_SINGLE_TREE = "a9d8c0b2284c975283b79619c44b6b066238bf03"
+EXACT_TRAFFIC_SINGLE_PATHS = EXACT_TRAFFIC_UI_PATHS | frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+EXACT_TRAFFIC_SINGLE_POLICY = frozenset({
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+
+
+def exact_traffic_single_changes(checkout: Path, repo: str, branch: str, base: str) -> list[str]:
+    if repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE or branch != EXACT_TRAFFIC_SINGLE_BRANCH:
+        raise BoundaryHold("TRAFFIC_SINGLE_CONTEXT")
+    for endpoint, tree in ((EXACT_TRAFFIC_SINGLE_PREDECESSOR, EXACT_TRAFFIC_SINGLE_PREDECESSOR_TREE),
+                           (EXACT_TRAFFIC_SINGLE_CANDIDATE, EXACT_TRAFFIC_SINGLE_TREE)):
+        if git(checkout, "rev-parse", endpoint + "^{tree}") != tree:
+            raise BoundaryHold("TRAFFIC_SINGLE_TREE_PIN")
+    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_SINGLE_PREDECESSOR, EXACT_TRAFFIC_SINGLE_CANDIDATE)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_SINGLE_CANDIDATE, "HEAD")
+    if _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_SINGLE_PREDECESSOR, EXACT_TRAFFIC_SINGLE_CANDIDATE) != EXACT_TRAFFIC_SINGLE_PATHS:
+        raise BoundaryHold("TRAFFIC_SINGLE_FROZEN_SCOPE")
+    if _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_SINGLE_CANDIDATE, "HEAD") != EXACT_TRAFFIC_SINGLE_POLICY:
+        raise BoundaryHold("TRAFFIC_SINGLE_POLICY_SCOPE")
+    inherited = set(_exact_traffic_ui_snapshot(checkout, base, EXACT_TRAFFIC_SINGLE_PREDECESSOR))
+    for name in EXACT_TRAFFIC_SINGLE_PATHS | EXACT_TRAFFIC_SINGLE_POLICY:
+        authorize_changed_source(checkout, base, name)
+        path = checkout
+        for part in relative_path(name).parts:
+            path = path / part
+            if path.is_symlink():
+                raise BoundaryHold("TRAFFIC_SINGLE_SYMLINK")
+        st = path.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022:
+            raise BoundaryHold("TRAFFIC_SINGLE_CUSTODY")
+        mode = git(checkout, "ls-files", "--stage", "--", name)
+        if len(mode.splitlines()) != 1 or not mode.startswith("100644 "):
+            raise BoundaryHold("TRAFFIC_SINGLE_INDEX_MODE")
+    return sorted(inherited | EXACT_TRAFFIC_SINGLE_PATHS | EXACT_TRAFFIC_SINGLE_POLICY)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1565,7 +1615,9 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if branch == EXACT_TRAFFIC_UI_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "app/traffic/page.tsx" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines() and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
+        if branch == EXACT_TRAFFIC_SINGLE_BRANCH:
+            receipt["changed_files"] = exact_traffic_single_changes(checkout,repo_name,branch,base)
+        elif branch == EXACT_TRAFFIC_UI_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "app/traffic/page.tsx" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines() and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
             receipt["changed_files"] = exact_traffic_ui_changes(checkout,repo_name,branch,base)
         elif branch == EXACT_CHAT_ACK_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
             receipt["changed_files"] = exact_chat_ack_changes(checkout,repo_name,branch,base)
