@@ -8,6 +8,7 @@ import pg from "pg";
 import { verifySocialSignedSession } from "../lib/socialWriterSession.mjs";
 import { executeSocialTextWrite } from "../lib/socialWriterCore.mjs";
 import { executeSocialImageWrite, MAX_IMAGE_RPC_BYTES } from "../lib/socialImageWriterCore.mjs";
+import { executeSocialReadAck } from "../lib/socialReadAckCore.mjs";
 import { executeSocialDeliveryWrite } from "../lib/socialDeliveryWriterCore.mjs";
 import { executeSocialDirectRead } from "../lib/socialDirectReaderCore.mjs";
 import { executeSocialClanRead } from "../lib/socialClanReaderCore.mjs";
@@ -81,11 +82,12 @@ const server = http.createServer(async(req,res)=>{
   const scope=req.url==="/v1/clan/text"?"clan":req.url==="/v1/direct/text"?"direct":req.url==="/v1/lobby/text"?"lobby":null;
   const isImage=req.url==="/v1/direct/image";
   const isDelivery=req.url==="/v1/direct/delivered";
+  const isReadAck=req.url==="/v1/direct/read-ack";
   const isRead=req.url==="/v1/direct/read";
   const isClanRead=req.url==="/v1/clan/read";
   const isClanImage=req.url==="/v1/clan/image";
   const isClanImageRead=req.url==="/v1/clan/image-read";
-  if(req.method!=="POST"||(!scope&&!isImage&&!isDelivery&&!isRead&&!isClanRead&&!isClanImage&&!isClanImageRead)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
+  if(req.method!=="POST"||(!scope&&!isImage&&!isDelivery&&!isReadAck&&!isRead&&!isClanRead&&!isClanImage&&!isClanImageRead)){finish(404,{detail:"SOCIAL_ACTION_NOT_FOUND"});return;}
   if(req.headers["content-type"]!=="application/json"){finish(415,{detail:"JSON_ONLY"});return;}
   const token=req.headers["x-social-signed-session"];
   if(typeof token!=="string"||token.length<32||token.length>SESSION_MAX_BYTES){
@@ -127,6 +129,10 @@ const server = http.createServer(async(req,res)=>{
     const result=await executeSocialDirectRead({pool,sessionToken:token,input,
       verifySession:(t)=>verifySocialSignedSession(t,secret),
       onError:(code)=>process.stderr.write("SOCIAL_DIRECT_READ_FAIL_CLOSED code="+code+"\n")});
+    finish(result.status,result.body);return;
+  }
+  if(isReadAck){
+    const result=await executeSocialReadAck({pool,sessionToken:token,input,verifySession:t=>verifySocialSignedSession(t,secret),onError:code=>process.stderr.write("SOCIAL_READ_ACK_FAIL_CLOSED code="+code+"\n")});
     finish(result.status,result.body);return;
   }
   if(isDelivery){

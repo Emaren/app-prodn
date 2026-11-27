@@ -18,6 +18,7 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeVisibleRead } from "./acknowledgeVisibleRead.mjs";
 import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
 import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 
@@ -337,6 +338,21 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     [applyInboxPayload, uid]
   );
 
+  // Read ACK is a UI side effect only after the active panel has rendered.
+  useEffect(() => {
+    if (!uid || !panelData || !(open && panelData.activeTargetUid === selectedTargetUid)) return;
+    let cancelled=false;
+    const target=panelData.activeTargetUid;
+    const isActive=()=>!cancelled && document.visibilityState==="visible" && document.hasFocus() && selectedTargetUidRef.current===target;
+    const acknowledge=()=>{void acknowledgeVisibleRead({payload:panelData,viewerUid:uid,isActive}).then(committed=>{
+      if(committed&&isActive())void refreshPanel(target,{silent:true});
+    });};
+    acknowledge();
+    document.addEventListener("visibilitychange",acknowledge);
+    window.addEventListener("focus",acknowledge);
+    return ()=>{cancelled=true;document.removeEventListener("visibilitychange",acknowledge);window.removeEventListener("focus",acknowledge);};
+  }, [open, panelData, selectedTargetUid, uid, refreshPanel]);
+
   useEffect(() => {
     if (!uid || open) return;
 
@@ -359,7 +375,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       if (document.visibilityState !== "visible" || panelAbortRef.current) return;
       void refreshPanel(undefined, { silent: true, probe });
     };
-    const interval = window.setInterval(() => reconcile(true), 5_000);
+    const interval = window.setInterval(() => reconcile(false), 5_000);
     const reconnect=()=>reconcile(false);
     document.addEventListener("visibilitychange", reconnect);
     window.addEventListener("online", reconnect);

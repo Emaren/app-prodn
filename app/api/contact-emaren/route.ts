@@ -27,7 +27,7 @@ import { getSessionUid } from "@/lib/session";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {readRestrictedInbox,readRestrictedInboxGet,DIRECT_PRIVATE_HEADERS} from "@/lib/restrictedDirectInbox";
 import {
-  callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, readBoundedSocialJson, signedSocialCookie,
+  callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, callSocialReadAck, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
 import { readBoundedDirectImage } from "@/lib/directImageIngress";
@@ -253,16 +253,17 @@ export async function POST(request: NextRequest) {
       if (!action || typeof action !== "object" || Array.isArray(action))
         return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
       const fields=action as Record<string,unknown>;
-      if(fields.action==="ack_delivery"){
+      if(fields.action==="ack_read"||fields.action==="ack_delivery"){
+        const readAck=fields.action==="ack_read";
         if(Object.keys(fields).length!==3 || typeof fields.targetUid!=="string" ||
            !/^[A-Za-z0-9_.:-]{1,100}$/.test(fields.targetUid) ||
            !Array.isArray(fields.messageIds) || fields.messageIds.length<1 || fields.messageIds.length>50 ||
            !fields.messageIds.every(id=>Number.isSafeInteger(id)&&id>0&&id<=2147483647) ||
            new Set(fields.messageIds).size!==fields.messageIds.length)
-          return NextResponse.json({detail:"INVALID_DIRECT_DELIVERY_REQUEST"},{status:400,headers:{"Cache-Control":"no-store"}});
-        const ack=await callSocialDeliveryWriter(token,{targetUid:fields.targetUid,messageIds:fields.messageIds});
+          return NextResponse.json({detail:readAck?"INVALID_DIRECT_READ_ACK_REQUEST":"INVALID_DIRECT_DELIVERY_REQUEST"},{status:400,headers:{"Cache-Control":"no-store"}});
+        const ack=await (readAck?callSocialReadAck:callSocialDeliveryWriter)(token,{targetUid:fields.targetUid,messageIds:fields.messageIds});
         if(ack.status===200 && ack.body.ok===true && typeof ack.body.updatedCount==="number" && ack.body.updatedCount>0)
-          publishDirectMessageEvent(fields.targetUid,{type:"receipt",targetUid:sessionUid});
+          publishDirectMessageEvent(readAck?sessionUid:fields.targetUid,{type:"receipt",targetUid:readAck?fields.targetUid:sessionUid});
         return NextResponse.json(ack.body,{status:ack.status,headers:{"Cache-Control":"no-store"}});
       }
       result=await callSocialWriter("direct", token, fields);

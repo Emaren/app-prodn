@@ -17,6 +17,7 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeVisibleRead } from "./acknowledgeVisibleRead.mjs";
 import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
 import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 import SteamLoginButton from "@/components/SteamLoginButton";
@@ -389,6 +390,21 @@ export default function ContactEmarenWorkspace({
     [applyInboxPayload, forcedChallengeId, uid]
   );
 
+  // Read ACK is a UI side effect only after the active panel has rendered.
+  useEffect(() => {
+    if (!uid || !panelData || !(panelData.activeTargetUid === selectedTargetUid)) return;
+    let cancelled=false;
+    const target=panelData.activeTargetUid;
+    const isActive=()=>!cancelled && document.visibilityState==="visible" && document.hasFocus() && selectedTargetUidRef.current===target;
+    const acknowledge=()=>{void acknowledgeVisibleRead({payload:panelData,viewerUid:uid,isActive}).then(committed=>{
+      if(committed&&isActive())void refreshPanel(target,{silent:true});
+    });};
+    acknowledge();
+    document.addEventListener("visibilitychange",acknowledge);
+    window.addEventListener("focus",acknowledge);
+    return ()=>{cancelled=true;document.removeEventListener("visibilitychange",acknowledge);window.removeEventListener("focus",acknowledge);};
+  }, [panelData, selectedTargetUid, uid, refreshPanel]);
+
   useEffect(() => {
     if (!uid) {
       setInitialLoadSettled(false);
@@ -449,7 +465,7 @@ export default function ContactEmarenWorkspace({
         void refreshSummary(undefined, { silent: true });
       }
     };
-    const interval = window.setInterval(() => reconcile(true), selectedTargetUid ? 5_000 : 60_000);
+    const interval = window.setInterval(() => reconcile(false), selectedTargetUid ? 5_000 : 60_000);
     const reconnect=()=>reconcile(false);
     document.addEventListener("visibilitychange", reconnect);
     window.addEventListener("online", reconnect);

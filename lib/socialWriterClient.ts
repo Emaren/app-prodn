@@ -61,6 +61,9 @@ export async function callSocialWriter(
 export async function callSocialImageWriter(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/direct/image",signedSession,input,13_400_000,8_000);
 }
+export async function callSocialReadAck(signedSession:string,input:Record<string,unknown>){
+  return callSocialSocket("/v1/direct/read-ack",signedSession,input,MAX_BYTES,TIMEOUT);
+}
 export async function callSocialDeliveryWriter(signedSession:string,input:Record<string,unknown>) {
   return callSocialSocket("/v1/direct/delivered",signedSession,input,MAX_BYTES,TIMEOUT);
 }
