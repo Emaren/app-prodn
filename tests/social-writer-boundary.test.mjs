@@ -23,12 +23,19 @@ test("only two fixed social text writer socket endpoints, no public or finance R
   assert.match(client,/signedSocialCookie/);
   assert.match(client,/SOCIAL_SEND_STATUS_UNKNOWN_CHECK_HISTORY_BEFORE_RETRY/);
 });
-test("original R25 guard and PRODUCT guard remain unchanged by P0 source",()=>{
+test("tracked R25 guard retains exact historical text socket boundary",()=>{
   const guard=src("scripts/r25_b_guard_production_v1.cjs");
   assert.match(guard,/nonfinancial-production-v1/);
   assert.match(guard,/const safe = \["GET", "HEAD"\]/);
   assert.match(guard,/response\.writeHead\(405/);
-  assert.doesNotMatch(guard,/SOCIAL_WRITER_SOCKET|\/v1\/clan\/text/);
+  assert.doesNotMatch(guard,/SOCIAL_WRITER_SOCKET/);
+  assert.match(guard,/const SOCIAL_SOCKET = "\/run\/aoe2war-social-writer\/social\.sock";/);
+  const paths=guard.match(/const SOCIAL_SERVICE_PATHS = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(paths);
+  assert.deepEqual([...paths[1].matchAll(/"([^"]+)"/g)].map(m=>m[1]),["/v1/clan/text","/v1/direct/text","/v1/lobby/text"]);
+  assert.match(guard,/SOCIAL_SERVICE_PATHS\.has\(opts\.path\) && opts\.method === "POST"/);
+  assert.match(guard,/opts\.timeout === 2300/);
+  assert.match(guard,/h\["Content-Length"\] <= 4096/);
   const production=src("scripts/product_boundary_guard.py");
   assert.match(production,/UNREVIEWED_EXECUTABLE_SURFACE/);
 });
