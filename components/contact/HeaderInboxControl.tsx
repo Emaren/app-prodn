@@ -142,6 +142,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<ContactInboxPayload | null>(null);
   const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
+  const legacyMutationsAllowed = Boolean(panelData ?? summary) && (panelData ?? summary)?.legacyMutations !== false;
+  const legacyMutationsRef = useRef(false);
+  useEffect(() => { legacyMutationsRef.current = legacyMutationsAllowed; }, [legacyMutationsAllowed]);
   const [selectedTargetUid, setSelectedTargetUid] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
@@ -394,8 +397,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
   useEffect(() => {
     const targetUid = selectedTargetUidRef.current;
-    if (!targetUid || draftHydratedTargetRef.current !== targetUid) return;
+    if (!legacyMutationsAllowed || !targetUid || draftHydratedTargetRef.current !== targetUid) return;
     const timer = window.setTimeout(() => {
+      if (!legacyMutationsRef.current || selectedTargetUidRef.current !== targetUid) return;
       void fetch("/api/contact-emaren", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -403,12 +407,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [body, replyingTo?.messageId]);
+  }, [body, replyingTo?.messageId, legacyMutationsAllowed]);
 
   const sendTypingState = useCallback(
     async (isTyping: boolean) => {
       const targetUid = selectedTargetUidRef.current;
-      if (!uid || !targetUid) return;
+      if (!legacyMutationsRef.current || !uid || !targetUid) return;
 
       try {
         await fetch("/api/contact-emaren", {
@@ -607,6 +611,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   scheduleTypingState(value);
                 }}
                 onInboxAction={async (action) => {
+                  if (!legacyMutationsRef.current) { setError("This inbox action is unavailable in the current profile."); return; }
                   setError(null);
                   try {
                     const response = await fetch("/api/contact-emaren", {
@@ -733,6 +738,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   }
                 }}
                 onToggleReaction={async (messageId, emoji) => {
+                  if (!legacyMutationsRef.current) { setError("Reactions are unavailable in the current profile."); return; }
                   const targetUidAtAction =
                     selectedTargetUidRef.current;
 

@@ -138,3 +138,8 @@ reconcile naturally.
 This V1 intentionally adds no Prisma migration. External Steam/email/SMS/
 messenger transports are future delivery adapters over the same Hall-link
 concept, not separate membership authorities.
+
+
+### Restricted inbox legacy mutation gate (2026-11-27)
+
+The live #1515 source admits restricted text/image POST and delivery acknowledgement, not legacy PATCH. Production ingress rejects PATCH and the restricted app branch denies it independently. Both inbox clients previously attempted draft-save and typing PATCH automatically. The restricted DTO now advertises `legacyMutations: false`; both clients gate automatic and explicit legacy mutations, including delayed draft callbacks. Legacy profiles without the marker retain existing behavior once a payload is loaded. No new database grant, ingress method, or legacy mutation is admitted. Draft persistence and remote typing are unavailable on this restricted profile; explicit unsupported controls report unavailability rather than falsely claiming success. This is a narrow correction, not proof of authenticated message delivery, image persistence, Clan Hall or Traffic. Require candidate CI, exact artifact and native Factory admission and genuine two-account acceptance before closure.

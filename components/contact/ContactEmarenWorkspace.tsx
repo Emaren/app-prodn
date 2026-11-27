@@ -173,6 +173,9 @@ export default function ContactEmarenWorkspace({
   const { uid, isAuthenticated, loading } = useUserAuth();
   const [summaryData, setSummaryData] = useState<ContactInboxPayload | null>(null);
   const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
+  const legacyMutationsAllowed = Boolean(panelData ?? summaryData) && (panelData ?? summaryData)?.legacyMutations !== false;
+  const legacyMutationsRef = useRef(false);
+  useEffect(() => { legacyMutationsRef.current = legacyMutationsAllowed; }, [legacyMutationsAllowed]);
   const [selectedTargetUid, setSelectedTargetUid] = useState<string | null>(requestedUser);
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState<ComposerAttachment | null>(null);
@@ -500,8 +503,9 @@ export default function ContactEmarenWorkspace({
 
   useEffect(() => {
     const targetUid = selectedTargetUidRef.current;
-    if (!targetUid || draftHydratedTargetRef.current !== targetUid) return;
+    if (!legacyMutationsAllowed || !targetUid || draftHydratedTargetRef.current !== targetUid) return;
     const timer = window.setTimeout(() => {
+      if (!legacyMutationsRef.current || selectedTargetUidRef.current !== targetUid) return;
       void fetch("/api/contact-emaren", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -514,7 +518,7 @@ export default function ContactEmarenWorkspace({
       });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [body, replyingTo?.messageId]);
+  }, [body, replyingTo?.messageId, legacyMutationsAllowed]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -537,7 +541,7 @@ export default function ContactEmarenWorkspace({
   }, [clearAttachment]);
 
   async function sendTypingState(isTyping: boolean) {
-    if (!selectedTargetUid) return;
+    if (!legacyMutationsRef.current || !selectedTargetUid) return;
 
     try {
       await fetch("/api/contact-emaren", {
@@ -585,6 +589,7 @@ export default function ContactEmarenWorkspace({
     action: Record<string, unknown>,
     options?: { expectPayload?: boolean }
   ) {
+    if (!legacyMutationsRef.current) throw new Error("This inbox action is unavailable in the current profile.");
     const response = await fetch("/api/contact-emaren", {
       method: "PATCH",
       headers: {

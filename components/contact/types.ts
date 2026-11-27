@@ -145,6 +145,7 @@ export type ContactInboxCounterpart = {
 };
 
 export type ContactInboxPayload = {
+  legacyMutations?: false;
   viewer: {
     uid: string;
     displayName: string;
