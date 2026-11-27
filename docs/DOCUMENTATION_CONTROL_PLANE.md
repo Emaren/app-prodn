@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `we2/chat1513-exact-policy-successor-20261126` at `e598c8a146f65232f5e8cc6cba65121e3a7cb2c5`
+Implementation baseline: `we3/chat1515-legacy-mutation-gate-20261127` at `09ef0aee78f034c424d695ae2a1a3caf8b7859f1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -43,9 +43,9 @@ This page is generated from the validated front matter in this repository. Cross
 ### Lifecycle
 
 - `active`: 93
-- `draft`: 37
+- `draft`: 36
 - `generated`: 1
-- `historical`: 28
+- `historical`: 29
 - `superseded`: 3
 
 ## Documents
@@ -199,7 +199,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `historical` | `historical` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
-| [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
+| [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `historical` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
 | [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `historical` | `historical` | `dated incident evidence only; no current operational authority` |
