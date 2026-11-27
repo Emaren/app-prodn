@@ -19,6 +19,9 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_UI_PREDECESSOR+"^{tree}"),policy.EXACT_TRAFFIC_UI_PREDECESSOR_TREE)
         self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_UI_CANDIDATE+"^{tree}"),policy.EXACT_TRAFFIC_UI_TREE)
         self.assertEqual(policy._traffic_ui_modified_paths(root,policy.EXACT_TRAFFIC_UI_PREDECESSOR,policy.EXACT_TRAFFIC_UI_CANDIDATE),policy.EXACT_TRAFFIC_UI_PATHS)
+        import hashlib
+        self.assertEqual(hashlib.sha256((root/"lib/pageChangeManifest.generated.ts").read_bytes()).hexdigest(),policy.EXACT_TRAFFIC_UI_GENERATED_SHA)
+        self.assertIn("lib/pageChangeManifest.generated.ts",policy.EXACT_TRAFFIC_UI_POLICY_PATHS)
         for repo,branch,base in (("Other/app-prodn",policy.EXACT_TRAFFIC_UI_BRANCH,policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn","session-c/unreviewed",policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn",policy.EXACT_TRAFFIC_UI_BRANCH,"0"*40)):
             with self.assertRaisesRegex(policy.BoundaryHold,"TRAFFIC_UI_CONTEXT"):
                 policy.exact_traffic_ui_changes(root,repo,branch,base)

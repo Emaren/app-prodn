@@ -1489,8 +1489,10 @@ EXACT_TRAFFIC_UI_PATHS = frozenset({
 })
 EXACT_TRAFFIC_UI_POLICY_PATHS = frozenset({
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+    "lib/pageChangeManifest.generated.ts",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 })
+EXACT_TRAFFIC_UI_GENERATED_SHA = "385286cc7fd12c989f7db054dfe593037bf098f7d68ce55af650869cf8683b2c"
 
 
 def _traffic_ui_modified_paths(checkout: Path, start: str, end: str) -> set[str]:
@@ -1534,6 +1536,19 @@ def exact_traffic_ui_changes(checkout: Path, repo: str, branch: str, base: str) 
         mode = git(checkout, "ls-files", "--stage", "--", name)
         if len(mode.splitlines()) != 1 or not mode.startswith("100644 "):
             raise BoundaryHold("TRAFFIC_UI_INDEX_MODE")
+        if name == "lib/pageChangeManifest.generated.ts":
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                live = os.fstat(fd)
+                data = os.read(fd, 250001)
+                after = os.fstat(fd)
+                key = lambda v: (v.st_dev, v.st_ino, v.st_uid, v.st_mode, v.st_nlink, v.st_size, v.st_mtime_ns, v.st_ctime_ns)
+                if not key(st) == key(live) == key(after) == key(path.lstat()):
+                    raise BoundaryHold("TRAFFIC_UI_GENERATED_RACE")
+            finally:
+                os.close(fd)
+            if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != EXACT_TRAFFIC_UI_GENERATED_SHA:
+                raise BoundaryHold("TRAFFIC_UI_GENERATED_SHA")
     return sorted(inherited | EXACT_TRAFFIC_UI_PATHS | policy)
 
 
