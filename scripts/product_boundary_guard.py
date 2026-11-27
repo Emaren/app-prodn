@@ -1338,6 +1338,14 @@ def exact_chat_policy_changes(checkout: Path, repo: str, branch: str,
 EXACT_CHAT_FIX_BRANCH = "we3/chat1515-legacy-mutation-gate-20261127"
 EXACT_CHAT_FIX_PREDECESSOR = "a56d09558ccce6fb6bbb3cfa16c51611b6af7338"
 EXACT_CHAT_FIX_COMMIT = "2b5f0bde35fe6cba95a36fcfc51f163553ba0fd8"
+EXACT_CHAT_FIX_REVIEW_DOCS = frozenset({
+    "docs/PAGE_CHANGE_NOTICES.md",
+    "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
+    "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
+    "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
+    "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
+    "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
+})
 EXACT_CHAT_FIX_PATHS = frozenset({
     "components/contact/ContactEmarenWorkspace.tsx",
     "components/contact/HeaderInboxControl.tsx", "components/contact/types.ts",
@@ -1373,7 +1381,7 @@ def exact_chat_fix_changes(checkout: Path, repo: str, branch: str, base: str) ->
             or not prior <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS
             or correction != EXACT_CHAT_FIX_PATHS
             or not EXACT_CHAT_POLICY_REQUIRED <= policy
-            or not policy <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS):
+            or not policy <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS | EXACT_CHAT_FIX_REVIEW_DOCS):
         raise BoundaryHold("CHAT_FIX_SCOPE")
     changed = names(base, "HEAD")
     if changed != original | prior | correction | policy:

@@ -2,18 +2,21 @@
 id: "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111"
 title: "Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026"
 type: "reference"
-status: "draft"
+status: "historical"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority"
-reviewed_at: "2026-11-19"
-review_interval_days: 7
+reviewed_at: "2026-11-27"
+review_interval_days: 0
 sensitivity: "restricted"
 ---
 
 # Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026
+
+> Historical inventory reviewed 2026-11-27: original integration commit 51bcb00b is ancestral to this candidate. Dated counts and dispositions are preserved as evidence only, not a current backlog or merge authorization. Refer to current canonical main and fresh source census for new decisions.
+
 
 > **Source-only re-review, November 19, 2026:** Re-read dated source/branch ledger and no-blind-cherry-pick rule. Its November 11 SHA and 417-branch/316-PR snapshots are historical, not a freshly recounted inventory. Current PR #1418 separately reconciled at HEAD b2872e7.
 
