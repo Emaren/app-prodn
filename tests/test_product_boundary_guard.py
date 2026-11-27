@@ -14,6 +14,19 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_traffic_ui_exact_immutable_successor(self):
+        root=GUARD.parent.parent
+        self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_UI_PREDECESSOR+"^{tree}"),policy.EXACT_TRAFFIC_UI_PREDECESSOR_TREE)
+        self.assertEqual(policy.git(root,"rev-parse",policy.EXACT_TRAFFIC_UI_CANDIDATE+"^{tree}"),policy.EXACT_TRAFFIC_UI_TREE)
+        self.assertEqual(policy._traffic_ui_modified_paths(root,policy.EXACT_TRAFFIC_UI_PREDECESSOR,policy.EXACT_TRAFFIC_UI_CANDIDATE),policy.EXACT_TRAFFIC_UI_PATHS)
+        for repo,branch,base in (("Other/app-prodn",policy.EXACT_TRAFFIC_UI_BRANCH,policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn","session-c/unreviewed",policy.EXACT_CHAT_POLICY_BASE),("Emaren/app-prodn",policy.EXACT_TRAFFIC_UI_BRANCH,"0"*40)):
+            with self.assertRaisesRegex(policy.BoundaryHold,"TRAFFIC_UI_CONTEXT"):
+                policy.exact_traffic_ui_changes(root,repo,branch,base)
+        for line in ("A\tapp/new.ts","D\tapp/traffic/page.tsx","R100\tapp/a.ts\tapp/b.ts","M\tapp/traffic/page.tsx\nM\tapp/traffic/page.tsx"):
+            with mock.patch.object(policy,"git",return_value=line):
+                with self.assertRaisesRegex(policy.BoundaryHold,"TRAFFIC_UI_NONMODIFICATION"):
+                    policy._traffic_ui_modified_paths(root,"a","b")
+
     def test_chat_ack_exact_branch_and_pinned_source(self):
         import hashlib
         root=GUARD.parent.parent

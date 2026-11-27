@@ -1421,6 +1421,10 @@ EXACT_CHAT_ACK_POLICY = frozenset({"scripts/product_boundary_guard.py", "tests/t
 def exact_chat_ack_changes(checkout: Path, repo: str, branch: str, base: str) -> list[str]:
     if repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE or branch not in (EXACT_CHAT_ACK_BRANCH, "main"):
         raise BoundaryHold("CHAT_ACK_CONTEXT")
+    return _exact_chat_ack_snapshot(checkout, base, "HEAD")
+
+
+def _exact_chat_ack_snapshot(checkout: Path, base: str, endpoint: str) -> list[str]:
     def names(start, end):
         result = set()
         for row in git(checkout, "diff", "--name-status", "--no-renames", start, end, "--").splitlines():
@@ -1431,14 +1435,14 @@ def exact_chat_ack_changes(checkout: Path, repo: str, branch: str, base: str) ->
         return result
     git(checkout, "merge-base", "--is-ancestor", base, EXACT_CHAT_ACK_FROZEN)
     git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_ACK_FROZEN, EXACT_CHAT_ACK_CANDIDATE)
-    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_ACK_CANDIDATE, "HEAD")
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_ACK_CANDIDATE, endpoint)
     inherited = names(base, EXACT_CHAT_ACK_FROZEN)
     if len(inherited) != 80 or names(EXACT_CHAT_ACK_FROZEN, EXACT_CHAT_ACK_CANDIDATE) != set(EXACT_CHAT_ACK_PINS):
         raise BoundaryHold("CHAT_ACK_FROZEN_SCOPE")
-    policy = names(EXACT_CHAT_ACK_CANDIDATE, "HEAD")
+    policy = names(EXACT_CHAT_ACK_CANDIDATE, endpoint)
     if not {"scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py"} <= policy or not policy <= EXACT_CHAT_ACK_POLICY:
         raise BoundaryHold("CHAT_ACK_POLICY_SCOPE")
-    changed = names(base, "HEAD")
+    changed = names(base, endpoint)
     if changed != inherited | set(EXACT_CHAT_ACK_PINS) | policy:
         raise BoundaryHold("CHAT_ACK_CHANGED_SCOPE")
     for name in changed:
@@ -1471,6 +1475,68 @@ def exact_chat_ack_changes(checkout: Path, repo: str, branch: str, base: str) ->
     return sorted(changed)
 
 
+# Exact source-only continuation of the previously qualified Chat tree.
+# Never changes path grammar, dynamic-route pins, native/DB privileges or permits.
+EXACT_TRAFFIC_UI_BRANCH = "session-c/we3-traffic-observed-20261127"
+EXACT_TRAFFIC_UI_PREDECESSOR = "bff845ac283af8182513b12f2bf5f17340f03eaa"
+EXACT_TRAFFIC_UI_PREDECESSOR_TREE = "91df8d6a85aedb8710d2349f19cb9657c1322b00"
+EXACT_TRAFFIC_UI_CANDIDATE = "4329d152c3813fb5380538b7c4b98a8b944c3c82"
+EXACT_TRAFFIC_UI_TREE = "92009cfe67acca8ae3a6315d0b9e9b5b5bf46355"
+EXACT_TRAFFIC_UI_PATHS = frozenset({
+    "app/traffic/page.tsx", "config/kingdom-index-routes.json",
+    "tests/provisional-traffic-separation.test.mts",
+    "tests/public-observed-traffic.test.mts",
+})
+EXACT_TRAFFIC_UI_POLICY_PATHS = frozenset({
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+
+
+def _traffic_ui_modified_paths(checkout: Path, start: str, end: str) -> set[str]:
+    result = set()
+    for row in git(checkout, "diff", "--name-status", "--no-renames", start, end, "--").splitlines():
+        parts = row.split("\t")
+        if len(parts) != 2 or parts[0] != "M" or parts[1] in result:
+            raise BoundaryHold("TRAFFIC_UI_NONMODIFICATION")
+        result.add(parts[1])
+    return result
+
+
+def exact_traffic_ui_changes(checkout: Path, repo: str, branch: str, base: str) -> list[str]:
+    if (repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE
+            or branch not in (EXACT_TRAFFIC_UI_BRANCH, "main")):
+        raise BoundaryHold("TRAFFIC_UI_CONTEXT")
+    if (git(checkout, "rev-parse", EXACT_TRAFFIC_UI_PREDECESSOR + "^{tree}") != EXACT_TRAFFIC_UI_PREDECESSOR_TREE
+            or git(checkout, "rev-parse", EXACT_TRAFFIC_UI_CANDIDATE + "^{tree}") != EXACT_TRAFFIC_UI_TREE):
+        raise BoundaryHold("TRAFFIC_UI_TREE_PIN")
+    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_UI_PREDECESSOR, EXACT_TRAFFIC_UI_CANDIDATE)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_TRAFFIC_UI_CANDIDATE, "HEAD")
+    if _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_UI_PREDECESSOR, EXACT_TRAFFIC_UI_CANDIDATE) != EXACT_TRAFFIC_UI_PATHS:
+        raise BoundaryHold("TRAFFIC_UI_FROZEN_SCOPE")
+    policy = _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_UI_CANDIDATE, "HEAD")
+    if policy != EXACT_TRAFFIC_UI_POLICY_PATHS:
+        raise BoundaryHold("TRAFFIC_UI_POLICY_SCOPE")
+    # Re-run the prior exact Chat checks on its immutable endpoint, with all
+    # protected route/content readbacks still made against the current checkout.
+    inherited = set(_exact_chat_ack_snapshot(checkout, base, EXACT_TRAFFIC_UI_PREDECESSOR))
+    for name in EXACT_TRAFFIC_UI_PATHS | policy:
+        authorize_changed_source(checkout, base, name)
+        path = checkout
+        for part in relative_path(name).parts:
+            path = path / part
+            if path.is_symlink():
+                raise BoundaryHold("TRAFFIC_UI_SYMLINK")
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+                or st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022):
+            raise BoundaryHold("TRAFFIC_UI_SOURCE_CUSTODY")
+        mode = git(checkout, "ls-files", "--stage", "--", name)
+        if len(mode.splitlines()) != 1 or not mode.startswith("100644 "):
+            raise BoundaryHold("TRAFFIC_UI_INDEX_MODE")
+    return sorted(inherited | EXACT_TRAFFIC_UI_PATHS | policy)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1484,7 +1550,9 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if branch == EXACT_CHAT_ACK_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
+        if branch == EXACT_TRAFFIC_UI_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "app/traffic/page.tsx" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines() and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
+            receipt["changed_files"] = exact_traffic_ui_changes(checkout,repo_name,branch,base)
+        elif branch == EXACT_CHAT_ACK_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "lib/socialReadAckCore.mjs" in git(checkout,"diff","--name-only",base,"HEAD","--").splitlines()):
             receipt["changed_files"] = exact_chat_ack_changes(checkout,repo_name,branch,base)
         elif (branch == EXACT_CHAT_FIX_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "tests/direct-chat-legacy-mutation-gate.test.mts" in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines())):
             receipt["changed_files"] = exact_chat_fix_changes(checkout, repo_name, branch, base)
