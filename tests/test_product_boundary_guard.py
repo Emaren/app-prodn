@@ -14,6 +14,19 @@ spec.loader.exec_module(policy)
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_chat_fix_exact_branch_and_pinned_delta(self):
+        root=GUARD.parent.parent
+        self.assertIsNotNone(policy.BRANCH.fullmatch(policy.EXACT_CHAT_FIX_BRANCH))
+        self.assertIsNone(policy.BRANCH.fullmatch("we3/arbitrary"))
+        paths=subprocess.check_output(["git","-C",str(root),"diff","--name-only",
+            policy.EXACT_CHAT_FIX_PREDECESSOR,policy.EXACT_CHAT_FIX_COMMIT],text=True).splitlines()
+        self.assertEqual(set(paths),policy.EXACT_CHAT_FIX_PATHS)
+        for repo,branch,base in (("Other/app-prodn",policy.EXACT_CHAT_FIX_BRANCH,policy.EXACT_CHAT_POLICY_BASE),
+                ("Emaren/app-prodn","we3/arbitrary",policy.EXACT_CHAT_POLICY_BASE),
+                ("Emaren/app-prodn",policy.EXACT_CHAT_FIX_BRANCH,"0"*40)):
+            with self.assertRaisesRegex(policy.BoundaryHold,"CHAT_FIX_CONTEXT"):
+                policy.exact_chat_fix_changes(root,repo,branch,base)
+
     def test_chat_policy_exact_literal_routes_and_negative_grammar(self):
         import hashlib
         root=GUARD.parent.parent
