@@ -349,7 +349,7 @@ EXACT_WE2_BRIDGE_CHANGED = frozenset(EXACT_WE2_BRIDGE_PINS) | {
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 }
-BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|main)$")
+BRANCH = re.compile(r"^(?:session-c/[a-zA-Z0-9._/-]+|session-b/ember-november-polish-20261116|we2/factory-v3-incident-recovery-20261119|we2/storage-protected-ingress-20261120|we2/bridge-dual-path-20261121|we2/factory-post-t10-retention-20261122|we2/factory-data-transport-20261123|we2/factory-v3-invocation-reconciliation-20261124|we2/factory-v3-public-publisher-source-20261124|we2/chat1513-exact-policy-successor-20261126|we3/chat1515-legacy-mutation-gate-20261127|main)$")
 REPO = re.compile(r"^Emaren/(?:app-prodn|kingdom-traders)$")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9._+-]+$")
 
@@ -1249,6 +1249,154 @@ def check_exact_c_scan_os_source(checkout: Path, repo: str, branch: str,
         _exact_c_scan_source_blob(checkout, raw)
 
 
+# Source-only B policy proposal for the exact frozen Chat/Clan candidate.
+# This is not release, host, DB or financial authority. Never broaden SAFE_COMPONENT.
+EXACT_CHAT_POLICY_BRANCH = "we2/chat1513-exact-policy-successor-20261126"
+EXACT_CHAT_POLICY_BASE = "861795e9caba793eaacc76b2dd8550a06253aa23"
+EXACT_CHAT_POLICY_FROZEN = "b712f8c1303d053a31a8e469ff7224c506df1d7a"
+EXACT_CHAT_POLICY_ROUTE_PINS = {
+    "app/clans/[slug]/page.tsx": "4be3a95b9db6964b3ba17db3b4d1fc3d1c475d621a6c560b3b3e56f2f04aac14",
+    "app/api/clans/[slug]/route.ts": "dbd0f6d31e5335d2f68d0cb34cffe13f524019a7cbfe23f8b652eef7128daff1",
+    "app/api/contact-emaren/attachments/[messageId]/route.ts": "8d904dc2d68514529409e7607bfa8db4f3fe7dc524248320adbecdb867dc20a5",
+}
+EXACT_CHAT_POLICY_REQUIRED = frozenset({
+    "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
+})
+EXACT_CHAT_POLICY_DOCS = frozenset({
+    "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
+})
+
+
+def exact_chat_route_blob(checkout: Path, raw: str) -> None:
+    expected = EXACT_CHAT_POLICY_ROUTE_PINS.get(raw)
+    if expected is None:
+        raise BoundaryHold("CHAT_UNREVIEWED_DYNAMIC_PATH")
+    path = checkout
+    # Only the three exact dictionary keys can reach this loop.
+    for part in raw.split("/"):
+        path = path / part
+        if path.is_symlink():
+            raise BoundaryHold("CHAT_DYNAMIC_SYMLINK")
+    st = path.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or st.st_uid != os.geteuid() or stat.S_IMODE(st.st_mode) & 0o022
+            or not 1 <= st.st_size <= 250000):
+        raise BoundaryHold("CHAT_DYNAMIC_FILE_AUTHORITY")
+    key = lambda v: (v.st_dev, v.st_ino, v.st_uid, v.st_mode, v.st_nlink,
+                     v.st_size, v.st_mtime_ns, v.st_ctime_ns)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        live = os.fstat(fd)
+        data = os.read(fd, 250001)
+        after = os.fstat(fd)
+        final = path.lstat()
+        if not key(st) == key(live) == key(after) == key(final):
+            raise BoundaryHold("CHAT_DYNAMIC_INODE_RACE")
+    finally:
+        os.close(fd)
+    if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != expected:
+        raise BoundaryHold("CHAT_DYNAMIC_SHA")
+
+
+def exact_chat_policy_changes(checkout: Path, repo: str, branch: str,
+                              base: str) -> list[str]:
+    if (repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE
+            or branch not in (EXACT_CHAT_POLICY_BRANCH, "main")):
+        raise BoundaryHold("CHAT_POLICY_CONTEXT")
+    git(checkout, "merge-base", "--is-ancestor", base, EXACT_CHAT_POLICY_FROZEN)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_POLICY_FROZEN, "HEAD")
+    def rows(start, end):
+        result = {}
+        for row in git(checkout, "diff", "--name-status", "--no-renames", start, end, "--").splitlines():
+            fields = row.split("\t")
+            if len(fields) != 2 or fields[0] not in ("A", "M") or fields[1] in result:
+                raise BoundaryHold("CHAT_POLICY_NONREGULAR_DELTA")
+            result[fields[1]] = fields[0]
+        return result
+    original = rows(base, EXACT_CHAT_POLICY_FROZEN)
+    delta = rows(EXACT_CHAT_POLICY_FROZEN, "HEAD")
+    if (len(original) != 70 or not set(EXACT_CHAT_POLICY_ROUTE_PINS) <= set(original)
+            or not EXACT_CHAT_POLICY_REQUIRED <= set(delta)
+            or not set(delta) <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS):
+        raise BoundaryHold("CHAT_POLICY_SUCCESSOR_SCOPE")
+    changed = rows(base, "HEAD")
+    if set(changed) != set(original) | set(delta):
+        raise BoundaryHold("CHAT_POLICY_CHANGED_SCOPE")
+    for name in changed:
+        mode = git(checkout, "ls-files", "--stage", "--", name)
+        if len(mode.splitlines()) != 1 or not mode.startswith(("100644 ", "100755 ")):
+            raise BoundaryHold("CHAT_POLICY_FILE_MODE")
+        if name in EXACT_CHAT_POLICY_ROUTE_PINS:
+            exact_chat_route_blob(checkout, name)
+        else:
+            authorize_changed_source(checkout, base, name)
+    return sorted(changed)
+
+
+# Narrow source-only successor proposal: fixed deployed ancestor and exact
+# correction commit. No host execution, merge, or release authority here.
+EXACT_CHAT_FIX_BRANCH = "we3/chat1515-legacy-mutation-gate-20261127"
+EXACT_CHAT_FIX_PREDECESSOR = "a56d09558ccce6fb6bbb3cfa16c51611b6af7338"
+EXACT_CHAT_FIX_COMMIT = "2b5f0bde35fe6cba95a36fcfc51f163553ba0fd8"
+EXACT_CHAT_FIX_REVIEW_DOCS = frozenset({
+    "docs/PAGE_CHANGE_NOTICES.md",
+    "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
+    "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
+    "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
+    "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
+    "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
+})
+EXACT_CHAT_FIX_PATHS = frozenset({
+    "components/contact/ContactEmarenWorkspace.tsx",
+    "components/contact/HeaderInboxControl.tsx", "components/contact/types.ts",
+    "lib/restrictedDirectInboxDto.mjs", "docs/DIRECT_CHAT.md",
+    "tests/direct-chat-legacy-mutation-gate.test.mts",
+    "tests/restrictedDirectInboxDto.test.mjs",
+})
+
+
+def exact_chat_fix_changes(checkout: Path, repo: str, branch: str, base: str) -> list[str]:
+    if (repo != "Emaren/app-prodn" or base != EXACT_CHAT_POLICY_BASE
+            or branch not in (EXACT_CHAT_FIX_BRANCH, "main")):
+        raise BoundaryHold("CHAT_FIX_CONTEXT")
+    def names(start, end):
+        result = set()
+        for row in git(checkout, "diff", "--name-status", "--no-renames", start, end, "--").splitlines():
+            parts = row.split("\t")
+            if len(parts) != 2 or parts[0] not in ("A", "M") or parts[1] in result:
+                raise BoundaryHold("CHAT_FIX_NONREGULAR_DELTA")
+            result.add(parts[1])
+        return result
+    git(checkout, "merge-base", "--is-ancestor", base, EXACT_CHAT_POLICY_FROZEN)
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_POLICY_FROZEN, EXACT_CHAT_FIX_PREDECESSOR)
+    if git(checkout, "rev-parse", EXACT_CHAT_FIX_COMMIT + "^") != EXACT_CHAT_FIX_PREDECESSOR:
+        raise BoundaryHold("CHAT_FIX_PARENT")
+    git(checkout, "merge-base", "--is-ancestor", EXACT_CHAT_FIX_COMMIT, "HEAD")
+    original = names(base, EXACT_CHAT_POLICY_FROZEN)
+    prior = names(EXACT_CHAT_POLICY_FROZEN, EXACT_CHAT_FIX_PREDECESSOR)
+    correction = names(EXACT_CHAT_FIX_PREDECESSOR, EXACT_CHAT_FIX_COMMIT)
+    policy = names(EXACT_CHAT_FIX_COMMIT, "HEAD")
+    if (len(original) != 70 or not set(EXACT_CHAT_POLICY_ROUTE_PINS) <= original
+            or not EXACT_CHAT_POLICY_REQUIRED <= prior
+            or not prior <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS
+            or correction != EXACT_CHAT_FIX_PATHS
+            or not EXACT_CHAT_POLICY_REQUIRED <= policy
+            or not policy <= EXACT_CHAT_POLICY_REQUIRED | EXACT_CHAT_POLICY_DOCS | EXACT_CHAT_FIX_REVIEW_DOCS):
+        raise BoundaryHold("CHAT_FIX_SCOPE")
+    changed = names(base, "HEAD")
+    if changed != original | prior | correction | policy:
+        raise BoundaryHold("CHAT_FIX_CHANGED_SCOPE")
+    for name in changed:
+        mode = git(checkout, "ls-files", "--stage", "--", name)
+        if len(mode.splitlines()) != 1 or not mode.startswith(("100644 ", "100755 ")):
+            raise BoundaryHold("CHAT_FIX_FILE_MODE")
+        if name in EXACT_CHAT_POLICY_ROUTE_PINS:
+            exact_chat_route_blob(checkout, name)
+        else:
+            authorize_changed_source(checkout, base, name)
+    return sorted(changed)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", required=True)
@@ -1262,7 +1410,14 @@ def main() -> int:
         checkout = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve(strict=True)
         product_root = Path(os.environ.get("PRODUCT_BOUNDARY_ROOT", str(Path.home() / "projects" / "AoE2WAR-LANES" / "PRODUCT")))
         receipt = check_checkout(checkout, repo_name, sha, branch, product_root, ci=ci)
-        if (branch == EXACT_B_WATCHER_BRANCH or
+        if (branch == EXACT_CHAT_FIX_BRANCH or (branch == "main" and base == EXACT_CHAT_POLICY_BASE and "tests/direct-chat-legacy-mutation-gate.test.mts" in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines())):
+            receipt["changed_files"] = exact_chat_fix_changes(checkout, repo_name, branch, base)
+        elif (branch == EXACT_CHAT_POLICY_BRANCH or
+                (branch == "main" and base == EXACT_CHAT_POLICY_BASE
+                 and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
+                         for p in EXACT_CHAT_POLICY_ROUTE_PINS))):
+            receipt["changed_files"] = exact_chat_policy_changes(checkout, repo_name, branch, base)
+        elif (branch == EXACT_B_WATCHER_BRANCH or
                 (branch == "main" and base == EXACT_B_WATCHER_BASE
                  and any(p in git(checkout, "diff", "--name-only", base, "HEAD", "--").splitlines()
                          for p in EXACT_B_WATCHER_SQL))):

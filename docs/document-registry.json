@@ -685,7 +685,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "2ef53e7dfbec8a2b45e3a0d6449e070a482caca17979070960040ad9ce852228",
+      "sha256": "7be5ea2f18a8c6d02061431167ef46fd7794e1507231e2231f22129afaab7aaa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dda8a9d5256bf3892d702e246537143975851dc7ba62885fd05822de8d290c6e",
+      "sha256": "769676608610b561056b9b7b737396a62bc69293848ff69567975103c68ccb68",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1309,9 +1309,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PAGE_CHANGE_NOTICES.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-11-27",
       "sensitivity": "internal",
-      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
+      "sha256": "12a6d3acf069b93f453614cc50aba1d763cdbe556f9238a42ee8bf3f6ef2b5b2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3112,9 +3112,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-19",
+      "reviewed_at": "2026-11-27",
       "sensitivity": "restricted",
-      "sha256": "80b169800b8086d2a2e7e33774c0de41f374c66ddd921b9cd159a87abe0e1976",
+      "sha256": "ae34a7595813bba5546ae6a8ce16b5fb278e12ad443a4ae76695c28c730be237",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3157,9 +3157,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-19",
+      "reviewed_at": "2026-11-27",
       "sensitivity": "restricted",
-      "sha256": "ade1b016d44ff068d28e9b156fe713b5bf788c627f03e8f47e7e55e8d921c8a7",
+      "sha256": "b7f70e64d79d8ab5497c39d72227187f6f176cf184cc5924c45615110b6609e5",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3380,12 +3380,12 @@
       "id": "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111",
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
-      "review_interval_days": 7,
-      "reviewed_at": "2026-11-19",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-11-27",
       "sensitivity": "restricted",
-      "sha256": "43f994021406c24415fbe2d40fbe5bc2836014548ce7190f121e26886fa40153",
+      "sha256": "e41e371e94d5a6617f5520614302c836cf1c057d33ddb7e6db9b865511f0c43b",
       "source_of_truth": "git",
-      "status": "draft",
+      "status": "historical",
       "systems": [
         "app-prodn"
       ],
@@ -3403,9 +3403,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-19",
+      "reviewed_at": "2026-11-27",
       "sensitivity": "restricted",
-      "sha256": "715616d5ce74a25ae84186c9d12182c28a1dab2836dfa75d8840316bb4b6b47f",
+      "sha256": "37c84c8b61bd3922b32221f4413b462cbc210e52733bac48aeb374304cb2546c",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3536,9 +3536,9 @@
       "owner": "aoe2war-web",
       "path": "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-11-19",
+      "reviewed_at": "2026-11-27",
       "sensitivity": "restricted",
-      "sha256": "baa03bccead0a054a4a9e24c889f62e8c2af97925a2381a5f2a25ab68decc091",
+      "sha256": "8271c3b8e24c17c2d08b6641ae63d6f245fb72b5acce277fe5308cbda3a4b6a3",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3636,12 +3636,58 @@
       ],
       "title": "Prisma Schema and Migration Reference",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-clan-hall-regression",
+      "id": "aoe2war.app-prodn.clan-hall-restricted-regression",
+      "owner": "aoe2war-web",
+      "path": "tests/clan-hall-fixture/README.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-26",
+      "sensitivity": "internal",
+      "sha256": "09869f47f0314d07b416bde194e4d342ba10bc43f348e92da24e5cf6eb64b54a",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war",
+        "app-prodn"
+      ],
+      "title": "Restricted Clan Hall combined regression and native release gates",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-restricted-direct-chat-regression",
+      "id": "aoe2war.app-prodn.restricted-direct-reader-fixture",
+      "owner": "aoe2war-web",
+      "path": "tests/restricted-direct-reader-fixture/README.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-26",
+      "sensitivity": "internal",
+      "sha256": "21747fa8e2244282c4ad97a7df96f671eae923bd1210568a94de4e8510fcf4d9",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war",
+        "app-prodn"
+      ],
+      "title": "Restricted Direct Chat release regression contract",
+      "type": "runbook"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-matchups-profile-repair-20261124",
-    "commit": "90cb086e912e16ce9b24cc937db8c1f8fa39ca73"
+    "branch": "we3/chat1515-legacy-mutation-gate-20261127",
+    "commit": "09ef0aee78f034c424d695ae2a1a3caf8b7859f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

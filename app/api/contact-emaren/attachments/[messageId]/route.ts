@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadDirectMessageAttachmentContent } from "@/lib/directMessageAttachments";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import {usesNonfinancialProductionAuth} from "@/lib/productionAuth";
+import {readPrivateDirectAttachment} from "@/lib/directMessageAttachmentResponse";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +87,7 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ messageId: string }> }
 ) {
+  if(usesNonfinancialProductionAuth()) return readPrivateDirectAttachment(request,(await context.params).messageId);
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {

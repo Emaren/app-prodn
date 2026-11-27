@@ -18,6 +18,8 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
+import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 
 const ContactInboxPanel = dynamic(
   () => import("@/components/contact/ContactInboxPanel"),
@@ -71,7 +73,9 @@ async function requestInbox(
     throw new Error(readDetail(payload) || "Inbox failed.");
   }
 
-  return payload as ContactInboxPayload;
+  const inbox=payload as ContactInboxPayload;
+  if(!signal?.aborted)void acknowledgeReceivedInbox(inbox,Boolean(summaryOnly),document.visibilityState==="visible");
+  return inbox;
 }
 
 type HeaderInboxEventPayload = {
@@ -113,7 +117,7 @@ function subscribeSharedInboxEvents(
       } catch {
         return;
       }
-      if (payload.type === "connected") return;
+      // Reconnect also invalidates the authenticated inbox summary.
       for (const listener of sharedInboxEventSubscribers) {
         listener(payload);
       }
@@ -138,6 +142,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<ContactInboxPayload | null>(null);
   const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
+  const legacyMutationsAllowed = Boolean(panelData ?? summary) && (panelData ?? summary)?.legacyMutations !== false;
+  const legacyMutationsRef = useRef(false);
+  useEffect(() => { legacyMutationsRef.current = legacyMutationsAllowed; }, [legacyMutationsAllowed]);
   const [selectedTargetUid, setSelectedTargetUid] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
@@ -160,6 +167,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const panelRequestIdRef = useRef(0);
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
+  const syncBaselineRef=useRef<DirectSyncBaseline|null>(null);
   const draftHydratedTargetRef = useRef<string | null>(null);
 
   const updateDesktopAnchor = useCallback(() => {
@@ -277,7 +285,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   }, [applySelectedTargetUid, uid]);
 
   const refreshPanel = useCallback(
-    async (targetUid?: string | null, options?: { silent?: boolean }) => {
+    async (targetUid?: string | null, options?: { silent?: boolean; probe?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
       const requestedTargetUid = targetUid ?? selectedTargetUidRef.current ?? null;
@@ -299,6 +307,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       }
 
       try {
+        if(options?.probe && await directInboxUnchanged(syncBaselineRef.current,uid,requestedTargetUid,controller.signal))return null;
+        if(controller.signal.aborted || panelRequestIdRef.current!==requestId)return null;
         const payload = await requestInbox(
           requestedTargetUid ?? undefined,
           false,
@@ -308,6 +318,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         if (panelRequestIdRef.current !== requestId) {
           return null;
         }
+        syncBaselineRef.current=directSyncBaseline(payload);
         applyInboxPayload(payload);
         return payload;
       } catch (fetchError) {
@@ -343,23 +354,34 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     if (!open || !uid) return;
 
     void refreshPanel(selectedTargetUidRef.current);
-    const interval = window.setInterval(() => {
-      void refreshPanel(undefined, { silent: true });
-    }, 60_000);
+    // Foreground readback also covers cross-worker commits and missed SSE.
+    const reconcile = (probe=false) => {
+      if (document.visibilityState !== "visible" || panelAbortRef.current) return;
+      void refreshPanel(undefined, { silent: true, probe });
+    };
+    const interval = window.setInterval(() => reconcile(true), 5_000);
+    const reconnect=()=>reconcile(false);
+    document.addEventListener("visibilitychange", reconnect);
+    window.addEventListener("online", reconnect);
 
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", reconnect);
+      window.removeEventListener("online", reconnect);
     };
   }, [open, refreshPanel, uid]);
 
   useEffect(() => {
     if (!uid) return;
     let timer: number | null = null;
+    let refreshActive = false;
     const unsubscribe = subscribeSharedInboxEvents((payload) => {
-      if (timer) window.clearTimeout(timer);
+      refreshActive ||= !payload.targetUid || payload.targetUid === selectedTargetUidRef.current;
+      if (timer !== null) return;
       timer = window.setTimeout(() => {
-        const affectsOpenThread =
-          !payload.targetUid || payload.targetUid === selectedTargetUidRef.current;
+        timer = null;
+        const affectsOpenThread = refreshActive;
+        refreshActive = false;
         if (open && affectsOpenThread) {
           void refreshPanel(undefined, { silent: true });
         } else {
@@ -375,8 +397,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
   useEffect(() => {
     const targetUid = selectedTargetUidRef.current;
-    if (!targetUid || draftHydratedTargetRef.current !== targetUid) return;
+    if (!legacyMutationsAllowed || !targetUid || draftHydratedTargetRef.current !== targetUid) return;
     const timer = window.setTimeout(() => {
+      if (!legacyMutationsRef.current || selectedTargetUidRef.current !== targetUid) return;
       void fetch("/api/contact-emaren", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -384,12 +407,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [body, replyingTo?.messageId]);
+  }, [body, replyingTo?.messageId, legacyMutationsAllowed]);
 
   const sendTypingState = useCallback(
     async (isTyping: boolean) => {
       const targetUid = selectedTargetUidRef.current;
-      if (!uid || !targetUid) return;
+      if (!legacyMutationsRef.current || !uid || !targetUid) return;
 
       try {
         await fetch("/api/contact-emaren", {
@@ -588,6 +611,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   scheduleTypingState(value);
                 }}
                 onInboxAction={async (action) => {
+                  if (!legacyMutationsRef.current) { setError("This inbox action is unavailable in the current profile."); return; }
                   setError(null);
                   try {
                     const response = await fetch("/api/contact-emaren", {
@@ -714,6 +738,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   }
                 }}
                 onToggleReaction={async (messageId, emoji) => {
+                  if (!legacyMutationsRef.current) { setError("Reactions are unavailable in the current profile."); return; }
                   const targetUidAtAction =
                     selectedTargetUidRef.current;
 
