@@ -45,7 +45,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-9e26db74ec22c681ae07",
+    version: "src-f522e612379497d9956d",
   },
   {
     href: "/academy",

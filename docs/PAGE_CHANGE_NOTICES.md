@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-11-27"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Page Change Notices
+
+> Source review 2026-11-27: verified the 25-route generated manifest, current source contracts, and 9/9 page-change tests. This is not a live authenticated persistence witness.
+
 
 ## Gray Dot V2
 
