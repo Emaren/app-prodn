@@ -375,7 +375,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       if (document.visibilityState !== "visible" || panelAbortRef.current) return;
       void refreshPanel(undefined, { silent: true, probe });
     };
-    const interval = window.setInterval(() => reconcile(false), 5_000);
+    const interval = window.setInterval(() => reconcile(true), 5_000);
     const reconnect=()=>reconcile(false);
     document.addEventListener("visibilitychange", reconnect);
     window.addEventListener("online", reconnect);

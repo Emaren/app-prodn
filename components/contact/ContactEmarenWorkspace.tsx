@@ -465,7 +465,7 @@ export default function ContactEmarenWorkspace({
         void refreshSummary(undefined, { silent: true });
       }
     };
-    const interval = window.setInterval(() => reconcile(false), selectedTargetUid ? 5_000 : 60_000);
+    const interval = window.setInterval(() => reconcile(true), selectedTargetUid ? 5_000 : 60_000);
     const reconnect=()=>reconcile(false);
     document.addEventListener("visibilitychange", reconnect);
     window.addEventListener("online", reconnect);
