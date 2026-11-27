@@ -1,0 +1,54 @@
+# EMBER APPEARANCE B/OS REVIEW CANDIDATE — NOT INSTALLED / NOT AUTHORIZED
+# Source owner: WE1 proposes; independent B/Steam must verify/accept.
+# Exact web artifact: Emaren/app-prodn f50ead889c6101115aaf678ebdfa70650b691552
+# The separate root controller and owner one-use permits govern any install.
+# No WantedBy: disabled, manual stage/activate only after acceptance.
+[Unit]
+Description=AoE2WAR nonfinancial appearance writer (Ember Reign source f50ead)
+Documentation=https://github.com/Emaren/app-prodn/pull/1377
+After=network.target postgresql.service
+ConditionPathExists=/etc/aoe2war/appearance-writer-v1.env
+
+[Service]
+Type=simple
+User=aoe2war-appearance
+Group=aoe2war-web-prod
+WorkingDirectory=/var/lib/aoe2war-web-prod-f50ead889c61
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/aoe2war/appearance-writer-v1.env
+ExecStart=/usr/bin/node /var/lib/aoe2war-web-prod-f50ead889c61/bin/appearance-writer.mjs
+Restart=no
+RuntimeDirectory=aoe2war-appearance-writer
+RuntimeDirectoryMode=0710
+UMask=0117
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=127.0.0.1/32
+InaccessiblePaths=-/mnt/HC_Volume_105319120
+ReadWritePaths=/run/aoe2war-appearance-writer
+LimitNOFILE=256
+MemoryMax=268435456
+TasksMax=24
+TimeoutStartSec=10s
+TimeoutStopSec=6s
+KillMode=control-group
+
+# No [Install]: never autoenable, schedule or start without a separate
+# exact-owner-authenticated root activation permit and C03 SQL acceptance.
