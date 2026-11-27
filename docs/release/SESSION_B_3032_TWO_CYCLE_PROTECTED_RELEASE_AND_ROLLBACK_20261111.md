@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority"
-reviewed_at: "2026-11-19"
+reviewed_at: "2026-11-27"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B protected 3032 two-cycle release and rollback admission
+
+> Source-only review 2026-11-27: the related C03, pre-C03 and V22 source-install/recovery suite passed 70/70. The November 11/19 runtime, signer, nonce and catalog observations below remain historical; no current physical predicate or permit is asserted. Use the current Factory contract and Single-Owner PRODUCT Release Authority for current release mechanics; all applicable protected auth, rollback and financial isolation requirements remain in force. Do not execute old commands or reuse permits.
+
 
 > **Source-only re-review, November 19, 2026:** Re-read protected 3032 source contract; R25 guard exists, release/recovery scripts present and 12/12 isolated tests pass. November 11 PIDs, signer and permit conditions are historical, NOT November 19 physical truth. Fresh WE2 owner/root/Factory/T10 acceptance still required.
 

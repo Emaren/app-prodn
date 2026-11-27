@@ -8,12 +8,15 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "nonfinancial source only, session A sole FINANCIAL writer, no production admission"
-reviewed_at: "2026-11-19"
+reviewed_at: "2026-11-27"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
 
 # Session B C03 existing-user-only Steam website contract
+
+> Source-only review 2026-11-27: the related C03, pre-C03 and V22 source-install/recovery suite passed 70/70. The November 11/19 runtime, signer, nonce and catalog observations below remain historical; no current physical predicate or permit is asserted. Use the current Factory contract and Single-Owner PRODUCT Release Authority for current release mechanics; all applicable protected auth, rollback and financial isolation requirements remain in force. Do not execute old commands or reuse permits.
+
 
 > **Source-only re-review, November 19, 2026:** Checked all three cited auth implementation source paths. Direct-login/finance C03 exclusion requires WE1 catalog proof and WE2 real authenticated physical tests; this old contract is no new production permit.
 

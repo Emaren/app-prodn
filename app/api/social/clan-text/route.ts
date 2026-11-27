@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUid } from "@/lib/session";
-import { getPrisma } from "@/lib/prisma";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
   callSocialWriter, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
-import { loadClanHallSnapshot } from "@/lib/clans";
+import { readRestrictedClanHall,CLAN_PRIVATE_HEADERS } from "@/lib/restrictedClanHall";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
 
 export const runtime = "nodejs";
@@ -92,9 +91,9 @@ export async function POST(request: NextRequest) {
     );
   publishClanHallEvent(slug, { type: "message", messageId });
   try {
-    const snapshot = await loadClanHallSnapshot(getPrisma(), slug, sessionUid);
-    if (snapshot)
-      return NextResponse.json(snapshot, { status: 201, headers: NO_STORE });
+    const snapshot = await readRestrictedClanHall(token, sessionUid, slug, null, messageId);
+    if (snapshot.messages.some(m=>m.id===messageId))
+      return NextResponse.json(snapshot, { status: 201, headers: CLAN_PRIVATE_HEADERS });
   } catch { /* committed: never claim send failure */ }
   return NextResponse.json({
     persisted: true, messageId, clanSlug: slug,

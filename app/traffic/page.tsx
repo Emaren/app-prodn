@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import ProvisionalActivity from "@/components/traffic/ProvisionalActivity";
+import { loadProvisionalTraffic } from "@/lib/provisionalTraffic";
 import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
@@ -62,6 +64,25 @@ async function ObservedTrafficSensors({
   );
 }
 
+// Observed activity has its own read-only data rail and never populates
+// canonical session counts. A mismatch or unavailable API stays unavailable.
+async function ProvisionalActivitySection({ lastPublishedDay }: {
+  lastPublishedDay: string | null;
+}) {
+  try {
+    if (!lastPublishedDay) throw new Error("Certified cutoff unavailable");
+    const activity = await loadProvisionalTraffic(lastPublishedDay);
+    return <ProvisionalActivity points={activity.points} />;
+  } catch (error) {
+    console.warn("Provisional Traffic unavailable:", error);
+    return (
+      <section aria-label="Observed Traffic unavailable" className="mt-5 rounded-xl border border-amber-300/20 p-4 text-sm text-slate-400">
+        Recent observed activity unavailable. No counts estimated.
+      </section>
+    );
+  }
+}
+
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let archiveCalculatedAt: string | null = null;
@@ -90,6 +111,13 @@ export default async function TrafficPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.12),transparent_27%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.07),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1900px] px-3 py-5 sm:px-5 lg:px-8">
+        <Suspense fallback={
+          <section aria-live="polite" className="mt-5 rounded-xl border border-amber-300/20 p-4 text-sm text-slate-400">
+            Loading recent observed activity — not human-certified.
+          </section>
+        }>
+          <ProvisionalActivitySection lastPublishedDay={lastPublishedDay} />
+        </Suspense>
         <section aria-label="Canonical Traffic series" className="mt-7">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[11px] tracking-wide text-slate-400">
           <span>LAST PUBLISHED UTC DAY: {lastPublishedDay ?? "UNAVAILABLE"}</span>

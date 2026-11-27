@@ -97,6 +97,7 @@ export type ContactTextMessage = {
   createdAt: string;
   sender: ContactInboxSender;
   receipt: ContactInboxReceipt | null;
+  deliveryPending?: boolean;
   body: string;
   attachment: ContactMessageAttachment | null;
   reactions: ContactMessageReaction[];
@@ -144,6 +145,7 @@ export type ContactInboxCounterpart = {
 };
 
 export type ContactInboxPayload = {
+  legacyMutations?: false;
   viewer: {
     uid: string;
     displayName: string;
@@ -156,6 +158,7 @@ export type ContactInboxPayload = {
   activeChallenges: ScheduledMatchTile[];
   activeChallenge: ScheduledMatchTile | null;
   messages: ContactInboxMessage[];
+  syncMarker?: string;
   messagePage: {
     hasMore: boolean;
     beforeMessageId: number | null;
