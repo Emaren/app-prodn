@@ -1513,6 +1513,16 @@ def exact_traffic_ui_changes(checkout: Path, repo: str, branch: str, base: str) 
 
 
 def _exact_traffic_ui_snapshot(checkout: Path, base: str, endpoint: str) -> list[str]:
+    return _exact_traffic_ui_snapshot_with_generated(checkout, base, endpoint, EXACT_TRAFFIC_UI_GENERATED_SHA)
+
+
+def _exact_traffic_ui_snapshot_with_generated(checkout: Path, base: str, endpoint: str, generated_sha: str) -> list[str]:
+    if generated_sha != EXACT_TRAFFIC_UI_GENERATED_SHA:
+        if endpoint != EXACT_TRAFFIC_SINGLE_PREDECESSOR or generated_sha != EXACT_TRAFFIC_SINGLE_GENERATED_SHA:
+            raise BoundaryHold("TRAFFIC_SINGLE_GENERATED_CONTEXT")
+        frozen = subprocess.check_output(["git","-C",str(checkout),"show",endpoint+":lib/pageChangeManifest.generated.ts"], timeout=15)
+        if hashlib.sha256(frozen).hexdigest() != EXACT_TRAFFIC_UI_GENERATED_SHA:
+            raise BoundaryHold("TRAFFIC_SINGLE_GENERATED_PREDECESSOR_SHA")
     if (git(checkout, "rev-parse", EXACT_TRAFFIC_UI_PREDECESSOR + "^{tree}") != EXACT_TRAFFIC_UI_PREDECESSOR_TREE
             or git(checkout, "rev-parse", EXACT_TRAFFIC_UI_CANDIDATE + "^{tree}") != EXACT_TRAFFIC_UI_TREE):
         raise BoundaryHold("TRAFFIC_UI_TREE_PIN")
@@ -1551,7 +1561,7 @@ def _exact_traffic_ui_snapshot(checkout: Path, base: str, endpoint: str) -> list
                     raise BoundaryHold("TRAFFIC_UI_GENERATED_RACE")
             finally:
                 os.close(fd)
-            if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != EXACT_TRAFFIC_UI_GENERATED_SHA:
+            if len(data) != st.st_size or hashlib.sha256(data).hexdigest() != generated_sha:
                 raise BoundaryHold("TRAFFIC_UI_GENERATED_SHA")
     return sorted(inherited | EXACT_TRAFFIC_UI_PATHS | policy)
 
@@ -1566,7 +1576,9 @@ EXACT_TRAFFIC_SINGLE_TREE = "a9d8c0b2284c975283b79619c44b6b066238bf03"
 EXACT_TRAFFIC_SINGLE_PATHS = EXACT_TRAFFIC_UI_PATHS | frozenset({
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 })
+EXACT_TRAFFIC_SINGLE_GENERATED_SHA = "a45f3b5c13cdc91df2d806bf23272834f685c485ac326201a3c3cb0b7f2eb84d"
 EXACT_TRAFFIC_SINGLE_POLICY = frozenset({
+    "lib/pageChangeManifest.generated.ts",
     "scripts/product_boundary_guard.py", "tests/test_product_boundary_guard.py",
     "docs/DOCUMENTATION_CONTROL_PLANE.md", "docs/document-registry.json",
 })
@@ -1585,7 +1597,7 @@ def exact_traffic_single_changes(checkout: Path, repo: str, branch: str, base: s
         raise BoundaryHold("TRAFFIC_SINGLE_FROZEN_SCOPE")
     if _traffic_ui_modified_paths(checkout, EXACT_TRAFFIC_SINGLE_CANDIDATE, "HEAD") != EXACT_TRAFFIC_SINGLE_POLICY:
         raise BoundaryHold("TRAFFIC_SINGLE_POLICY_SCOPE")
-    inherited = set(_exact_traffic_ui_snapshot(checkout, base, EXACT_TRAFFIC_SINGLE_PREDECESSOR))
+    inherited = set(_exact_traffic_ui_snapshot_with_generated(checkout, base, EXACT_TRAFFIC_SINGLE_PREDECESSOR, EXACT_TRAFFIC_SINGLE_GENERATED_SHA))
     for name in EXACT_TRAFFIC_SINGLE_PATHS | EXACT_TRAFFIC_SINGLE_POLICY:
         authorize_changed_source(checkout, base, name)
         path = checkout
