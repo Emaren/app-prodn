@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-traffic-single-canonical-20261127` at `66ca5874f8bc47039e58d410fc9dbfda4507646f`
+Implementation baseline: `review/radio-playback-v3-20261128` at `f5819afca4c11fa739150451997f20efa106f577`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

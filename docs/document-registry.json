@@ -707,7 +707,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d3b72e36590c2ed6ccbf29179687ffb6bb0e38d77d48b0fba7fe7568ee928d3f",
+      "sha256": "8b3b1e25648e327c2f3bbcbfd86907378fbfdd575d2d21476638b889c965ce14",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1602,7 +1602,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "77e6a402abdacf52e7eb9131e59fae0510d7318015a28ceb8b9088409980efaa",
+      "sha256": "5655c7b4506ae38d5932f81888062f623acc6bc60120be011a2dd1a1a7cf4041",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3686,8 +3686,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/we3-traffic-single-canonical-20261127",
-    "commit": "66ca5874f8bc47039e58d410fc9dbfda4507646f"
+    "branch": "review/radio-playback-v3-20261128",
+    "commit": "f5819afca4c11fa739150451997f20efa106f577"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
