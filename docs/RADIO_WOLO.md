@@ -39,6 +39,12 @@ The intake allows at most three submissions in a rolling day for the same contac
 
 `/admin/radio` lets operators listen privately, inspect contact and rights metadata, add notes, schedule, feature, approve, publish, or decline. Changing to `published` sets a publication timestamp. Private contact and admin notes are never selected into the public station response.
 
+## Restricted production station playback — proposed successor #1522
+
+The isolated nonfinancial web profile must resolve station audio using the proposed HD-only `aoe2war_public_v2.radio_on_air_media` projection, not raw station, program, or asset table reads. The parameterized public-ID lookup accepts exactly one row. The projection is limited to ready assets in the active ready program; creator submissions retain their explicit publication and rights requirements. Internally programmed Vault material remains subject to operator rights responsibility. The route rejects unsupported media types, returns 503 on database failure without exposing details, returns 404 for missing or ambiguous media, and retains HTTP 200/206/416 range behavior. No feedback or actor write authority is introduced.
+
+This is source review, not a deployment receipt. Native HD preflight passed November 28, 2026; the combined projection transaction and inverse remain review-only pending source-bound admission. Local route fixture tests passed 8/8; isolated PostgreSQL admission checks passed 6/6. Live playback and browser acceptance remain outstanding. Preserve existing raw table denial and the independent financial fence.
+
 ## Durable storage
 
 Production defaults to:

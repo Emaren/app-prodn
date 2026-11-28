@@ -21,6 +21,8 @@ import {
 import {
   getPrisma,
 } from "@/lib/prisma";
+import { Prisma } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 export const runtime =
   "nodejs";
@@ -51,28 +53,18 @@ function unavailable() {
   );
 }
 
-export async function GET(
-  request: NextRequest,
-  context: {
-    params:
-      Promise<{
-        publicId: string;
-      }>;
-  },
-) {
-  const {
-    publicId,
-  } =
-    await context.params;
+type StationAudioMedia = { audioStorageKey: string; audioMediaType: string };
 
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      publicId,
-    )
-  ) {
-    return unavailable();
+async function resolveStationAudio(publicId: string): Promise<StationAudioMedia | null> {
+  if (isNonfinancialPublicReadProfile()) {
+    const rows = await getPrisma().$queryRaw<StationAudioMedia[]>(Prisma.sql`
+      SELECT audio_storage_key AS "audioStorageKey",
+             audio_media_type AS "audioMediaType"
+      FROM aoe2war_public_v2.radio_on_air_media
+      WHERE public_id = CAST(${publicId} AS uuid) LIMIT 2
+    `);
+    return rows.length === 1 ? rows[0] : null;
   }
-
   const station =
     await getPrisma().radioStationState.findUnique(
       {
@@ -122,7 +114,7 @@ export async function GET(
     !station.startedAt ||
     !station.program
   ) {
-    return unavailable();
+    return null;
   }
 
   const timeline =
@@ -151,7 +143,7 @@ export async function GET(
     elapsedMs < 0 ||
     timeline.durationMs <= 0
   ) {
-    return unavailable();
+    return null;
   }
 
   const matched =
@@ -163,16 +155,50 @@ export async function GET(
     );
 
   if (!matched) {
+    return null;
+  }
+
+  return matched.asset;
+}
+
+export async function GET(
+  request: NextRequest,
+  context: {
+    params:
+      Promise<{
+        publicId: string;
+      }>;
+  },
+) {
+  const {
+    publicId,
+  } =
+    await context.params;
+
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      publicId,
+    )
+  ) {
     return unavailable();
   }
 
-  const target =
-    radioStoragePath(
-      matched.asset
-        .audioStorageKey,
+  let media: StationAudioMedia | null;
+  try {
+    media = await resolveStationAudio(publicId);
+  } catch {
+    return NextResponse.json(
+      { detail: "Radio WOLO service is temporarily unavailable." },
+      { status: 503, headers: { ...MEDIA_HEADERS, "Retry-After": "30" } },
     );
+  }
+  if (!media) return unavailable();
+  if (!new Set(["audio/wav", "audio/ogg", "audio/mp4", "audio/mpeg"]).has(media.audioMediaType)) {
+    return unavailable();
+  }
 
   try {
+    const target = radioStoragePath(media.audioStorageKey);
     const metadata =
       await stat(target);
 
@@ -238,8 +264,7 @@ export async function GET(
         headers: {
           ...MEDIA_HEADERS,
           "Content-Type":
-            matched.asset
-              .audioMediaType,
+            media.audioMediaType,
           "Content-Length":
             String(length),
           ...(
