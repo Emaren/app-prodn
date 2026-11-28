@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/we3-traffic-single-canonical-20261127` at `23cc65d7c5f115aa43ed433e689e8b213ba77704`
+Implementation baseline: `session-c/we3-traffic-single-canonical-20261127` at `66ca5874f8bc47039e58d410fc9dbfda4507646f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
