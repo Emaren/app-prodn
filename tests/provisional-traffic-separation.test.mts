@@ -98,7 +98,7 @@ test("source fetch is exactly GET-only 3331 observational rail, requires same ca
   }
 });
 
-test("page renders one canonical Traffic chart without an observational substitute", () => {
+test("public page renders only the canonical Traffic chart", () => {
   const page=readFileSync("app/traffic/page.tsx","utf8");
   assert.match(page,/loadPublicTraffic\(\)/);
   assert.match(page,/Canonical Traffic series/);
@@ -106,6 +106,7 @@ test("page renders one canonical Traffic chart without an observational substitu
   assert.match(page,/points=\{points\}/);
   assert.match(page,/series=\{SERIES\}/);
   assert.doesNotMatch(page,/RecentObservedActivity|ObservedDailyTraffic|ProvisionalDailyTraffic/);
-  assert.doesNotMatch(page,/Current project activity|Recent observations/);
+  assert.doesNotMatch(page,/ProvisionalActivity|loadProvisionalTraffic|qualifying IPs/i);
+  assert.ok(page.indexOf('aria-label="Canonical Traffic series"') < page.indexOf("<ObservedTrafficSensors"));
   assert.equal((page.match(/<PremiumTimeSeriesChart/g) || []).length,1);
 });

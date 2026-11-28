@@ -17,6 +17,9 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { acknowledgeVisibleRead } from "./acknowledgeVisibleRead.mjs";
+import { acknowledgeReceivedInbox } from "@/components/contact/acknowledgeReceivedInbox";
+import {directInboxUnchanged,directSyncBaseline,type DirectSyncBaseline} from "@/components/contact/directInboxSyncClient";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import {
   MAX_DIRECT_IMAGE_BYTES,
@@ -143,7 +146,9 @@ async function requestInbox(
     throw new Error(readDetail(payload) || "Inbox failed.");
   }
 
-  return payload as ContactInboxPayload;
+  const inbox=payload as ContactInboxPayload;
+  if(!signal?.aborted)void acknowledgeReceivedInbox(inbox,Boolean(summaryOnly),document.visibilityState==="visible");
+  return inbox;
 }
 
 type ContactEmarenWorkspaceProps = {
@@ -169,6 +174,9 @@ export default function ContactEmarenWorkspace({
   const { uid, isAuthenticated, loading } = useUserAuth();
   const [summaryData, setSummaryData] = useState<ContactInboxPayload | null>(null);
   const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
+  const legacyMutationsAllowed = Boolean(panelData ?? summaryData) && (panelData ?? summaryData)?.legacyMutations !== false;
+  const legacyMutationsRef = useRef(false);
+  useEffect(() => { legacyMutationsRef.current = legacyMutationsAllowed; }, [legacyMutationsAllowed]);
   const [selectedTargetUid, setSelectedTargetUid] = useState<string | null>(requestedUser);
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState<ComposerAttachment | null>(null);
@@ -197,6 +205,7 @@ export default function ContactEmarenWorkspace({
   const panelRequestIdRef = useRef(0);
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
+  const syncBaselineRef=useRef<DirectSyncBaseline|null>(null);
   const summaryAbortRef = useRef<AbortController | null>(null);
   const forcedChallengeTileRef = useRef<ContactInboxPayload["activeChallenge"]>(null);
 
@@ -337,7 +346,7 @@ export default function ContactEmarenWorkspace({
   );
 
   const refreshPanel = useCallback(
-    async (targetUid?: string | null, options?: { silent?: boolean }) => {
+    async (targetUid?: string | null, options?: { silent?: boolean; probe?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
       const nextTargetUid = targetUid ?? selectedTargetUidRef.current ?? undefined;
@@ -355,6 +364,8 @@ export default function ContactEmarenWorkspace({
         setError(null);
       }
       try {
+        if(options?.probe && !forcedChallengeId && await directInboxUnchanged(syncBaselineRef.current,uid,nextTargetUid,controller.signal))return null;
+        if(controller.signal.aborted || panelRequestIdRef.current!==requestId)return null;
         const payload = await requestInbox(
           nextTargetUid,
           false,
@@ -363,6 +374,7 @@ export default function ContactEmarenWorkspace({
           controller.signal
         );
         if (panelRequestIdRef.current !== requestId) return null;
+        syncBaselineRef.current=directSyncBaseline(payload);
         return applyInboxPayload(payload, { mode: "refresh" });
       } catch (fetchError) {
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
@@ -377,6 +389,21 @@ export default function ContactEmarenWorkspace({
     },
     [applyInboxPayload, forcedChallengeId, uid]
   );
+
+  // Read ACK is a UI side effect only after the active panel has rendered.
+  useEffect(() => {
+    if (!uid || !panelData || !(panelData.activeTargetUid === selectedTargetUid)) return;
+    let cancelled=false;
+    const target=panelData.activeTargetUid;
+    const isActive=()=>!cancelled && document.visibilityState==="visible" && document.hasFocus() && selectedTargetUidRef.current===target;
+    const acknowledge=()=>{void acknowledgeVisibleRead({payload:panelData,viewerUid:uid,isActive}).then(committed=>{
+      if(committed&&isActive())void refreshPanel(target,{silent:true});
+    });};
+    acknowledge();
+    document.addEventListener("visibilitychange",acknowledge);
+    window.addEventListener("focus",acknowledge);
+    return ()=>{cancelled=true;document.removeEventListener("visibilitychange",acknowledge);window.removeEventListener("focus",acknowledge);};
+  }, [panelData, selectedTargetUid, uid, refreshPanel]);
 
   useEffect(() => {
     if (!uid) {
@@ -428,16 +455,25 @@ export default function ContactEmarenWorkspace({
 
   useEffect(() => {
     if (!uid) return;
-    const interval = window.setInterval(() => {
-      if (selectedTargetUid) {
-        void refreshPanel(undefined, { silent: true });
-      } else {
+    // SSE is process-local; a healthy connection can still miss another
+    // worker's commit. Reconcile the visible thread without overlapping reads.
+    const reconcile = (probe=false) => {
+      if (document.visibilityState !== "visible") return;
+      if (selectedTargetUidRef.current) {
+        if (!panelAbortRef.current) void refreshPanel(undefined, { silent: true, probe });
+      } else if (!summaryAbortRef.current) {
         void refreshSummary(undefined, { silent: true });
       }
-    }, 60_000);
+    };
+    const interval = window.setInterval(() => reconcile(true), selectedTargetUid ? 5_000 : 60_000);
+    const reconnect=()=>reconcile(false);
+    document.addEventListener("visibilitychange", reconnect);
+    window.addEventListener("online", reconnect);
 
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", reconnect);
+      window.removeEventListener("online", reconnect);
     };
   }, [refreshPanel, refreshSummary, selectedTargetUid, uid]);
 
@@ -445,6 +481,7 @@ export default function ContactEmarenWorkspace({
     if (!uid) return;
     const events = new EventSource("/api/contact-emaren/events");
     let refreshTimer: number | null = null;
+    let refreshActive = false;
     events.onmessage = (event) => {
       let payload: { type?: string; targetUid?: string | null };
       try {
@@ -452,13 +489,15 @@ export default function ContactEmarenWorkspace({
       } catch {
         return;
       }
-      if (payload.type === "connected") return;
-      if (refreshTimer) window.clearTimeout(refreshTimer);
+      // A reconnect can follow missed commits; reconcile from authenticated history.
+      refreshActive ||= Boolean(selectedTargetUidRef.current &&
+        (!payload.targetUid || payload.targetUid === selectedTargetUidRef.current));
+      if (refreshTimer !== null) return;
       refreshTimer = window.setTimeout(() => {
-        if (
-          selectedTargetUidRef.current &&
-          (!payload.targetUid || payload.targetUid === selectedTargetUidRef.current)
-        ) {
+        refreshTimer = null;
+        const active = refreshActive;
+        refreshActive = false;
+        if (active && selectedTargetUidRef.current) {
           void refreshPanel(undefined, { silent: true });
         } else {
           void refreshSummary(undefined, { silent: true });
@@ -480,8 +519,9 @@ export default function ContactEmarenWorkspace({
 
   useEffect(() => {
     const targetUid = selectedTargetUidRef.current;
-    if (!targetUid || draftHydratedTargetRef.current !== targetUid) return;
+    if (!legacyMutationsAllowed || !targetUid || draftHydratedTargetRef.current !== targetUid) return;
     const timer = window.setTimeout(() => {
+      if (!legacyMutationsRef.current || selectedTargetUidRef.current !== targetUid) return;
       void fetch("/api/contact-emaren", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -494,7 +534,7 @@ export default function ContactEmarenWorkspace({
       });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [body, replyingTo?.messageId]);
+  }, [body, replyingTo?.messageId, legacyMutationsAllowed]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -517,7 +557,7 @@ export default function ContactEmarenWorkspace({
   }, [clearAttachment]);
 
   async function sendTypingState(isTyping: boolean) {
-    if (!selectedTargetUid) return;
+    if (!legacyMutationsRef.current || !selectedTargetUid) return;
 
     try {
       await fetch("/api/contact-emaren", {
@@ -565,6 +605,7 @@ export default function ContactEmarenWorkspace({
     action: Record<string, unknown>,
     options?: { expectPayload?: boolean }
   ) {
+    if (!legacyMutationsRef.current) throw new Error("This inbox action is unavailable in the current profile.");
     const response = await fetch("/api/contact-emaren", {
       method: "PATCH",
       headers: {
@@ -679,6 +720,7 @@ export default function ContactEmarenWorkspace({
     }
   }
 
+  const mediaRetryRef = useRef<{file:File;body:string;target:string|null;reply:number|null;key:string}|null>(null);
   async function handleSend() {
     if (!body.trim() && !attachment) return;
 
@@ -721,6 +763,14 @@ export default function ContactEmarenWorkspace({
       }
       if (replyingTo) formData.set("replyToMessageId", String(replyingTo.messageId));
       if (attachment) {
+        const target=selectedTargetUid ?? null;
+        const reply=replyingTo?.messageId ?? null;
+        const previous=mediaRetryRef.current;
+        if(!previous || previous.file!==attachment.file || previous.body!==body ||
+            previous.target!==target || previous.reply!==reply) {
+          mediaRetryRef.current={file:attachment.file,body,target,reply,key:crypto.randomUUID().replace(/-/g,"")};
+        }
+        formData.set("requestKey",mediaRetryRef.current!.key);
         formData.set("attachment", attachment.file);
         if (attachment.durationSeconds) {
           formData.set("attachmentDurationSeconds", String(attachment.durationSeconds));
@@ -749,6 +799,9 @@ export default function ContactEmarenWorkspace({
         throw new Error(readDetail(payload) || "Message failed.");
       }
       if ("persisted" in payload && payload.persisted === true) {
+        mediaRetryRef.current=null;
+        setPanelData(current=>current?{...current,messages:current.messages.filter(message=>message.kind!=="text"||message.optimisticKey!==optimisticKey)}:current);
+        void refreshPanel(undefined,{silent:true});
         setBody("");
         setReplyingTo(null);
         clearAttachment();
@@ -756,6 +809,7 @@ export default function ContactEmarenWorkspace({
         return;
       }
 
+      mediaRetryRef.current=null;
       void sendTypingState(false);
       setBody("");
       setReplyingTo(null);

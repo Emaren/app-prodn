@@ -25,10 +25,13 @@ import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import {readRestrictedInbox,readRestrictedInboxGet,DIRECT_PRIVATE_HEADERS} from "@/lib/restrictedDirectInbox";
 import {
-  callSocialWriter, readBoundedSocialJson, signedSocialCookie,
+  callSocialWriter, callSocialImageWriter, callSocialDeliveryWriter, callSocialReadAck, readBoundedSocialJson, signedSocialCookie,
   validateSocialWriteOrigin,
 } from "@/lib/socialWriterClient";
+import { readBoundedDirectImage } from "@/lib/directImageIngress";
+import { readPrivateDirectAttachment } from "@/lib/directMessageAttachmentResponse";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
 import { normalizeReactionEmoji } from "@/lib/reactionEmoji";
@@ -181,12 +184,18 @@ async function resolveLobbyShareRoom(
 }
 
 export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.has("attachmentMessageId")) {
+    return readPrivateDirectAttachment(request);
+  }
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {
       return NextResponse.json({ detail: "No active session" }, { status: 401 });
     }
 
+    if (usesNonfinancialProductionAuth()) return readRestrictedInboxGet(request,sessionUid);
+    if (request.nextUrl.searchParams.has("sync"))
+      return NextResponse.json({detail:"Sync unavailable"},{status:400,headers:DIRECT_PRIVATE_HEADERS});
     const prisma = getPrisma();
     const summaryOnly = request.nextUrl.searchParams.get("summary") === "1";
     const targetUid = request.nextUrl.searchParams.get("user");
@@ -202,7 +211,7 @@ export async function GET(request: NextRequest) {
       beforeMessageId,
       challengeId,
     });
-    if (!summaryOnly && payload.activeTargetUid) {
+    if (!usesNonfinancialProductionAuth() && !summaryOnly && payload.activeTargetUid) {
       publishDirectMessageEvent(payload.activeTargetUid, {
         type: "receipt",
         targetUid: sessionUid,
@@ -219,7 +228,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Isolated R25 web role has no general-purpose SQL DML/sequence authority.
   // The separate, independently reviewed UID/PG-role social writer verifies
-  // the existing signed Steam session again and permits only text-only sends.
+  // the existing signed Steam session again; images use a distinct bounded operation.
   if (usesNonfinancialProductionAuth()) {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
@@ -227,12 +236,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Same-origin request required." }, { status: 403 });
     const token = signedSocialCookie(request);
     if (!token) return NextResponse.json({ detail: "Signed session required." }, { status: 401 });
-    let action: unknown;
-    try { action = await readBoundedSocialJson(request); }
-    catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
-    if (!action || typeof action !== "object" || Array.isArray(action))
-      return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
-    const result = await callSocialWriter("direct", token, action as Record<string,unknown>);
+    let result: {status:number;body:Record<string,unknown>};
+    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() === "multipart/form-data") {
+      let image;
+      try { image=await readBoundedDirectImage(request); }
+      catch(error) {
+        const oversized=error instanceof Error && error.message==="IMAGE_TOO_LARGE";
+        return NextResponse.json({detail:oversized?"Image is too large.":"Only bounded PNG, JPEG or WebP images are supported."},{status:oversized?413:400});
+      }
+      if (isChallengeInboxNoticeBody(String(image.body))) return NextResponse.json({detail:"Reserved message formatting."},{status:400});
+      result=await callSocialImageWriter(token,image);
+    } else {
+      let action: unknown;
+      try { action = await readBoundedSocialJson(request); }
+      catch { return NextResponse.json({ detail: "Text-only JSON required." }, { status: 400 }); }
+      if (!action || typeof action !== "object" || Array.isArray(action))
+        return NextResponse.json({ detail: "Invalid message request." }, { status: 400 });
+      const fields=action as Record<string,unknown>;
+      if(fields.action==="ack_read"||fields.action==="ack_delivery"){
+        const readAck=fields.action==="ack_read";
+        if(Object.keys(fields).length!==3 || typeof fields.targetUid!=="string" ||
+           !/^[A-Za-z0-9_.:-]{1,100}$/.test(fields.targetUid) ||
+           !Array.isArray(fields.messageIds) || fields.messageIds.length<1 || fields.messageIds.length>50 ||
+           !fields.messageIds.every(id=>Number.isSafeInteger(id)&&id>0&&id<=2147483647) ||
+           new Set(fields.messageIds).size!==fields.messageIds.length)
+          return NextResponse.json({detail:readAck?"INVALID_DIRECT_READ_ACK_REQUEST":"INVALID_DIRECT_DELIVERY_REQUEST"},{status:400,headers:{"Cache-Control":"no-store"}});
+        const ack=await (readAck?callSocialReadAck:callSocialDeliveryWriter)(token,{targetUid:fields.targetUid,messageIds:fields.messageIds});
+        if(ack.status===200 && ack.body.ok===true && typeof ack.body.updatedCount==="number" && ack.body.updatedCount>0)
+          publishDirectMessageEvent(readAck?sessionUid:fields.targetUid,{type:"receipt",targetUid:readAck?fields.targetUid:sessionUid});
+        return NextResponse.json(ack.body,{status:ack.status,headers:{"Cache-Control":"no-store"}});
+      }
+      result=await callSocialWriter("direct", token, fields);
+    }
     if (result.status !== 201) return NextResponse.json(result.body, { status: result.status });
     const targetUid = result.body.targetUid;
     const messageId = result.body.messageId;
@@ -243,8 +278,9 @@ export async function POST(request: NextRequest) {
       type: "message", targetUid: sessionUid, messageId,
     });
     try {
-      const refreshed = await loadInboxPayload(getPrisma(), sessionUid, { targetUid });
-      return NextResponse.json(refreshed);
+      const refreshed = await readRestrictedInbox(request,sessionUid,{summaryOnly:false,targetUid,before:null});
+      if(!refreshed.messages.some(message=>message.kind==="text"&&message.messageId===messageId)) throw Error("COMMITTED_READBACK_NOT_IN_PAGE");
+      return NextResponse.json(refreshed,{headers:DIRECT_PRIVATE_HEADERS});
     } catch {
       // Do not report "send failed" after a committed DB transaction.
       // Surface a safe committed acknowledgement without tempting duplicates.
@@ -472,6 +508,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (usesNonfinancialProductionAuth()) return NextResponse.json({detail:"This inbox action is not admitted."},{status:503,headers:DIRECT_PRIVATE_HEADERS});
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {

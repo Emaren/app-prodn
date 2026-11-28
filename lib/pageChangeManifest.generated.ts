@@ -45,7 +45,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-9e26db74ec22c681ae07",
+    version: "src-f522e612379497d9956d",
   },
   {
     href: "/academy",
@@ -95,7 +95,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-e5f412206a3d398788d5",
+    version: "src-fc84e8e86ffbc42fdabc",
   },
   {
     href: "/kingdom-forge",

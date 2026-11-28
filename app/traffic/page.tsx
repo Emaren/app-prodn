@@ -90,7 +90,7 @@ export default async function TrafficPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.12),transparent_27%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.07),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1900px] px-3 py-5 sm:px-5 lg:px-8">
-        <section aria-label="Canonical Traffic series" className="mt-7">
+        <section aria-label="Canonical Traffic series" className="mt-0">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[11px] tracking-wide text-slate-400">
           <span>LAST PUBLISHED UTC DAY: {lastPublishedDay ?? "UNAVAILABLE"}</span>
           <span aria-label="Original archive calculation timestamp">
